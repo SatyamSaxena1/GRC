@@ -1,0 +1,21 @@
+# Unified Control Objectives — IAM plus vulnerability-management (external scanning).
+ucos:
+  - code: UCO-VULN-001
+    title: External-facing systems are scanned for vulnerabilities on a recurring basis
+      and remediated until a passing scan is achieved
+    domain: VULNERABILITY_MANAGEMENT
+  - code: UCO-IAM-001
+    title: Access control policy is defined, approved and communicated
+    domain: IAM
+  - code: UCO-IAM-002
+    title: Access is granted on least-privilege and need-to-know
+    domain: IAM
+  - code: UCO-IAM-011
+    title: Authentication credentials meet defined strength requirements
+    domain: IAM
+  - code: UCO-IAM-012
+    title: Multi-factor authentication protects privileged and remote access
+    domain: IAM
+  - code: UCO-IAM-020
+    title: Access rights are reviewed and revoked on change or termination
+    domain: IAM
