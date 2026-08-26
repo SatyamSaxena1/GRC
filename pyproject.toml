@@ -1,0 +1,46 @@
+[project]
+name = "grc-slice"
+version = "0.1.0"
+description = "GRC evidence platform — cross-framework evidence reuse vertical slice"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "sqlalchemy>=2",
+    "alembic",
+    "psycopg[binary]",
+    "pydantic>=2",
+    "pyyaml",
+    "python-multipart",
+    "requests",
+    "pyjwt[crypto]",      # RS256 verification against an OIDC provider's JWKS (app/oidc.py)
+    # document parsing, one library per format
+    "pypdf",
+    "python-docx",
+    "openpyxl",
+    "filetype",          # MIME sniffing, pure python (no libmagic binary on Windows)
+    # object storage
+    "boto3",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "httpx"]
+# Rasterizes scanned PDF pages for the VLM fallback. Optional: without it those
+# pages degrade to "no text recovered" rather than failing. See ADR-008.
+ocr = ["pymupdf"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+# Explicit, because the repo root also holds sample-document folders that are
+# data, not packages.
+[tool.setuptools]
+packages = ["app", "app.ai", "app.content", "app.routers", "evaluation", "demo"]
+
+[tool.setuptools.package-data]
+"app.content" = ["*.yaml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["ignore::PendingDeprecationWarning"]

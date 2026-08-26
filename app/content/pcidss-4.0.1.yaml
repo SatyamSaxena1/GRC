@@ -1,0 +1,110 @@
+framework:
+  code: PCI-DSS
+  version: "4.0.1"
+
+requirements:
+  - clause: "12.1.1"
+    title: An overall information security policy is established and maintained
+    text: >
+      An overall information security policy is established, published, maintained and
+      disseminated to all relevant personnel, and covers the cardholder data environment.
+    evidence_requirements:
+      - artefact_type: POLICY
+        required_attributes: [approval_date, approver_role, effective_date, systems_covered]
+    # PCI requires the security policy to be reviewed at least once every 12 months.
+    # A policy past its own review date is not current evidence.
+    evidence_validity:
+      expiry_attribute: next_review_date
+      issued_attribute: approval_date
+      max_age_days: 365
+      required: false   # inferred from approval_date when the document omits it
+    mappings:
+      - uco: UCO-IAM-001
+        coverage: PARTIAL
+        confidence: 1.0
+        source: EXPERT
+        delta_conditions:
+          - attribute: systems_covered
+            operator: contains_all
+            value: ["cardholder data environment"]
+
+  - clause: "8.3.6"
+    title: Password/passphrase minimum strength
+    text: >
+      Passwords/passphrases used as an authentication factor meet a minimum level of
+      complexity: a minimum length of 12 characters, containing both numeric and
+      alphabetic characters.
+    evidence_requirements:
+      - artefact_type: POLICY
+        required_attributes: [password_min_length]
+    mappings:
+      - uco: UCO-IAM-011
+        coverage: FULL
+        confidence: 1.0
+        source: EXPERT
+        delta_conditions:
+          - attribute: password_min_length
+            operator: ">="
+            value: 12
+
+  - clause: "8.4.2"
+    title: MFA for all access into the CDE
+    text: >
+      Multi-factor authentication is implemented for all access into the cardholder data
+      environment, and for all remote network access originating from outside the network.
+    evidence_requirements:
+      - artefact_type: POLICY
+        required_attributes: [mfa_required_for]
+    mappings:
+      - uco: UCO-IAM-012
+        coverage: FULL
+        confidence: 1.0
+        source: EXPERT
+        delta_conditions:
+          - attribute: mfa_required_for
+            operator: contains_all
+            value: ["remote access", "administrative access"]
+
+  - clause: "7.2.4"
+    title: User accounts and access privileges are reviewed
+    text: >
+      All user accounts and related access privileges are reviewed at least once every
+      six months to ensure they remain appropriate.
+    evidence_requirements:
+      - artefact_type: POLICY
+        required_attributes: [access_review_frequency_days]
+    mappings:
+      - uco: UCO-IAM-020
+        coverage: FULL
+        confidence: 1.0
+        source: EXPERT
+        delta_conditions:
+          - attribute: access_review_frequency_days
+            operator: "<="
+            value: 183
+
+  - clause: "11.3.2"
+    title: External vulnerability scans by an Approved Scanning Vendor
+    text: >
+      External vulnerability scans are performed at least once every three months by a
+      PCI SSC Approved Scanning Vendor (ASV). Rescans occur as needed until a passing
+      result is achieved.
+    evidence_requirements:
+      - artefact_type: SCAN_REPORT
+        required_attributes:
+          [scan_completed_date, scan_expiry_date, compliance_status, asv_company]
+    # An ASV scan demonstrates compliance for 90 days. The report states its own
+    # expiry date; where it does not, derive it from the completion date.
+    evidence_validity:
+      expiry_attribute: scan_expiry_date
+      issued_attribute: scan_completed_date
+      max_age_days: 90
+    mappings:
+      - uco: UCO-VULN-001
+        coverage: FULL
+        confidence: 1.0
+        source: EXPERT
+        delta_conditions:
+          - attribute: compliance_status
+            operator: "=="
+            value: true

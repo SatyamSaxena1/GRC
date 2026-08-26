@@ -1,0 +1,20 @@
+{
+  "document": "pci_asv_attestation_2023.pdf",
+  "artefact_type": "SCAN_REPORT",
+  "frameworks": ["PCI-DSS"],
+  "source": "real — same ASV attestation, evaluated inside its validity window",
+  "notes": "The counterpart to the stale case: for a Q2-2023 audit this scan is genuinely valid evidence. Guards against 'fix staleness by failing everything'.",
+  "as_of": "2023-05-01",
+  "attributes": {
+    "scan_completed_date": {"value": "2023-03-16", "pages": [1, 2]},
+    "scan_expiry_date": {"value": "2023-06-14", "pages": [1, 2]},
+    "compliance_status": {"value": true, "pages": [1, 2]},
+    "asv_company": {"value": "Clone Systems, Inc.", "pages": [2]}
+  },
+  "verdicts": {
+    "PCI-DSS 11.3.2": "PASS"
+  },
+  "gap_attributes": {
+    "PCI-DSS 11.3.2": []
+  }
+}

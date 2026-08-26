@@ -1,0 +1,55 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { getCisoSyncStatus, listGaps, type GapRow } from "../api/client";
+import { useApi } from "../lib/useApi";
+import { DataTable, type Column } from "../components/DataTable";
+import { Badge } from "../components/Badge";
+import { CisoSyncBadge } from "../components/CisoSyncBadge";
+
+const STATUSES = ["", "OPEN", "RESOLVED_BY_EVIDENCE"];
+
+export function GapsListPage() {
+  const navigate = useNavigate();
+  const [status, setStatus] = useState("OPEN");
+  const gaps = useApi(() => listGaps(status || undefined), [status]);
+  const cisoSync = useApi(() => getCisoSyncStatus(), []);
+
+  const columns: Column<GapRow>[] = [
+    { key: "framework", header: "Control", render: (g) => `${g.framework} ${g.clause}` },
+    { key: "attribute", header: "Attribute", render: (g) => g.attribute },
+    { key: "actual", header: "Actual", render: (g) => g.actual_value ?? "missing" },
+    { key: "required", header: "Required", render: (g) => g.required_value ?? "—" },
+    { key: "status", header: "Status", render: (g) => <Badge value={g.status} /> },
+    {
+      key: "ciso_sync", header: "CISO Assistant",
+      render: (g) => (
+        <CisoSyncBadge status={cisoSync.data?.find((s) => s.entity_type === "gap" && s.entity_id === g.id)} />
+      ),
+    },
+  ];
+
+  return (
+    <div>
+      <div className="page-header">
+        <div>
+          <h2>Gaps</h2>
+          <p>Every unmet requirement, with the exact value observed and the exact value needed.</p>
+        </div>
+        <select value={status} onChange={(e) => setStatus(e.target.value)}>
+          {STATUSES.map((s) => (
+            <option key={s} value={s}>
+              {s || "All statuses"}
+            </option>
+          ))}
+        </select>
+      </div>
+      {gaps.error && <div className="alert alert-error">{gaps.error}</div>}
+      <DataTable
+        columns={columns}
+        rows={gaps.data ?? []}
+        onRowClick={(g) => navigate(`/evidence/${g.evidence_id}`)}
+        emptyLabel="No gaps at this status."
+      />
+    </div>
+  );
+}

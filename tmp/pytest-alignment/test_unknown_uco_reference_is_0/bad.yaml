@@ -1,0 +1,8 @@
+
+framework: {code: F, version: "1"}
+requirements:
+  - clause: "1"
+    title: t
+    text: t
+    evidence_requirements: [{artefact_type: POLICY, required_attributes: [a]}]
+    mappings: [{uco: UCO-NOPE, coverage: FULL, confidence: 1.0, source: EXPERT}]

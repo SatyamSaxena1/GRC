@@ -1,0 +1,34 @@
+{
+  "document": "access_control_policy_v1.txt",
+  "artefact_type": "POLICY",
+  "frameworks": ["ISO-27001", "PCI-DSS"],
+  "source": "synthetic — fictional Asteron Systems policy, written as a test artefact",
+  "notes": "Deliberately ISO-compliant and PCI-deficient: 8-char passwords, no CDE in scope.",
+  "attributes": {
+    "approval_date": {"value": "2026-03-12", "pages": [1]},
+    "approver_role": {"value": "Chief Information Security Officer", "pages": [1]},
+    "effective_date": {"value": "2026-03-12", "pages": [1]},
+    "systems_covered": {
+      "value": ["corporate identity platform", "email", "collaboration tools",
+                "source-code repositories", "endpoint management systems",
+                "internal business applications"],
+      "pages": [2]
+    },
+    "password_min_length": {"value": 8, "pages": [6]},
+    "mfa_required_for": {"value": ["remote access", "administrative access"], "pages": [7]},
+    "access_review_frequency_days": {"value": "quarterly", "pages": [9]}
+  },
+  "verdicts": {
+    "ISO-27001 A.5.15": "PASS",
+    "ISO-27001 A.5.17": "PASS",
+    "ISO-27001 A.5.18": "PASS",
+    "PCI-DSS 12.1.1": "PARTIAL",
+    "PCI-DSS 8.3.6": "PARTIAL",
+    "PCI-DSS 8.4.2": "PASS",
+    "PCI-DSS 7.2.4": "PASS"
+  },
+  "gap_attributes": {
+    "PCI-DSS 12.1.1": ["systems_covered"],
+    "PCI-DSS 8.3.6": ["password_min_length"]
+  }
+}

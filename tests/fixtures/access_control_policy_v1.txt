@@ -1,0 +1,36 @@
+ASTERON SYSTEMS PVT. LTD. — ACCESS CONTROL POLICY
+Document ID: ISP-AC-001 | Version 1.0
+Effective Date: 12 March 2026
+Approved by: Meera Khanna, Chief Information Security Officer
+Electronic Approval Recorded: 12 March 2026
+
+Document Control
+Approval Date: 12 March 2026
+Effective Date: 12 March 2026
+Review Frequency: Annual
+Next Review Date: 12 March 2027
+Status: Approved and Published
+
+2. Scope
+This policy applies to employees, contractors, interns and authorised third parties who access
+Corporate IT systems managed by Asteron Systems Pvt. Ltd., including the corporate identity
+platform, email, collaboration tools, source-code repositories, endpoint management systems and
+internal business applications, at the Bengaluru and Mumbai offices and for remote users connecting
+through the company-managed VPN.
+Scope note: this version does not expressly identify or include a Cardholder Data Environment (CDE)
+or payment-processing infrastructure.
+
+6. Authentication and Password Requirements
+Minimum password length: 8 characters. Passwords must contain characters from at least three of
+the following groups: uppercase letters, lowercase letters, numbers and special characters.
+
+7. Multi-Factor Authentication
+Multi-factor authentication (MFA) is mandatory for remote access through the corporate VPN and
+for administrative access to cloud management consoles where the platform supports MFA. Standard
+internal user access to applications from the managed corporate network may use single-factor
+authentication where integrated with the corporate identity provider and no elevated privileges are
+granted. Current MFA requirement is therefore not universal across all access paths.
+
+9. Access Reviews
+System Owners shall review user access at least quarterly for critical systems and at least annually
+for other in-scope Corporate IT systems.
