@@ -121,6 +121,39 @@ button, input, select, textarea { font: inherit; color: inherit; }
   margin-bottom: 20px;
 }
 
+.getting-started {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 20px;
+  margin-bottom: 20px;
+  color: #fff;
+  background: linear-gradient(120deg, #253a91, var(--primary));
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.getting-started-icon { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; background: rgba(255, 255, 255, .16); font-weight: 800; }
+.getting-started h3 { margin: 2px 0 4px; font-size: 17px; }
+.getting-started p { margin: 0; color: #e5e9ff; font-size: 13px; line-height: 1.45; }
+.getting-started .btn { white-space: nowrap; background: #fff; color: var(--primary-dark); border-color: #fff; }
+.eyebrow { display: block; color: inherit; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; opacity: .8; }
+
+.tour-backdrop { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 20px; background: rgba(12, 16, 31, .62); }
+.tour-dialog { position: relative; width: min(480px, 100%); padding: 26px; background: var(--panel); border-radius: 14px; box-shadow: 0 20px 55px rgba(10, 15, 36, .28); outline: none; }
+.tour-dialog .eyebrow { color: var(--primary); }
+.tour-dialog h3 { margin: 8px 32px 8px 0; font-size: 21px; }
+.tour-dialog > p { margin: 0; color: var(--text-muted); font-size: 14px; line-height: 1.65; }
+.tour-close { position: absolute; top: 16px; right: 18px; padding: 0; border: 0; background: none; color: var(--text-muted); font-size: 26px; cursor: pointer; }
+.tour-progress { display: flex; gap: 5px; margin: -26px -26px 22px; }
+.tour-progress span { flex: 1; height: 4px; background: var(--neutral-bg); }
+.tour-progress span:first-child { border-radius: 14px 0 0; }
+.tour-progress span:last-child { border-radius: 0 14px 0 0; }
+.tour-progress span.complete { background: var(--primary); }
+.tour-actions { display: flex; justify-content: space-between; margin-top: 24px; }
+.tour-link { margin-top: 12px; padding: 0; border: 0; background: none; color: var(--primary); font-weight: 700; cursor: pointer; }
+.tour-target { position: relative; outline: 4px solid #8fa3ff; outline-offset: 3px; }
+
 .stat-card .stat-label {
   font-size: 12px;
   text-transform: uppercase;
@@ -244,6 +277,11 @@ table.data-table tbody tr:last-child td { border-bottom: none; }
 @media (max-width: 760px) {
   .queue-filters { grid-template-columns: 1fr 1fr; }
   .queue-summary { overflow-x: auto; }
+  .app-shell { grid-template-columns: 1fr; }
+  .sidebar { position: static; }
+  .main { padding: 20px 16px; }
+  .getting-started { grid-template-columns: auto 1fr; }
+  .getting-started .btn { grid-column: 1 / -1; justify-content: center; }
 }
 
 .alert {
