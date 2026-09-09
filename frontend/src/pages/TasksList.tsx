@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import {
   ApiError,
   createTask,
+  downloadTasksExport,
   getTask,
   listControls,
   listTaskOwners,
@@ -29,6 +30,8 @@ export function TasksListPage() {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<TaskRow | null>(null);
   const [showNewTask, setShowNewTask] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
   const owners = useApi(() => listTaskOwners(), []);
   const allTasks = useApi(() => listTasks(), []);
   const tasks = useApi(
@@ -54,6 +57,22 @@ export function TasksListPage() {
   const total = allTasks.data?.length ?? 0;
   const done = allTasks.data?.filter((task) => task.status === "DONE").length ?? 0;
   const reload = () => { tasks.reload(); allTasks.reload(); };
+
+  // The same four filters the queue is currently narrowed by.
+  const exportTasks = async () => {
+    setExporting(true);
+    setExportError(null);
+    try {
+      await downloadTasksExport({
+        status: status || undefined, priority: priority || undefined,
+        owner_user_id: owner || undefined, q: query || undefined,
+      });
+    } catch (err) {
+      setExportError(err instanceof ApiError ? String(err.detail) : (err as Error).message);
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const tourSteps = [
     {
@@ -91,9 +110,14 @@ export function TasksListPage() {
               {showNewTask ? "Cancel" : "Assign a task"}
             </button>
           )}
+          <button className="btn" disabled={exporting} onClick={exportTasks}>
+            {exporting ? "Preparing…" : "Export (XLSX)"}
+          </button>
           <PageTour id="tasks" steps={tourSteps} />
         </div>
       </div>
+
+      {exportError && <div className="alert alert-error">{exportError}</div>}
 
       {showNewTask && (
         <NewTaskForm

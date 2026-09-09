@@ -29,11 +29,11 @@ export function OverviewPage() {
   const [exportError, setExportError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
 
-  const exportReport = async () => {
+  const exportReport = async (format: "csv" | "xlsx") => {
     setExporting(true);
     setExportError(null);
     try {
-      await downloadComplianceExport();
+      await downloadComplianceExport(format);
     } catch (err) {
       setExportError(err instanceof ApiError ? String(err.detail) : (err as Error).message);
     } finally {
@@ -58,8 +58,11 @@ export function OverviewPage() {
           <p>Start with what needs attention, then drill into the exact evidence, gap, or control.</p>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button className="btn" disabled={exporting} onClick={exportReport}>
+          <button className="btn" disabled={exporting} onClick={() => exportReport("csv")}>
             {exporting ? "Preparing…" : "Download compliance report (CSV)"}
+          </button>
+          <button className="btn" disabled={exporting} onClick={() => exportReport("xlsx")}>
+            {exporting ? "Preparing…" : "Download (XLSX)"}
           </button>
           <PageTour id="overview" steps={TOUR_STEPS} />
         </div>

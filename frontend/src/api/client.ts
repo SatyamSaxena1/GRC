@@ -674,20 +674,31 @@ export const getActivity = () => request<ActivityEvent[]>("GET", "/activity");
  * cookie session here — every request carries a custom Authorization header
  * (see authHeaders above) — so a plain `<a href>` can't work; fetch, blob,
  * and a throwaway object URL is the standard workaround. */
-export async function downloadFile(path: string, filename: string): Promise<void> {
-  const res = await fetch(new URL(path, window.location.origin), { headers: authHeaders() });
+export async function downloadFile(
+  path: string, filename: string, params: Record<string, string | undefined> = {},
+): Promise<void> {
+  const url = new URL(path, window.location.origin);
+  for (const [key, value] of Object.entries(params)) {
+    if (value) url.searchParams.set(key, value);
+  }
+  const res = await fetch(url, { headers: authHeaders() });
   if (!res.ok) throw new ApiError(res.status, await res.text());
   const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
+  const objectUrl = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.href = url;
+  a.href = objectUrl;
   a.download = filename;
   document.body.appendChild(a);
   a.click();
   a.remove();
-  URL.revokeObjectURL(url);
+  URL.revokeObjectURL(objectUrl);
 }
-export const downloadComplianceExport = () => downloadFile("/export/compliance.csv", "compliance-export.csv");
+export const downloadComplianceExport = (format: "csv" | "xlsx" = "csv", params: Record<string, string | undefined> = {}) =>
+  downloadFile(`/export/compliance.${format}`, `compliance-export.${format}`, params);
+export const downloadGapsExport = (params: Record<string, string | undefined> = {}) =>
+  downloadFile("/export/gaps.xlsx", "gaps-export.xlsx", params);
+export const downloadTasksExport = (params: Record<string, string | undefined> = {}) =>
+  downloadFile("/export/tasks.xlsx", "tasks-export.xlsx", params);
 
 // ---------------------------------------------------------------- CISO Assistant sync
 

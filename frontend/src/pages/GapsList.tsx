@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getCisoSyncStatus, listGaps, type GapRow } from "../api/client";
+import { ApiError, downloadGapsExport, getCisoSyncStatus, listGaps, type GapRow } from "../api/client";
 import { useApi } from "../lib/useApi";
 import { DataTable, type Column } from "../components/DataTable";
 import { Badge } from "../components/Badge";
@@ -30,8 +30,24 @@ const TOUR_STEPS = [
 export function GapsListPage() {
   const navigate = useNavigate();
   const [status, setStatus] = useState("OPEN");
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
   const gaps = useApi(() => listGaps(status || undefined), [status]);
   const cisoSync = useApi(() => getCisoSyncStatus(), []);
+
+  // Exports exactly the filter currently on screen — "OPEN" here downloads
+  // the same rows the table shows, not the whole history.
+  const exportGaps = async () => {
+    setExporting(true);
+    setExportError(null);
+    try {
+      await downloadGapsExport({ status: status || undefined });
+    } catch (err) {
+      setExportError(err instanceof ApiError ? String(err.detail) : (err as Error).message);
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const columns: Column<GapRow>[] = [
     { key: "framework", header: "Control", render: (g) => `${g.framework} ${g.clause}` },
@@ -62,9 +78,13 @@ export function GapsListPage() {
               </option>
             ))}
           </select>
+          <button className="btn" disabled={exporting} onClick={exportGaps}>
+            {exporting ? "Preparing…" : "Export (XLSX)"}
+          </button>
           <PageTour id="gaps" steps={TOUR_STEPS} />
         </div>
       </div>
+      {exportError && <div className="alert alert-error">{exportError}</div>}
       {gaps.error && <div className="alert alert-error">{gaps.error}</div>}
       <DataTable
         columns={columns}
