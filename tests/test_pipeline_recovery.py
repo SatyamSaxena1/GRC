@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from app import db as db_module
 from app import service
-from app.models import AuditEvent, Evidence
+from app.models import AuditEvent, Evidence, EvidenceControlLink
 from app.quality import score_evidence as real_score_evidence
 
 # Restore by re-patching, never monkeypatch.undo(): the `client` fixture shares
@@ -55,15 +55,35 @@ def test_reprocess_recovers_evidence_that_failed(client, bootstrap, upload, monk
     resp = client.post(f"/evidence/{evidence_id}/reprocess",
                        headers={"authorization": f"org:{org_id}"})
     assert resp.status_code == 202
-    assert status_of(evidence_id)[0] == "READY"
+    # No model in the test env, so the recovered run lands at NEEDS_REVIEW (not
+    # FAILED, not a fake READY) — the point is it left FAILED and is now settled.
+    assert status_of(evidence_id)[0] == "NEEDS_REVIEW"
 
 
-def test_reprocess_is_refused_once_processing_has_settled(client, bootstrap, upload):
-    """Recovery only — never a back door to recompute verdicts an auditor may
-    already have acted on."""
+def test_reprocess_of_a_settled_row_without_a_lock_is_allowed(client, bootstrap, upload):
+    """A NEEDS_REVIEW row (here: extraction was unavailable) with nothing locked
+    is exactly what reprocess exists to rescue — re-running is not a back door."""
     org_id, _ = bootstrap(client)
     evidence_id = upload(client, org_id).json()["evidence_id"]
-    assert status_of(evidence_id)[0] == "READY"
+    assert status_of(evidence_id)[0] == "NEEDS_REVIEW"
+
+    resp = client.post(f"/evidence/{evidence_id}/reprocess",
+                       headers={"authorization": f"org:{org_id}"})
+    assert resp.status_code == 202
+
+
+def test_reprocess_is_refused_once_an_auditor_has_locked_a_verdict(client, bootstrap, upload):
+    """Recovery only — never a back door to recompute verdicts an auditor has
+    already acted on. The guard is the lock, not the status."""
+    org_id, engagement_id = bootstrap(client)
+    evidence_id = upload(client, org_id).json()["evidence_id"]
+
+    with Session(db_module.engine) as s:
+        link_id = s.query(EvidenceControlLink).filter_by(evidence_id=evidence_id).first().id
+    locked = client.post(f"/audit/links/{link_id}/lock",
+                         headers={"authorization": f"auditor:{engagement_id}"},
+                         json={"verdict": "PASS"})
+    assert locked.status_code == 200
 
     resp = client.post(f"/evidence/{evidence_id}/reprocess",
                        headers={"authorization": f"org:{org_id}"})

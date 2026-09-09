@@ -8,6 +8,7 @@ import {
   getEvidenceStatus,
   getEvidenceVersions,
   draftRemediation,
+  reprocessEvidence,
   streamEvidenceEvents,
   type EvidenceAttribute,
   type EvidenceVersion,
@@ -74,6 +75,8 @@ export function EvidenceDetailPage() {
   const [liveAttributes, setLiveAttributes] = useState<EvidenceAttribute[]>([]);
   const [liveLinks, setLiveLinks] = useState<LiveLink[]>([]);
   const [liveStatus, setLiveStatus] = useState<string | null>(null);
+  const [rerunning, setRerunning] = useState(false);
+  const [rerunError, setRerunError] = useState<string | null>(null);
 
   useEffect(() => {
     setLiveAttributes([]);
@@ -125,6 +128,28 @@ export function EvidenceDetailPage() {
       }))
     : liveLinks;
 
+  // NEEDS_REVIEW with an "extraction …" detail means the analysis model was
+  // unavailable or errored when this file was processed — the file is fine, the
+  // run isn't. Offer to re-run rather than leaving a misleading all-FAIL result.
+  const extractionIncomplete =
+    evidence.status === "NEEDS_REVIEW" && (status.data?.detail ?? "").startsWith("extraction ");
+
+  const rerun = async () => {
+    setRerunning(true);
+    setRerunError(null);
+    try {
+      await reprocessEvidence(id);
+      detail.reload();
+      attributes.reload();
+      history.reload();
+      status.reload();
+    } catch (err) {
+      setRerunError(err instanceof ApiError ? String(err.detail) : (err as Error).message);
+    } finally {
+      setRerunning(false);
+    }
+  };
+
   return (
     <div>
       <div className="page-header">
@@ -150,7 +175,28 @@ export function EvidenceDetailPage() {
           </span>
         </div>
       )}
-      {evidence.status === "FAILED" && <div className="alert alert-error">{status.data?.detail || "Processing failed."}</div>}
+      {extractionIncomplete && (
+        <div className="alert alert-warning">
+          <strong>The analysis model was unavailable when this file was processed.</strong>
+          <span className="muted" style={{ display: "block", fontSize: 12, margin: "2px 0 8px" }}>
+            Your file is stored and its text was readable. The verdicts below were computed
+            with no extracted facts, so they all read FAIL — re-run the analysis to get a real result.
+          </span>
+          <button className="btn" onClick={rerun} disabled={rerunning}>
+            {rerunning ? "Re-running…" : "Re-run analysis"}
+          </button>
+          {rerunError && <span className="muted" style={{ marginLeft: 10 }}>{rerunError}</span>}
+        </div>
+      )}
+      {evidence.status === "FAILED" && (
+        <div className="alert alert-error">
+          <span>{status.data?.detail || "Processing failed."}</span>
+          <button className="btn" style={{ marginLeft: 10 }} onClick={rerun} disabled={rerunning}>
+            {rerunning ? "Re-running…" : "Re-run analysis"}
+          </button>
+          {rerunError && <span className="muted" style={{ marginLeft: 10 }}>{rerunError}</span>}
+        </div>
+      )}
 
       <div className="card-grid">
         <div className="card stat-card">

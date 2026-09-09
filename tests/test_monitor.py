@@ -169,6 +169,62 @@ def test_failed_evidence_is_reported_separately_from_stuck(client, bootstrap, up
     assert report.stuck == ()  # a known failure is not a stuck job
 
 
+def _retryable_ids(org_id: str, **kwargs) -> list[str]:
+    from app.db import set_tenant
+    with Session(db_module.engine) as s:
+        set_tenant(s, org_id)
+        return [e.id for e in monitor.retryable_extractions(s, **kwargs)]
+
+
+def test_extraction_that_ran_while_the_model_was_down_becomes_retryable(client, bootstrap, upload):
+    """No model in the test env -> the upload's extraction is UNAVAILABLE and the
+    row lands at NEEDS_REVIEW. Once it has sat there a while, the sweep picks it
+    up (the same thing a human clicking Re-run would do)."""
+    org_id, _ = bootstrap(client)
+    evidence_id = upload(client, org_id).json()["evidence_id"]
+
+    with Session(db_module.engine) as s:
+        created = s.get(Evidence, evidence_id).created_at
+    if created.tzinfo is None:
+        created = created.replace(tzinfo=timezone.utc)
+
+    just_after = created + timedelta(minutes=1)
+    assert _retryable_ids(org_id, now=just_after) == []  # too fresh, leave it be
+
+    later = created + timedelta(minutes=monitor.RETRY_EXTRACTION_AFTER_MINUTES + 1)
+    assert _retryable_ids(org_id, now=later) == [evidence_id]
+
+
+def test_a_locked_verdict_keeps_a_row_out_of_the_retry_sweep(client, bootstrap, upload):
+    org_id, engagement_id = bootstrap(client)
+    evidence_id = upload(client, org_id).json()["evidence_id"]
+    with Session(db_module.engine) as s:
+        link_id = s.query(EvidenceControlLink).filter_by(evidence_id=evidence_id).first().id
+    client.post(f"/audit/links/{link_id}/lock",
+                headers={"authorization": f"auditor:{engagement_id}"},
+                json={"verdict": "PASS"})
+
+    with Session(db_module.engine) as s:
+        created = s.get(Evidence, evidence_id).created_at
+    if created.tzinfo is None:
+        created = created.replace(tzinfo=timezone.utc)
+    later = created + timedelta(minutes=monitor.RETRY_EXTRACTION_AFTER_MINUTES + 1)
+    assert _retryable_ids(org_id, now=later) == []
+
+
+def test_a_settled_ready_row_is_never_retried(client, bootstrap, upload):
+    org_id, _ = bootstrap(client)
+    evidence_id = upload(client, org_id).json()["evidence_id"]
+    with Session(db_module.engine) as s:
+        s.get(Evidence, evidence_id).status = "READY"
+        s.commit()
+        created = s.get(Evidence, evidence_id).created_at
+    if created.tzinfo is None:
+        created = created.replace(tzinfo=timezone.utc)
+    later = created + timedelta(minutes=monitor.RETRY_EXTRACTION_AFTER_MINUTES + 1)
+    assert _retryable_ids(org_id, now=later) == []
+
+
 def test_attention_endpoint_serves_the_report(client, bootstrap, upload):
     org_id, _ = bootstrap(client)
     evidence_id = upload(client, org_id).json()["evidence_id"]
