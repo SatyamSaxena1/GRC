@@ -354,6 +354,7 @@ def _run_pipeline(db: Session, content: Content, evidence: Evidence, actor_label
         extraction_methods={n: f.extraction_method for n, f in run.fields.items()},
         required_scope=_required_scope(content, org.frameworks, evidence.artefact_type),
         as_of=_audit_as_of(db, evidence.org_id),
+        native_readable=bool(text and text.strip() and method != "none"),
     )
     evidence.quality_score = quality.score
     evidence.quality_detail = quality.to_dict()
@@ -435,8 +436,15 @@ def _run_pipeline(db: Session, content: Content, evidence: Evidence, actor_label
                 "quality_score": quality.score},
         request_id=request_id,
     )
-    # An unusable extraction is flagged for a human, never quietly accepted.
-    set_status(db, evidence, "NEEDS_REVIEW" if run.status == "INVALID_OUTPUT" else "READY")
+    # An unusable extraction is flagged for a human, never quietly accepted. All
+    # three non-OK statuses mean the verdicts above were computed from no facts:
+    # the model returned junk (INVALID_OUTPUT), errored mid-call (ERROR), or was
+    # unreachable (UNAVAILABLE). NEEDS_REVIEW says so plainly, and /reprocess can
+    # re-run once the model is back (see app/routers/evidence.py, app/monitor.py).
+    if run.status in {"INVALID_OUTPUT", "ERROR", "UNAVAILABLE"}:
+        set_status(db, evidence, "NEEDS_REVIEW", f"extraction {run.status.lower().replace('_', ' ')}")
+    else:
+        set_status(db, evidence, "READY")
 
 
 def _link_confidence(link, run) -> float | None:

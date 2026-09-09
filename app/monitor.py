@@ -13,10 +13,16 @@ Two silent failure modes this catches:
     restart mid-run leaves a row in a non-terminal status with nothing to
     re-enqueue it, and the frontend polls it forever.
 
-**This module never writes.** Expiry is reported, not applied: auditors lock
-verdicts, and a job silently flipping a locked PASS to FAIL would break the
-guarantee locking exists to provide. The report tells a human to upload fresh
-evidence, which goes through the ordinary pipeline.
+**The default (report) path never writes.** Expiry is reported, not applied:
+auditors lock verdicts, and a job silently flipping a locked PASS to FAIL would
+break the guarantee locking exists to provide. The report tells a human to
+upload fresh evidence, which goes through the ordinary pipeline.
+
+The one opt-in exception is `python -m app.monitor --retry-extractions`: it
+re-runs the pipeline for evidence whose extraction ran while the analysis model
+was unavailable (status NEEDS_REVIEW, latest AiRun UNAVAILABLE/ERROR, nothing
+locked). That is the same thing `POST /evidence/{id}/reprocess` does by hand —
+recovery from an outage, never a recomputation of a locked result.
 """
 
 from __future__ import annotations
@@ -28,7 +34,9 @@ from sqlalchemy.orm import Session
 
 from app.content.load import Content
 from app.evaluate import evaluate
-from app.models import TERMINAL_EVIDENCE_STATUSES, Evidence, Organization
+from app.models import (
+    TERMINAL_EVIDENCE_STATUSES, AiRun, Evidence, EvidenceControlLink, Organization,
+)
 
 # How far ahead to warn. Matches the 30-day threshold app/quality.py::_freshness
 # already uses to mark evidence as approaching expiry.
@@ -37,6 +45,11 @@ EXPIRY_HORIZON_DAYS = 30
 # Beyond any legitimate run: OLLAMA_TIMEOUT_S defaults to 180s, and a slow VLM
 # pass over a large scanned PDF is still minutes, not a quarter of an hour.
 STUCK_AFTER_MINUTES = 15
+
+# How long to wait after an outage-damaged run before auto-retrying it, so a
+# still-down model isn't hammered and a human clicking "Re-run" first isn't
+# raced.
+RETRY_EXTRACTION_AFTER_MINUTES = 10
 
 
 @dataclass(frozen=True)
@@ -180,7 +193,66 @@ def attention_report(db: Session, org_id: str, content: Content, *,
     )
 
 
+def retryable_extractions(db: Session, *, now: datetime | None = None,
+                          older_than_minutes: int = RETRY_EXTRACTION_AFTER_MINUTES,
+                          ) -> list[Evidence]:
+    """Current evidence sitting at NEEDS_REVIEW because the analysis model was
+    unavailable or errored, old enough to be worth another try, with no locked
+    verdict in the way. Same eligibility `POST /evidence/{id}/reprocess` applies.
+    """
+    now = now or datetime.now(timezone.utc)
+    cutoff = now - timedelta(minutes=older_than_minutes)
+    out: list[Evidence] = []
+    rows = db.query(Evidence).filter_by(
+        lifecycle_status="CURRENT", status="NEEDS_REVIEW"
+    ).all()
+    for evidence in rows:
+        created = evidence.created_at
+        if created.tzinfo is None:  # SQLite hands these back naive
+            created = created.replace(tzinfo=timezone.utc)
+        if created > cutoff:
+            continue
+        latest = (
+            db.query(AiRun)
+            .filter_by(evidence_id=evidence.id, operation="attribute_extraction")
+            .order_by(AiRun.created_at.desc())
+            .first()
+        )
+        if latest is None or latest.status not in {"UNAVAILABLE", "ERROR"}:
+            continue  # INVALID_OUTPUT is a model that answered, just badly — a human looks
+        # `locked` is a property, not a column — check it in Python.
+        links = db.query(EvidenceControlLink).filter_by(evidence_id=evidence.id).all()
+        if any(link.locked for link in links):
+            continue
+        out.append(evidence)
+    return out
+
+
 # --------------------------------------------------------------------------- CLI
+
+
+def _retry_extractions() -> int:
+    """Re-run the pipeline for every org's outage-damaged evidence. Writes.
+
+    Deliberately a separate entrypoint from the read-only report: run it from
+    cron a few minutes behind the report, and it heals the exact rows the report
+    lists under STUCK/NEEDS_REVIEW-with-an-UNAVAILABLE-run.
+    """
+    from app.content.load import load as load_content
+    from app.db import session_scope, set_tenant
+    from app.service import process_evidence
+
+    content = load_content()
+    retried = 0
+    with session_scope() as db:
+        for org in db.query(Organization).order_by(Organization.name).all():
+            set_tenant(db, org.id)  # RLS scopes each pass (no-op on SQLite)
+            for evidence in retryable_extractions(db):
+                print(f"  re-running {evidence.original_filename or evidence.id} ({org.name})")
+                process_evidence(db, content, evidence, "monitor:retry-extractions")
+                retried += 1
+    print(f"\n{retried} extraction(s) re-run")
+    return 0
 
 
 def _main() -> int:
@@ -221,4 +293,8 @@ def _main() -> int:
 
 
 if __name__ == "__main__":
+    import sys
+
+    if "--retry-extractions" in sys.argv:
+        raise SystemExit(_retry_extractions())
     raise SystemExit(_main())

@@ -196,19 +196,25 @@ def reprocess_evidence(
     actor: Actor = Depends(current_actor),
     db: Session = Depends(get_session),
 ):
-    """Re-run the pipeline for evidence that failed or died mid-run.
+    """Re-run the pipeline for evidence that failed, died mid-run, or was
+    processed while the analysis model was unavailable.
 
-    Recovery only: refused once processing reached a settled state, so this
-    cannot be used to quietly recompute verdicts an auditor has already acted
-    on. The stored file is immutable and reused as-is — nothing is re-uploaded.
+    Recovery only: refused once an auditor has locked a verdict on this
+    evidence, so it cannot be used to quietly recompute a result someone has
+    already acted on. A FAILED or NEEDS_REVIEW row with nothing locked is
+    exactly what this exists to rescue. The stored file is immutable and reused
+    as-is — nothing is re-uploaded.
     """
     if actor.is_auditor:
         raise HTTPException(403, "auditors review evidence, they do not process it")
     evidence = _scoped_evidence(db, actor, evidence_id)
 
-    if evidence.status in {"READY", "NEEDS_REVIEW"}:
-        raise HTTPException(409, f"evidence already finished processing ({evidence.status}); "
-                                 f"upload a new version to re-evaluate it")
+    # `locked` is a property over locked_by_engagement_id, not a column — check it
+    # in Python the way the rest of the pipeline does (app/service.py, ::upload_new_version).
+    links = db.query(EvidenceControlLink).filter_by(evidence_id=evidence.id).all()
+    if any(link.locked for link in links):
+        raise HTTPException(409, "an auditor has locked a verdict on this evidence; "
+                                 "upload a new version to re-evaluate it")
 
     audit_log.record(
         db, actor=actor.label(), request_id=actor.request_id, action="EVIDENCE_REPROCESS_REQUESTED",

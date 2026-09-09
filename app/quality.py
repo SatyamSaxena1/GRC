@@ -173,10 +173,18 @@ def _scope_coverage(attributes: dict, required_scope: list[str] | None) -> Dimen
                      WEIGHTS["scope_coverage"], reason)
 
 
-def _legibility(extraction_methods: dict[str, str]) -> Dimension:
+def _legibility(extraction_methods: dict[str, str], native_readable: bool = False) -> Dimension:
     """How reliably the document could be read. Native text is exact; OCR is not."""
     methods = [m for m in extraction_methods.values() if m and m != "none"]
     if not methods:
+        if native_readable:
+            # The document parsed to clean text — it *is* legible. That no
+            # attribute values came back (the model found none, or was
+            # unavailable) is a completeness / availability question, told by
+            # the evidence status, not a reason to score a readable document as
+            # unreadable.
+            return Dimension("legibility", 1.0, WEIGHTS["legibility"],
+                             "machine-readable text extracted directly")
         return Dimension("legibility", 0.0, WEIGHTS["legibility"],
                          "no text could be extracted from the document")
     vlm = sum(1 for m in methods if m == "vlm")
@@ -210,15 +218,21 @@ def score_evidence(
     extraction_methods: dict[str, str] | None = None,
     required_scope: list[str] | None = None,
     as_of: date | None = None,
+    native_readable: bool = False,
 ) -> QualityScore:
-    """Score one evidence artefact. Deterministic: same inputs, same score."""
+    """Score one evidence artefact. Deterministic: same inputs, same score.
+
+    `native_readable` says the document itself yielded readable text (see
+    app/documents.py) even if the analysis model then extracted nothing — so a
+    readable file is not scored as illegible just because the model was down.
+    """
     as_of = as_of or date.today()
     dimensions = (
         _completeness(attributes, requested_attributes),
         _freshness(attributes, as_of),
         _authenticity(attributes),
         _scope_coverage(attributes, required_scope),
-        _legibility(extraction_methods or {}),
+        _legibility(extraction_methods or {}, native_readable),
         _corroboration(attributes, sources or {}),
     )
     return QualityScore(

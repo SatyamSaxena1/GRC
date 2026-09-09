@@ -394,6 +394,7 @@ table.data-table tbody tr:last-child td { border-bottom: none; }
 }
 .alert-error { background: var(--danger-bg); color: var(--danger); }
 .alert-info { background: #eef1fb; color: var(--primary-dark); }
+.alert-warning { background: var(--warn-bg); color: var(--warn); }
 
 .empty-state {
   padding: 40px 20px;

@@ -3,6 +3,8 @@
 No Ollama server is assumed in the test env, so extraction returns all-null
 fields and requirements correctly come back FAIL. That is itself a useful
 check: the pipeline must never invent a pass when extraction is unavailable.
+An unavailable extraction also lands the evidence at NEEDS_REVIEW, not READY,
+so the all-FAIL result is not mistaken for a real one (see app/service.py).
 """
 
 from __future__ import annotations
@@ -25,7 +27,9 @@ def test_upload_evaluates_against_both_frameworks(client, bootstrap, upload):
 
     detail = client.get(f"/evidence/{evidence_id}",
                         headers={"authorization": f"org:{org_id}"}).json()
-    assert detail["status"] == "READY"
+    # No model in the test env -> extraction UNAVAILABLE -> flagged for a human,
+    # never quietly accepted as READY.
+    assert detail["status"] == "NEEDS_REVIEW"
     assert {l["framework"] for l in detail["links"]} == {"ISO-27001", "PCI-DSS"}
     assert all(l["verdict"] == "FAIL" for l in detail["links"])  # no model -> nothing extracted
     assert detail["sha256"]
