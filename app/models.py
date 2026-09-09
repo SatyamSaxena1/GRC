@@ -48,7 +48,10 @@ class User(Base):
     email: Mapped[str]
     org_id: Mapped[str | None] = mapped_column(ForeignKey("organizations.id"), default=None)
     audit_firm_id: Mapped[str | None] = mapped_column(ForeignKey("audit_firms.id"), default=None)
-    role: Mapped[str] = mapped_column(String, default="CONTROL_OWNER")  # ORG_ADMIN|CONTROL_OWNER|AUDITOR
+    role: Mapped[str] = mapped_column(String, default="CONTROL_OWNER")
+    """Org-side: ORG_ADMIN|CONTROL_OWNER. Firm-side: FIRM_ADMIN|AUDITOR — a
+    FIRM_ADMIN staffs auditors onto engagements and decides onboarding
+    requests; an AUDITOR only works the engagements it is staffed on."""
 
 
 class Engagement(Base):
@@ -82,6 +85,49 @@ class EngagementAllocation(Base):
     engagement: Mapped[Engagement] = relationship(back_populates="allocations")
 
 
+class OnboardingRequest(Base):
+    """A prospective auditee asking a firm to audit it.
+
+    Nothing tenant-owned exists until approval — approving is what creates the
+    Organization and the Engagement, so a rejected request leaves no half-built
+    org behind and a pending one is not yet a tenant. `frameworks` is what the
+    client asked for; the firm decides what is actually allocated on approval.
+    """
+    __tablename__ = "onboarding_requests"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    audit_firm_id: Mapped[str] = mapped_column(ForeignKey("audit_firms.id"))
+    org_name: Mapped[str]
+    contact_email: Mapped[str] = mapped_column(default="")
+    registration_detail: Mapped[str] = mapped_column(Text, default="")
+    frameworks: Mapped[list[str]] = mapped_column(JSON, default=list)
+    status: Mapped[str] = mapped_column(String, default="PENDING")  # PENDING|APPROVED|REJECTED
+    decision_note: Mapped[str] = mapped_column(Text, default="")
+    org_id: Mapped[str | None] = mapped_column(ForeignKey("organizations.id"), default=None)
+    engagement_id: Mapped[str | None] = mapped_column(ForeignKey("engagements.id"), default=None)
+    created_at: Mapped[datetime] = mapped_column(default=_now)
+    decided_at: Mapped[datetime | None] = mapped_column(default=None)
+    decided_by: Mapped[str] = mapped_column(String, default="")
+
+
+class EngagementAuditor(Base):
+    """Which of a firm's auditors are staffed on which engagement.
+
+    This is the access grant, not a label: belonging to the firm is not enough,
+    a firm user with no row here sees that client in no list and cannot act
+    under its engagement (app/auth.py builds the auditor Actor only if one
+    exists). A FIRM_ADMIN is exempt — it is the role that does the staffing.
+    """
+    __tablename__ = "engagement_auditors"
+    __table_args__ = (UniqueConstraint("engagement_id", "user_id"),)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    engagement_id: Mapped[str] = mapped_column(ForeignKey("engagements.id"))
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    audit_firm_id: Mapped[str] = mapped_column(ForeignKey("audit_firms.id"))
+    assigned_at: Mapped[datetime] = mapped_column(default=_now)
+    assigned_by: Mapped[str] = mapped_column(String, default="")
+
+
 # --------------------------------------------------------------------------- controls
 
 
@@ -111,6 +157,35 @@ class ControlAssignment(Base):
     org_control: Mapped[OrgControl] = relationship(back_populates="assignments")
 
 
+class OrgCommitment(Base):
+    """An org's own stated value for an organization-defined parameter, taken
+    from its policy. What a requirement is actually tested against when the
+    framework defers the threshold to the org (NIST 800-53's ODP pattern — see
+    docs/adr/013-organization-defined-commitments.md): the framework says review
+    access "on a recurring basis"; this row is what "recurring" means for THIS
+    org, in their own words — so failing to meet it is the org failing its own
+    stated commitment, not an externally-imposed number.
+
+    One row per (org, attribute) — upserted whenever POLICY evidence extracts
+    that attribute, unconditionally (app/service.py). Only the attributes a
+    content pack actually references via org_defined_max_age_attribute are ever
+    read back.
+    """
+    __tablename__ = "org_commitments"
+    __table_args__ = (UniqueConstraint("org_id", "attribute"),)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"))
+    attribute: Mapped[str]
+    value_json: Mapped[dict] = mapped_column(JSON, default=dict)  # {"v": <any>}
+    source_evidence_id: Mapped[str] = mapped_column(ForeignKey("evidence.id"))
+    updated_at: Mapped[datetime] = mapped_column(default=_now)
+
+    @property
+    def value(self):
+        return self.value_json.get("v")
+
+
 # --------------------------------------------------------------------------- evidence
 
 # Worker lifecycle. READY and the two terminal problem states end processing.
@@ -118,6 +193,10 @@ EVIDENCE_STATUSES = (
     "UPLOADED", "SCANNING", "STORED", "EXTRACTING", "ANALYZING",
     "EVALUATING", "READY", "FAILED", "NEEDS_REVIEW",
 )
+
+# Processing has stopped, for better or worse. Anything else means a job is
+# either still running or died mid-run (see app/monitor.py's stuck detection).
+TERMINAL_EVIDENCE_STATUSES = frozenset({"READY", "FAILED", "NEEDS_REVIEW"})
 
 
 class Evidence(Base):
@@ -146,6 +225,19 @@ class Evidence(Base):
 
     links: Mapped[list["EvidenceControlLink"]] = relationship(back_populates="evidence")
     attributes: Mapped[list["EvidenceAttribute"]] = relationship(back_populates="evidence")
+
+    def attribute_values(self) -> dict:
+        """Just the values, for the evaluator.
+
+        `extracted_attributes` stores the whole provenance-bearing field dict per
+        attribute ({value, confidence, sources, ...}); `app/evaluate.py` wants a
+        plain name -> value mapping. Lives here because the shape of that column
+        is this model's business, not each caller's.
+        """
+        return {
+            name: field.get("value") if isinstance(field, dict) else field
+            for name, field in (self.extracted_attributes or {}).items()
+        }
 
 
 class EvidenceAttribute(Base):
@@ -184,6 +276,19 @@ class EvidenceControlLink(Base):
     ai_model: Mapped[str] = mapped_column(String, default="")
     ai_prompt_version: Mapped[str] = mapped_column(String, default="")
     ai_confidence: Mapped[float | None] = mapped_column(default=None)  # null until a real confidence exists
+
+    # Auditor-only narration of the verdict above — never a second opinion, see
+    # docs/adr/012-auditor-only-ai-nutshell.md. Empty when the model was
+    # unavailable; the router omits this key entirely for a non-auditor caller.
+    nutshell: Mapped[str] = mapped_column(Text, default="")
+    nutshell_model: Mapped[str] = mapped_column(String, default="")
+    nutshell_prompt_version: Mapped[str] = mapped_column(String, default="")
+
+    # Set on every (re)evaluation. Compared against OrgCommitment.updated_at at
+    # read time to flag a link whose org-defined ceiling has since changed —
+    # see docs/adr/013-organization-defined-commitments.md. Not itself a
+    # verdict input; purely a staleness signal for the payload.
+    evaluated_at: Mapped[datetime] = mapped_column(default=_now)
 
     auditor_verdict: Mapped[str | None] = mapped_column(default=None)
     locked_by_engagement_id: Mapped[str | None] = mapped_column(
@@ -226,17 +331,49 @@ class GapRow(Base):
 
 
 class TaskRow(Base):
+    """A unit of remediation work. Two ways one comes to exist: the evaluator
+    opens one per gap (`gap_id` set, status is evidence-driven — only new
+    evidence can close it), or an org admin hands one straight to an employee
+    (`gap_id` is None, status is closed by hand). `org_control_id` is an
+    optional 'this is about that control' pointer, denormalized at creation
+    time either way, so a manual task can still be scoped to a control an
+    employee is or isn't allowed to see."""
     __tablename__ = "tasks"
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
-    gap_id: Mapped[str] = mapped_column(ForeignKey("gaps.id"))
+    org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"))
+    gap_id: Mapped[str | None] = mapped_column(ForeignKey("gaps.id"), default=None)
+    org_control_id: Mapped[str | None] = mapped_column(ForeignKey("org_controls.id"), default=None)
     title: Mapped[str] = mapped_column(Text, default="")
+    description: Mapped[str] = mapped_column(Text, default="")  # only used when gap_id is None
     owner_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"), default=None)
     due_at: Mapped[datetime | None] = mapped_column(default=None)
     priority: Mapped[str] = mapped_column(String, default="MEDIUM")  # LOW|MEDIUM|HIGH|CRITICAL
     status: Mapped[str] = mapped_column(String, default="OPEN")  # OPEN|DONE
+    created_by: Mapped[str] = mapped_column(String, default="")
     created_at: Mapped[datetime] = mapped_column(default=_now)
 
-    gap: Mapped[GapRow] = relationship(back_populates="tasks")
+    gap: Mapped[GapRow | None] = relationship(back_populates="tasks")
+
+
+class ControlMessage(Base):
+    """One shared thread per control for the auditor<->auditee conversation that
+    isn't a deterministic verdict: 'please provide X' before any evidence exists,
+    an auditee's request to reopen a locked control, or a plain comment. Kept as
+    one table with a `kind` discriminator rather than three, since all three are
+    the same shape (who said what, is it still open) — see
+    docs/frontend-integration-blueprint.md's "Comments and attachments" note."""
+    __tablename__ = "control_messages"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"))
+    org_control_id: Mapped[str] = mapped_column(ForeignKey("org_controls.id"))
+    kind: Mapped[str] = mapped_column(String)  # EVIDENCE_REQUEST|UNLOCK_REQUEST|COMMENT
+    body: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String, default="OPEN")  # OPEN|RESOLVED
+    created_by: Mapped[str] = mapped_column(String, default="")
+    created_at: Mapped[datetime] = mapped_column(default=_now)
+    resolved_at: Mapped[datetime | None] = mapped_column(default=None)
+    resolved_by: Mapped[str | None] = mapped_column(default=None)
+    resolution_note: Mapped[str | None] = mapped_column(default=None)
 
 
 # --------------------------------------------------------------------------- audit / AI

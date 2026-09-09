@@ -132,10 +132,7 @@ def framework_readiness(
 
     best: dict[str, str] = {}
     for evidence in evidence_pool:
-        attributes = {
-            name: field.get("value") if isinstance(field, dict) else field
-            for name, field in (evidence.extracted_attributes or {}).items()
-        }
+        attributes = evidence.attribute_values()
         for link in evaluate(attributes, evidence.artefact_type, [framework], content, as_of):
             best[link.clause] = _better(best.get(link.clause), link.verdict)
 

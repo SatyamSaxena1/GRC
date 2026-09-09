@@ -9,6 +9,9 @@ from __future__ import annotations
 import logging
 
 from app.ai.extraction import extract_attributes as _extract_attributes
+from app.ai.extraction import extract_attributes_streaming as _extract_attributes_streaming
+from app.ai.extraction import draft_remediation as _draft_remediation
+from app.ai.extraction import generate_nutshell as _generate_nutshell
 from app.ai.ollama import OllamaGateway
 from app.ai.prompts import EXTRACTION_PROMPT_VERSION
 from app.ai.schemas import ExtractionRun
@@ -73,3 +76,27 @@ def extract_attributes(
     text: str, attribute_names: list[str], method: str = "native_text", gateway=None
 ) -> ExtractionRun:
     return _extract_attributes(gateway or _gateway(), text, attribute_names, method)
+
+
+def extract_attributes_streaming(
+    text: str, attribute_names: list[str], method: str = "native_text",
+    on_attribute=None, gateway=None,
+) -> ExtractionRun:
+    return _extract_attributes_streaming(
+        gateway or _gateway(), text, attribute_names, method, on_attribute
+    )
+
+
+def generate_nutshell(
+    framework: str, clause: str, title: str, verdict: str, gaps: list[dict], fields: dict,
+    gateway=None,
+) -> str:
+    return _generate_nutshell(gateway or _gateway(), framework, clause, title, verdict, gaps, fields)
+
+
+def draft_remediation(
+    framework: str, clause: str, title: str, requirement_text: str, gap: dict, gateway=None
+) -> dict:
+    return _draft_remediation(
+        gateway or _gateway(), framework, clause, title, requirement_text, gap
+    )

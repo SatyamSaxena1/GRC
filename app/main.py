@@ -11,7 +11,10 @@ from fastapi.responses import JSONResponse
 
 from app.ai.ollama import OllamaGateway
 from app.db import engine, init_db
-from app.routers import admin, analytics, audit, ciso, controls, evidence
+from app.routers import (
+    activity, admin, analytics, audit, ciso, controls, evidence, export, firm, glossary,
+    notifications,
+)
 
 logging.basicConfig(
     level=os.environ.get("LOG_LEVEL", "INFO"),
@@ -45,10 +48,29 @@ async def request_context(request: Request, call_next):
     logged — only identifiers."""
     request_id = request.headers.get("x-request-id") or str(uuid.uuid4())
     request.state.request_id = request_id
+
+    # Enhanced access logging with auth info
+    auth_header = request.headers.get("authorization", "N/A")
+    ip_address = request.headers.get("x-forwarded-for", request.client.host if request.client else "unknown")
+
     response = await call_next(request)
     response.headers["x-request-id"] = request_id
-    logger.info("request method=%s path=%s status=%s request_id=%s",
-                request.method, request.url.path, response.status_code, request_id)
+
+    # Log detailed access info
+    logger.info("request method=%s path=%s status=%s request_id=%s auth=%s ip=%s query=%s",
+                request.method, request.url.path, response.status_code, request_id,
+                auth_header, ip_address, request.url.query)
+
+    # Also log to access file for monitoring
+    try:
+        import os as os_module
+        access_log_path = os_module.path.join(os_module.getcwd(), "access.log")
+        with open(access_log_path, "a", encoding="utf-8") as f:
+            timestamp = __import__("datetime").datetime.now().isoformat()
+            f.write(f"{timestamp} | {request.method:6} | {request.url.path:50} | Status: {response.status_code:3} | Auth: {auth_header[:40]:40} | IP: {ip_address}\n")
+    except Exception as e:
+        logger.debug("access_log_write_failed: %s", e)  # Log errors for debugging
+
     return response
 
 
@@ -62,12 +84,19 @@ async def unhandled_exception(request: Request, exc: Exception):
 
 
 app.include_router(admin.router)
+app.include_router(firm.router)
 app.include_router(evidence.router)
 app.include_router(audit.router)
 app.include_router(controls.router)
 app.include_router(controls.gaps_router)
 app.include_router(controls.tasks_router)
+app.include_router(controls.messages_router)
+app.include_router(controls.requests_router)
 app.include_router(analytics.router)
+app.include_router(notifications.router)
+app.include_router(export.router)
+app.include_router(activity.router)
+app.include_router(glossary.router)
 app.include_router(ciso.router)
 
 

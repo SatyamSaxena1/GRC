@@ -1,14 +1,20 @@
 from __future__ import annotations
 
+import json
+from typing import Iterator
+
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
-from app import audit_log, authorization
+from app import audit_log, authorization, events
 from app.auth import Actor, current_actor
 from app.content.load import load as load_content
 from app.db import get_session, session_scope, set_tenant
-from app.models import Evidence, EvidenceAttribute, EvidenceControlLink, GapRow
-from app.service import process_evidence
+from app.models import (
+    TERMINAL_EVIDENCE_STATUSES, Evidence, EvidenceAttribute, EvidenceControlLink, GapRow,
+)
+from app.service import link_commitment_stale, process_evidence
 from app.storage import get_storage, object_key
 from app.upload_security import UploadRejected, get_scanner, validate_upload
 
@@ -31,6 +37,14 @@ def _scoped_evidence(db: Session, actor: Actor, evidence_id: str) -> Evidence:
 def _ingest(db: Session, actor: Actor, file: UploadFile, artefact_type: str,
             *, version: int = 1, supersedes: Evidence | None = None) -> Evidence:
     """Validate at the trust boundary, store immutably, register the row."""
+    if not actor.org_id:
+        # A firm-side actor with no client open has audit_firm_id but no
+        # org_id — there is no tenant for this row to belong to. Letting it
+        # through created an orphaned Evidence(org_id="") that no
+        # Organization matches, which crashed the background pipeline the
+        # instant it tried org.frameworks (see app/service.py::_run_pipeline).
+        raise HTTPException(400, "no organisation selected — sign in as an organisation, "
+                                 "or open a client first, before uploading evidence")
     try:
         upload = validate_upload(file.file, file.filename or "")
         get_scanner().scan(upload.data)
@@ -175,6 +189,39 @@ def upload_new_version(
     return {"evidence_id": new.id, "id": new.id, "status": new.status, "version": new.version}
 
 
+@router.post("/{evidence_id}/reprocess", status_code=202)
+def reprocess_evidence(
+    evidence_id: str,
+    background: BackgroundTasks,
+    actor: Actor = Depends(current_actor),
+    db: Session = Depends(get_session),
+):
+    """Re-run the pipeline for evidence that failed or died mid-run.
+
+    Recovery only: refused once processing reached a settled state, so this
+    cannot be used to quietly recompute verdicts an auditor has already acted
+    on. The stored file is immutable and reused as-is — nothing is re-uploaded.
+    """
+    if actor.is_auditor:
+        raise HTTPException(403, "auditors review evidence, they do not process it")
+    evidence = _scoped_evidence(db, actor, evidence_id)
+
+    if evidence.status in {"READY", "NEEDS_REVIEW"}:
+        raise HTTPException(409, f"evidence already finished processing ({evidence.status}); "
+                                 f"upload a new version to re-evaluate it")
+
+    audit_log.record(
+        db, actor=actor.label(), request_id=actor.request_id, action="EVIDENCE_REPROCESS_REQUESTED",
+        entity_type="evidence", entity=evidence.id, org_id=actor.org_id,
+        detail={"from_status": evidence.status, "status_detail": evidence.status_detail},
+    )
+    db.commit()
+
+    background.add_task(_process_in_background, evidence.id, actor.org_id,
+                        actor.label(), actor.request_id)
+    return {"evidence_id": evidence.id, "id": evidence.id, "status": evidence.status}
+
+
 @router.get("/{evidence_id}/status")
 def evidence_status(evidence_id: str, actor: Actor = Depends(current_actor),
                     db: Session = Depends(get_session)):
@@ -182,6 +229,39 @@ def evidence_status(evidence_id: str, actor: Actor = Depends(current_actor),
     return {"evidence_id": evidence.id, "status": evidence.status,
             "detail": evidence.status_detail, "lifecycle_status": evidence.lifecycle_status,
             "quality_score": evidence.quality_score}
+
+
+@router.get("/{evidence_id}/events")
+def evidence_events(evidence_id: str, actor: Actor = Depends(current_actor),
+                    db: Session = Depends(get_session)):
+    """Live progress for a running pipeline, as Server-Sent Events.
+
+    Authorized exactly like every other read of this evidence — the scope check
+    happens once, here, before the stream opens. Purely a faster view of work
+    that is being persisted anyway (see app/events.py): a client that never
+    connects, or drops, still gets the whole result from the ordinary endpoints.
+    """
+    evidence = _scoped_evidence(db, actor, evidence_id)
+    already_finished = evidence.status in TERMINAL_EVIDENCE_STATUSES
+
+    def emit() -> Iterator[str]:
+        # Tell the client where the run already is, so a late subscriber isn't
+        # left waiting for a status change that has already happened.
+        yield _sse("status", {"status": evidence.status, "detail": evidence.status_detail})
+        if already_finished:
+            yield _sse("done", {"evidence_id": evidence_id})
+            return
+        for event, data in events.subscribe(evidence_id):
+            yield _sse(event, data)
+
+    return StreamingResponse(emit(), media_type="text/event-stream", headers={
+        "Cache-Control": "no-cache",
+        "X-Accel-Buffering": "no",  # don't let a proxy buffer the stream into uselessness
+    })
+
+
+def _sse(event: str, data: dict) -> str:
+    return f"event: {event}\ndata: {json.dumps(data)}\n\n"
 
 
 @router.get("/{evidence_id}/attributes")
@@ -203,8 +283,8 @@ def _visible_links(db: Session, actor: Actor, evidence_id: str):
     return [l for l in links if (l.framework, l.clause) in allowed]
 
 
-def _link_payload(db: Session, link) -> dict:
-    return {
+def _link_payload(db: Session, link, actor: Actor) -> dict:
+    payload = {
         "id": link.id, "framework": link.framework, "clause": link.clause,
         "verdict": link.verdict, "auditor_verdict": link.auditor_verdict,
         "confidence": link.ai_confidence, "ucos": link.ucos, "locked": link.locked,
@@ -216,13 +296,24 @@ def _link_payload(db: Session, link) -> dict:
             for g in db.query(GapRow).filter_by(link_id=link.id)
         ],
     }
+    # First field-level redaction in this codebase — every other role check
+    # here is object-level (see app/authorization.py). Narrow and explicit
+    # rather than a redaction framework for one field; see ADR-012.
+    if actor.is_auditor:
+        payload["nutshell"] = link.nutshell
+    # Not a redaction — every role sees this, the auditee most of all, since
+    # they are the one who needs to reprocess (see ADR-013).
+    stale, reason = link_commitment_stale(db, CONTENT, actor.org_id, link)
+    payload["commitment_stale"] = stale
+    payload["stale_reason"] = reason
+    return payload
 
 
 @router.get("/{evidence_id}/evaluations")
 def evidence_evaluations(evidence_id: str, actor: Actor = Depends(current_actor),
                          db: Session = Depends(get_session)):
     _scoped_evidence(db, actor, evidence_id)
-    return [_link_payload(db, l) for l in _visible_links(db, actor, evidence_id)]
+    return [_link_payload(db, l, actor) for l in _visible_links(db, actor, evidence_id)]
 
 
 @router.get("/{evidence_id}/history")
@@ -278,8 +369,12 @@ def get_evidence(evidence_id: str, actor: Actor = Depends(current_actor),
         "size_bytes": evidence.size_bytes,
         "original_filename": evidence.original_filename,
         "quality_score": evidence.quality_score,
-        "quality": evidence.quality_detail,
+        # {} (the column's default before scoring ever runs) is not the shape
+        # the frontend's quality type promises — normalize to null so
+        # `evidence.quality && evidence.quality.dimensions.map(...)` can't
+        # crash on a dimensions-less object (see EvidenceDetail.tsx).
+        "quality": evidence.quality_detail or None,
         "download_url": get_storage().url(evidence.storage_key) if evidence.storage_key else "",
         "extracted_attributes": evidence.extracted_attributes,
-        "links": [_link_payload(db, l) for l in _visible_links(db, actor, evidence.id)],
+        "links": [_link_payload(db, l, actor) for l in _visible_links(db, actor, evidence.id)],
     }

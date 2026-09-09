@@ -12,7 +12,7 @@ from datetime import date, timedelta
 from typing import Any
 
 from app import normalize
-from app.content.load import Content, DeltaCondition, Requirement
+from app.content.load import Content, DeltaCondition, EvidenceRequirement, EvidenceValidity, Requirement
 
 Verdict = str  # PASS | PARTIAL | FAIL
 
@@ -80,17 +80,31 @@ def check(condition: DeltaCondition, value: Any) -> bool:
             ">": left > right, "<": left < right}[op]
 
 
-def _required_attributes(req: Requirement, artefact_type: str) -> tuple[str, ...] | None:
+def _matching_evidence_requirements(
+    req: Requirement, artefact_type: str
+) -> list[EvidenceRequirement]:
+    return [e for e in req.evidence_requirements if e.artefact_type == artefact_type]
+
+
+def _required_attributes(matching: list[EvidenceRequirement]) -> tuple[str, ...] | None:
     """Attributes this requirement needs from this artefact type, or None if the
     requirement cannot be evidenced by this artefact type at all."""
-    matching = [e for e in req.evidence_requirements if e.artefact_type == artefact_type]
     if not matching:
         return None
     return tuple(dict.fromkeys(a for e in matching for a in e.required_attributes))
 
 
+def _validity_for(matching: list[EvidenceRequirement]) -> EvidenceValidity | None:
+    """A clause can list more than one entry for the same artefact type (see
+    nist-csf-2.0's IAM policy clause); evidence_validity lives on whichever one
+    declares it — first match, same as the union `_required_attributes` already
+    takes across all of them."""
+    return next((e.evidence_validity for e in matching if e.evidence_validity is not None), None)
+
+
 def _freshness_gaps(
-    req: Requirement, attributes: dict[str, Any], as_of: date
+    validity: EvidenceValidity | None, attributes: dict[str, Any], as_of: date,
+    org_commitments: dict[str, Any],
 ) -> list[Gap]:
     """Is this evidence still valid at `as_of`?
 
@@ -98,10 +112,37 @@ def _freshness_gaps(
     that expired in 2023 does not demonstrate compliance for a 2026 audit. Returns
     a STALE gap when it has expired, and a MISSING_ATTRIBUTE gap when the document
     fails to state a date the requirement needs to judge that.
+
+    When `org_defined_max_age_attribute` is set, the ceiling is not a framework
+    constant but this org's own stated commitment (an "organization-defined
+    parameter" — see docs/adr/013-organization-defined-commitments.md): a missing
+    or unusable commitment is its own gap, NO_ORG_COMMITMENT, rather than a silent
+    pass or a confusing generic MISSING_ATTRIBUTE.
     """
-    validity = req.evidence_validity
     if validity is None:
         return []
+
+    max_age_days = validity.max_age_days
+    commitment_note = ""
+    if validity.org_defined_max_age_attribute:
+        attr = validity.org_defined_max_age_attribute
+        commitment = org_commitments.get(attr)
+        if commitment is None:
+            return [Gap("NO_ORG_COMMITMENT", attr,
+                        f"the organisation's policy does not yet state a required "
+                        f"{attr.replace('_', ' ')}; this control cannot be evaluated "
+                        f"against a commitment that has not been made")]
+        # to_days first: a policy commitment is as likely to say "quarterly" as
+        # "90 days" (same words check() already accepts for DeltaConditions).
+        resolved = normalize.to_days(commitment)
+        if not isinstance(resolved, float):
+            resolved = normalize.to_number(commitment)
+        if resolved is None:
+            return [Gap("NO_ORG_COMMITMENT", attr,
+                        f"the organisation's policy states {attr}={commitment!r}, which "
+                        f"is not a usable number of days")]
+        max_age_days = int(resolved)
+        commitment_note = f" (per the organisation's own policy commitment of {max_age_days} days)"
 
     expires_on: date | None = None
     basis = ""
@@ -116,11 +157,11 @@ def _freshness_gaps(
                         f"the evidence cannot be shown to be current",
                         actual=raw, required=f"a date on or after {as_of.isoformat()}")]
 
-    if expires_on is None and validity.issued_attribute and validity.max_age_days:
+    if expires_on is None and validity.issued_attribute and max_age_days:
         issued = normalize.to_date(attributes.get(validity.issued_attribute))
         basis = validity.issued_attribute
         if issued is not None:
-            expires_on = issued + timedelta(days=validity.max_age_days)
+            expires_on = issued + timedelta(days=max_age_days)
 
     if expires_on is None:
         if not validity.required:
@@ -136,15 +177,16 @@ def _freshness_gaps(
                     f"evidence expired {expires_on.isoformat()} ({age} days before "
                     f"{as_of.isoformat()}) and is no longer current",
                     actual=expires_on.isoformat(),
-                    required=f"valid on or after {as_of.isoformat()}")]
+                    required=f"valid on or after {as_of.isoformat()}{commitment_note}")]
     return []
 
 
 def evaluate_requirement(
     req: Requirement, framework: str, attributes: dict[str, Any], artefact_type: str,
-    as_of: date | None = None,
+    as_of: date | None = None, org_commitments: dict[str, Any] | None = None,
 ) -> Link | None:
-    required = _required_attributes(req, artefact_type)
+    matching = _matching_evidence_requirements(req, artefact_type)
+    required = _required_attributes(matching)
     if required is None:
         return None
 
@@ -154,7 +196,8 @@ def evaluate_requirement(
         if attributes.get(attr) is None
     ]
     reported = {(g.kind, g.attribute) for g in gaps}
-    gaps += [g for g in _freshness_gaps(req, attributes, as_of or date.today())
+    gaps += [g for g in _freshness_gaps(_validity_for(matching), attributes,
+                                        as_of or date.today(), org_commitments or {})
              if (g.kind, g.attribute) not in reported]
     for mapping in req.mappings:
         for cond in mapping.delta_conditions:
@@ -190,23 +233,52 @@ def evaluate_requirement(
     )
 
 
+def org_defined_attributes(content: Content, framework: str, clause: str) -> set[str]:
+    """Which organization-defined attribute(s), if any, a clause's freshness check
+    depends on — the set of OrgCommitment attributes a change to would make this
+    clause's links stale. Pure content-schema lookup, no DB: the DB-touching half
+    (comparing OrgCommitment.updated_at against a link's evaluated_at) lives in
+    app/service.py::link_commitment_stale, which calls this first.
+    """
+    try:
+        pack = content.framework(framework)
+    except KeyError:
+        return set()
+    req = next((r for r in pack.requirements if r.clause == clause), None)
+    if req is None:
+        return set()
+    return {
+        er.evidence_validity.org_defined_max_age_attribute
+        for er in req.evidence_requirements
+        if er.evidence_validity is not None and er.evidence_validity.org_defined_max_age_attribute
+    }
+
+
 def evaluate(
     attributes: dict[str, Any],
     artefact_type: str,
     frameworks: list[str],
     content: Content,
     as_of: date | None = None,
+    org_commitments: dict[str, Any] | None = None,
 ) -> list[Link]:
     """One evidence artefact, every subscribed framework. This is the product.
 
     `as_of` is the date freshness is judged against — pass the audit period end so
     a verdict means "current for this audit". Defaults to today.
+
+    `org_commitments` is this org's own stated values for organization-defined
+    parameters (see docs/adr/013-organization-defined-commitments.md) — a plain
+    `{attribute: value}` mapping, the same shape `Evidence.attribute_values()`
+    already produces. Defaults to no commitments, which only matters to a
+    requirement that actually declares `org_defined_max_age_attribute`.
     """
     links = []
     for code in frameworks:
         pack = content.framework(code)
         for req in pack.requirements:
-            link = evaluate_requirement(req, code, attributes, artefact_type, as_of)
+            link = evaluate_requirement(req, code, attributes, artefact_type, as_of,
+                                        org_commitments)
             if link is not None:
                 links.append(link)
     return links

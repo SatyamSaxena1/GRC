@@ -14,12 +14,17 @@ from datetime import date, datetime, timezone
 from sqlalchemy.orm import Session
 
 from app import audit_log, ciso_sync
+from app import events
+from app.ai.prompts import NUTSHELL_PROMPT_VERSION
 from app.content.load import Content
-from app.evaluate import evaluate
-from app.ingest import PROMPT_VERSION, extract_attributes, read_document
+from app.evaluate import evaluate, org_defined_attributes
+from app.ingest import (
+    PROMPT_VERSION, extract_attributes, extract_attributes_streaming, generate_nutshell,
+    read_document,
+)
 from app.models import (
     AiRun, Engagement, Evidence, EvidenceAttribute, EvidenceControlLink, GapRow,
-    OrgControl, Organization, TaskRow,
+    OrgCommitment, OrgControl, Organization, TaskRow,
 )
 from app.quality import score_evidence
 from app.storage import get_storage
@@ -31,6 +36,7 @@ def set_status(db: Session, evidence: Evidence, status: str, detail: str = "") -
     evidence.status = status
     evidence.status_detail = detail
     db.commit()
+    events.publish(evidence.id, "status", {"status": status, "detail": detail})
 
 
 def required_attribute_names(
@@ -89,18 +95,28 @@ def _required_scope(content: Content, frameworks: list[str], artefact_type: str)
     return terms
 
 
-def _remediation(gap) -> str:
-    """A gap must say what to actually do, not 'evidence insufficient'."""
+def _remediation(gap, guidance: str = "") -> str:
+    """A gap must say what to actually do, not 'evidence insufficient'.
+
+    `guidance` is the framework's own advice for this clause, when its source
+    publishes any (the AI RMF Playbook's suggested actions — see
+    app/content/nist-ai-rmf-1.0.yaml). Appended rather than substituted: the
+    generic sentence names the concrete attribute that failed, which the
+    framework's clause-level advice cannot.
+    """
     if gap.kind == "STALE":
-        return (f"This evidence is no longer current ({gap.actual}; required {gap.required}). "
+        base = (f"This evidence is no longer current ({gap.actual}; required {gap.required}). "
                 f"Perform the activity again for the period under audit and upload the new "
                 f"artefact as a version of this evidence.")
-    if gap.kind == "MISSING_ATTRIBUTE":
-        return (f"The evidence does not state '{gap.attribute}'. Update the document to "
+    elif gap.kind == "MISSING_ATTRIBUTE":
+        base = (f"The evidence does not state '{gap.attribute}'. Update the document to "
                 f"state it explicitly, obtain approval and upload a revised version.")
-    return (f"Current evidence states {gap.attribute}={gap.actual!r}; the requirement expects "
-            f"{gap.required!r}. Update the control to meet it, obtain approval and upload a "
-            f"revised version.")
+    else:
+        base = (f"Current evidence states {gap.attribute}={gap.actual!r}; the requirement "
+                f"expects {gap.required!r}. Update the control to meet it, obtain approval "
+                f"and upload a revised version.")
+    advice = " ".join((guidance or "").split())
+    return f"{base}\n\nFramework guidance: {advice}" if advice else base
 
 
 def _ensure_org_control(db: Session, org_id: str, framework: str, clause: str) -> OrgControl:
@@ -115,7 +131,8 @@ def _ensure_org_control(db: Session, org_id: str, framework: str, clause: str) -
 
 
 def _reconcile_gaps(db: Session, link: EvidenceControlLink, new_gaps, evidence,
-                    actor_label: str = "", request_id: str = "") -> None:
+                    actor_label: str = "", request_id: str = "",
+                    guidance: str = "") -> None:
     """OPEN -> RESOLVED_BY_EVIDENCE when a gap stops reproducing. Never delete a row."""
     existing_open = {
         (g.kind, g.attribute): g
@@ -141,16 +158,20 @@ def _reconcile_gaps(db: Session, link: EvidenceControlLink, new_gaps, evidence,
             row.detail = gap.detail  # same occurrence, refreshed with the latest values
             row.actual_value = actual
             row.required_value = required
-            row.required_action = _remediation(gap)
+            row.required_action = _remediation(gap, guidance)
         else:
             row = GapRow(
                 link_id=link.id, kind=gap.kind, attribute=gap.attribute, detail=gap.detail,
-                actual_value=actual, required_value=required, required_action=_remediation(gap),
+                actual_value=actual, required_value=required,
+                required_action=_remediation(gap, guidance),
             )
             db.add(row)
             db.flush()
+            control = _ensure_org_control(db, evidence.org_id, link.framework, link.clause)
             db.add(TaskRow(
                 gap_id=row.id,
+                org_id=evidence.org_id,
+                org_control_id=control.id,
                 title=f"{link.framework} {link.clause}: remediate {gap.attribute}",
             ))
 
@@ -164,6 +185,66 @@ def _store_attributes(db: Session, evidence: Evidence, run) -> None:
             confidence=field.confidence, extraction_method=field.extraction_method,
             sources=[s.model_dump() for s in field.sources],
         ))
+
+
+def _upsert_org_commitments(db: Session, evidence: Evidence, run) -> None:
+    """A POLICY's own stated values become this org's commitments for whatever
+    organization-defined parameters a content pack references (see
+    docs/adr/013-organization-defined-commitments.md). Every extracted attribute
+    is stored unconditionally — ponytail: no lookup of "which attributes matter"
+    here, only the ones a requirement actually reads via
+    org_defined_max_age_attribute are ever consulted."""
+    if evidence.artefact_type != "POLICY":
+        return
+    existing = {
+        c.attribute: c
+        for c in db.query(OrgCommitment).filter_by(org_id=evidence.org_id)
+    }
+    now = datetime.now(timezone.utc)
+    for name, field in run.fields.items():
+        if field.value is None:
+            continue
+        row = existing.get(name)
+        if row is None:
+            row = OrgCommitment(org_id=evidence.org_id, attribute=name)
+            db.add(row)
+        row.value_json = {"v": field.value}
+        row.source_evidence_id = evidence.id
+        row.updated_at = now
+
+
+def _org_commitments(db: Session, org_id: str) -> dict:
+    return {
+        c.attribute: c.value
+        for c in db.query(OrgCommitment).filter_by(org_id=org_id)
+    }
+
+
+def link_commitment_stale(
+    db: Session, content: Content, org_id: str, link: EvidenceControlLink
+) -> tuple[bool, str]:
+    """Has this link's org-defined ceiling changed since it was last evaluated?
+
+    Read-time only — this never rewrites a link. Per the answered design
+    question (docs/adr/013), a changed commitment is surfaced as a flag for the
+    org/owner to act on via the existing manual reprocess endpoint, not an
+    automatic bulk re-evaluation.
+    """
+    attrs = org_defined_attributes(content, link.framework, link.clause)
+    if not attrs:
+        return False, ""
+    changed = [
+        c for c in db.query(OrgCommitment)
+        .filter(OrgCommitment.org_id == org_id, OrgCommitment.attribute.in_(attrs))
+        if c.updated_at > link.evaluated_at
+    ]
+    if not changed:
+        return False, ""
+    names = ", ".join(sorted(c.attribute for c in changed))
+    return True, (f"the organisation's policy commitment for {names} changed after this "
+                  f"control was last evaluated on {link.evaluated_at.date().isoformat()} "
+                  f"— upload a new version of the evidence to re-check it against the "
+                  f"current commitment")
 
 
 def _resolve_gaps_from_earlier_versions(
@@ -202,22 +283,55 @@ def _resolve_gaps_from_earlier_versions(
 
 def process_evidence(db: Session, content: Content, evidence: Evidence, actor_label: str,
                      request_id: str = "") -> None:
-    """Full pipeline for one evidence version, advancing status as it goes."""
+    """Full pipeline for one evidence version, advancing status as it goes.
+
+    The *whole* pipeline is guarded, not just extraction. This runs as a
+    background task (app/routers/evidence.py), and an exception escaping it
+    reaches nothing that would record it — main.py's handler covers requests,
+    not background tasks — leaving the row in a non-terminal status forever
+    while the frontend polls it indefinitely. Every failure must end at FAILED
+    with a reason instead.
+    """
+    try:
+        _run_pipeline(db, content, evidence, actor_label, request_id)
+    except Exception as exc:  # noqa: BLE001 - any pipeline failure must be visible, not silent
+        logger.exception("evidence_processing_failed evidence=%s", evidence.id)
+        # A mid-transaction error leaves the session needing a rollback; without
+        # this the FAILED write itself fails and the row stays stuck anyway.
+        db.rollback()
+        set_status(db, evidence, "FAILED", str(exc))
+    finally:
+        # Closes any watching stream whichever way the run ended — a browser
+        # must never be left holding an open connection to a finished run.
+        events.publish(evidence.id, "done", {"evidence_id": evidence.id})
+
+
+def _run_pipeline(db: Session, content: Content, evidence: Evidence, actor_label: str,
+                  request_id: str) -> None:
     org = db.get(Organization, evidence.org_id)
     storage = get_storage()
 
-    try:
-        set_status(db, evidence, "EXTRACTING")
-        data = storage.get(evidence.storage_key)
-        text, method = read_document(evidence.filename, data)
+    set_status(db, evidence, "EXTRACTING")
+    data = storage.get(evidence.storage_key)
+    text, method = read_document(evidence.filename, data)
 
-        set_status(db, evidence, "ANALYZING")
-        attr_names = required_attribute_names(content, org.frameworks, evidence.artefact_type)
+    set_status(db, evidence, "ANALYZING")
+    attr_names = required_attribute_names(content, org.frameworks, evidence.artefact_type)
+    # Stream only while a browser is actually watching this upload: the
+    # streamed values are a live preview, the persisted rows below are the
+    # truth (app/events.py). Nobody watching -> the ordinary blocking call.
+    if events.has_subscribers(evidence.id):
+        run = extract_attributes_streaming(
+            text, attr_names, method,
+            on_attribute=lambda name, field: events.publish(
+                evidence.id, "attribute",
+                {"name": name, "value": field.value, "confidence": field.confidence,
+                 "extraction_method": field.extraction_method,
+                 "sources": [s.model_dump() for s in field.sources]},
+            ),
+        )
+    else:
         run = extract_attributes(text, attr_names, method)
-    except Exception as exc:  # noqa: BLE001 - any pipeline failure must be visible, not silent
-        logger.exception("evidence_processing_failed evidence=%s", evidence.id)
-        set_status(db, evidence, "FAILED", str(exc))
-        return
 
     confidences = [f.confidence for f in run.fields.values() if f.confidence is not None]
     db.add(AiRun(
@@ -232,6 +346,7 @@ def process_evidence(db: Session, content: Content, evidence: Evidence, actor_la
     attributes = {name: field.value for name, field in run.fields.items()}
     evidence.extracted_attributes = {name: field.model_dump() for name, field in run.fields.items()}
     _store_attributes(db, evidence, run)
+    _upsert_org_commitments(db, evidence, run)
 
     quality = score_evidence(
         attributes, attr_names,
@@ -253,7 +368,9 @@ def process_evidence(db: Session, content: Content, evidence: Evidence, actor_la
     evaluated: set[tuple] = set()
 
     as_of = _audit_as_of(db, evidence.org_id)
-    for link in evaluate(attributes, evidence.artefact_type, org.frameworks, content, as_of):
+    org_commitments = _org_commitments(db, evidence.org_id)
+    for link in evaluate(attributes, evidence.artefact_type, org.frameworks, content, as_of,
+                         org_commitments):
         evaluated.add((link.framework, link.clause))
         still_failing.update(
             (link.framework, link.clause, g.kind, g.attribute) for g in link.gaps
@@ -274,9 +391,39 @@ def process_evidence(db: Session, content: Content, evidence: Evidence, actor_la
         row.ai_prompt_version = PROMPT_VERSION
         row.ai_confidence = _link_confidence(link, run)
         row.rationale = f"{len(link.gaps)} gap(s)" if link.gaps else "all conditions met"
+        row.evaluated_at = datetime.now(timezone.utc)
+        # Same gateway the extraction call above already checked — skip the whole
+        # narration step rather than repeat a doomed health check per link when
+        # the model was already unavailable this run.
+        requirement = content.requirement(link.framework, link.clause)
+        if run.status != "UNAVAILABLE":
+            title = requirement.title if requirement else ""
+            row.nutshell = generate_nutshell(
+                link.framework, link.clause, title, link.verdict,
+                [{"attribute": g.attribute, "actual": g.actual, "required": g.required,
+                  "detail": g.detail} for g in link.gaps],
+                evidence.extracted_attributes,
+            )
+            row.nutshell_model = run.model
+            row.nutshell_prompt_version = NUTSHELL_PROMPT_VERSION
         db.flush()
 
-        _reconcile_gaps(db, row, link.gaps, evidence, actor_label, request_id)
+        _reconcile_gaps(db, row, link.gaps, evidence, actor_label, request_id,
+                        guidance=requirement.guidance if requirement else "")
+
+        # Each framework's result as it lands, rather than all of them at the
+        # end — the same rows the client will re-read from the API when the
+        # run finishes, just visible sooner.
+        events.publish(evidence.id, "link", {
+            "id": row.id, "framework": link.framework, "clause": link.clause,
+            "verdict": link.verdict, "locked": row.locked,
+            "gaps": [
+                {"kind": g.kind, "attribute": g.attribute, "detail": g.detail,
+                 "actual_value": None if g.actual is None else str(g.actual),
+                 "required_value": None if g.required is None else str(g.required)}
+                for g in link.gaps
+            ],
+        })
 
     _resolve_gaps_from_earlier_versions(db, evidence, still_failing, evaluated,
                                         actor_label, request_id)

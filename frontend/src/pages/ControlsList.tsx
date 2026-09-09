@@ -3,9 +3,28 @@ import { getControl, listControls, type ControlDetail } from "../api/client";
 import { useApi } from "../lib/useApi";
 import { DataTable, type Column } from "../components/DataTable";
 import { Badge } from "../components/Badge";
+import { PageTour } from "../components/PageTour";
 import { useSession } from "../lib/session";
 
 const VERDICT_RANK: Record<string, number> = { PASS: 3, PARTIAL: 2, FAIL: 1 };
+
+const TOUR_STEPS = [
+  {
+    title: "One row per requirement",
+    body: "Each row is one clause of one framework, with its current verdict, how many pieces of evidence back it, and whether an auditor has locked the conclusion.",
+    target: ".data-table, .empty-state",
+  },
+  {
+    title: "Verdict is deterministic",
+    body: "PASS/PARTIAL/FAIL is computed by rules, not guessed by AI — the same evidence always produces the same verdict. \"stale\" means the organisation's own policy commitment changed since this was last evaluated.",
+    target: ".data-table th:nth-child(3)",
+  },
+  {
+    title: "Open a control for the full story",
+    body: "Click through to see every piece of linked evidence, the exact gaps if it isn't passing, and — for an auditor — the review and lock controls.",
+    target: ".data-table",
+  },
+] as const;
 
 function bestVerdict(control: ControlDetail): string {
   if (control.links.length === 0) return "NO_EVIDENCE";
@@ -28,7 +47,17 @@ export function ControlsListPage() {
     { key: "clause", header: "Clause", render: (c) => c.clause },
     { key: "verdict", header: "Verdict", render: (c) => <Badge value={bestVerdict(c)} /> },
     { key: "evidence", header: "Evidence links", render: (c) => c.links.length },
-    { key: "locked", header: "Status", render: (c) => (c.locked ? <span className="badge badge-locked">locked</span> : <span className="muted">open</span>) },
+    {
+      key: "locked", header: "Status",
+      render: (c) => (
+        <>
+          {c.locked ? <span className="badge badge-locked">locked</span> : <span className="muted">open</span>}
+          {c.links.some((l) => l.commitment_stale) && (
+            <span className="muted" title="Policy commitment changed since last evaluation"> · stale</span>
+          )}
+        </>
+      ),
+    },
   ];
 
   return (
@@ -44,6 +73,7 @@ export function ControlsListPage() {
                 : "Only controls visible to the current identity are listed — server-enforced, not a UI filter."}
           </p>
         </div>
+        <PageTour id="controls" steps={TOUR_STEPS} />
       </div>
       {controls.error && <div className="alert alert-error">{controls.error}</div>}
       <DataTable

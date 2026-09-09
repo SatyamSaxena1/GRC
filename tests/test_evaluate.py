@@ -145,3 +145,43 @@ def test_scan_report_compliance_status_failure_is_a_real_gap(failing_value):
     )}["11.3.2"]
     assert link.verdict == "PARTIAL"
     assert [g.attribute for g in link.gaps] == ["compliance_status"]
+
+
+# ------------------------------------------------- the wider framework library
+
+NEW_FRAMEWORKS = ["SOC-2", "NIST-CSF", "HIPAA", "CIS-CONTROLS", "GDPR"]
+
+
+def test_one_policy_is_reused_across_the_whole_framework_library():
+    """The same POLICY fixture used for ISO/PCI above, evaluated against every
+    added framework in one pass — this is the reuse pitch, proven at library scale."""
+    links = evaluate(POLICY, "POLICY", NEW_FRAMEWORKS, CONTENT)
+    assert {l.framework for l in links} == set(NEW_FRAMEWORKS)
+    # Every new pack produced at least one real verdict, not silently zero links.
+    for framework in NEW_FRAMEWORKS:
+        assert any(l.framework == framework for l in links)
+
+
+def test_strict_frameworks_reject_short_passwords_lenient_ones_accept():
+    """CIS requires 14 chars without MFA; NIST/HIPAA's own baseline is 8 — the same
+    document should read differently depending on which framework asks, exactly
+    like the existing ISO-vs-PCI password-length split above."""
+    links = links_by_clause(["CIS-CONTROLS", "NIST-CSF", "HIPAA"])
+    assert links["5.2"].verdict == "PARTIAL"       # CIS: 10 < 14
+    assert links["PR.AA-01"].verdict == "PASS"     # NIST: 10 >= 8 (plus policy attrs)
+    assert links["164.312(d)"].verdict == "PASS"   # HIPAA: 10 >= 8
+
+
+def test_encryption_and_logging_gaps_are_named_precisely():
+    """Neither attribute is in the base POLICY fixture, so every new-UCO clause
+    that needs them must report a precise missing-attribute gap, never a pass."""
+    links = links_by_clause(["SOC-2", "NIST-CSF"])
+    assert links["CC6.7"].verdict == "FAIL"
+    assert {g.attribute for g in links["CC6.7"].gaps} == {"encryption_at_rest", "encryption_in_transit"}
+    assert links["PR.PT-01"].verdict == "FAIL"
+    assert [g.attribute for g in links["PR.PT-01"].gaps] == ["log_retention_days"]
+
+    encrypted = POLICY | {"encryption_at_rest": True, "encryption_in_transit": True, "log_retention_days": 120}
+    fixed = {l.clause: l for l in evaluate(encrypted, "POLICY", ["SOC-2", "NIST-CSF"], CONTENT)}
+    assert fixed["CC6.7"].verdict == "PASS"
+    assert fixed["PR.PT-01"].verdict == "PASS"

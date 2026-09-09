@@ -9,3 +9,6 @@ evidence_storage/
 
 frontend/node_modules/
 frontend/dist/
+*.log
+tmp/
+*.bak*

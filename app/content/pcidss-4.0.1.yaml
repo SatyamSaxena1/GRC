@@ -11,13 +11,13 @@ requirements:
     evidence_requirements:
       - artefact_type: POLICY
         required_attributes: [approval_date, approver_role, effective_date, systems_covered]
-    # PCI requires the security policy to be reviewed at least once every 12 months.
-    # A policy past its own review date is not current evidence.
-    evidence_validity:
-      expiry_attribute: next_review_date
-      issued_attribute: approval_date
-      max_age_days: 365
-      required: false   # inferred from approval_date when the document omits it
+        # PCI requires the security policy to be reviewed at least once every 12
+        # months. A policy past its own review date is not current evidence.
+        evidence_validity:
+          expiry_attribute: next_review_date
+          issued_attribute: approval_date
+          max_age_days: 365
+          required: false   # inferred from approval_date when the document omits it
     mappings:
       - uco: UCO-IAM-001
         coverage: PARTIAL
@@ -73,6 +73,18 @@ requirements:
     evidence_requirements:
       - artefact_type: POLICY
         required_attributes: [access_review_frequency_days]
+      # Unlike the other frameworks' access-review clauses, PCI states its own
+      # numeric ceiling ("at least once every six months") rather than deferring
+      # to the org — so this stays a literal max_age_days, not
+      # org_defined_max_age_attribute (see docs/adr/013). The gap this still
+      # fixes is real either way: a policy merely stating "every six months" was
+      # never proof a review actually happened.
+      - artefact_type: REVIEW_RECORD
+        required_attributes: [last_access_review_date]
+        evidence_validity:
+          issued_attribute: last_access_review_date
+          max_age_days: 183
+          required: true
     mappings:
       - uco: UCO-IAM-020
         coverage: FULL
@@ -93,12 +105,12 @@ requirements:
       - artefact_type: SCAN_REPORT
         required_attributes:
           [scan_completed_date, scan_expiry_date, compliance_status, asv_company]
-    # An ASV scan demonstrates compliance for 90 days. The report states its own
-    # expiry date; where it does not, derive it from the completion date.
-    evidence_validity:
-      expiry_attribute: scan_expiry_date
-      issued_attribute: scan_completed_date
-      max_age_days: 90
+        # An ASV scan demonstrates compliance for 90 days. The report states its
+        # own expiry date; where it does not, derive it from the completion date.
+        evidence_validity:
+          expiry_attribute: scan_expiry_date
+          issued_attribute: scan_completed_date
+          max_age_days: 90
     mappings:
       - uco: UCO-VULN-001
         coverage: FULL

@@ -1,0 +1,291 @@
+# NIST AI Risk Management Framework (AI RMF 1.0) — GOVERN function, starter pack.
+#
+# Source: NIST AI 100-1, https://doi.org/10.6028/NIST.AI.100-1 (US Government
+# work, public domain). Subcategory text below is NIST's own wording, quoted.
+# `guidance` is condensed from the AI RMF Playbook's "Suggested Actions" for the
+# same subcategory (https://airc.nist.gov/AI_RMF_Knowledge_Base/Playbook) — it is
+# what an owner is told to do when a gap opens, so it must be actionable rather
+# than a restatement of the outcome.
+#
+# SCOPE, read this before adding more: this covers 11 of the 19 GOVERN
+# subcategories and none of MAP/MEASURE/MANAGE. The 11 chosen are those whose
+# outcome a document can actually evidence — a policy either states a decommis-
+# sioning process or it does not. The rest ("decision-making is informed by a
+# diverse team") are real governance outcomes that no document attribute can
+# honestly settle, and inventing an attribute for them would manufacture a
+# passing verdict rather than measure one. See ADR-016.
+#
+# AI RMF is voluntary and outcome-based, with no numeric thresholds anywhere in
+# it. So almost every condition here is "the policy states X", which surfaces as
+# a MISSING_ATTRIBUTE gap naming exactly what the document failed to say. Where a
+# cadence is involved (GOVERN 1.5, 2.2) the threshold is the organisation's own
+# stated commitment, not a number we invented — the ODP pattern from ADR-013.
+
+framework:
+  code: NIST-AI-RMF
+  version: "1.0"
+
+requirements:
+
+  - clause: "GOVERN 1.1"
+    title: Legal and regulatory requirements involving AI are understood, managed and documented
+    text: >-
+      Legal and regulatory requirements involving AI are understood, managed, and
+      documented.
+    guidance: >-
+      Maintain a documented view of the legal and regulatory requirements that apply to your
+      industry, sector and the deployed context of each AI system, and align risk management
+      to them. Name the regimes in the policy — an AI policy that never names a regulator is
+      not evidence that anyone checked.
+    evidence_requirements:
+      - artefact_type: AI_POLICY
+        required_attributes: [ai_legal_requirements_documented, ai_applicable_regulations]
+    mappings:
+      - uco: UCO-AIGOV-002
+        coverage: FULL
+        confidence: 0.9
+        source: EXPERT
+        delta_conditions:
+          - attribute: ai_legal_requirements_documented
+            operator: "=="
+            value: true
+
+  - clause: "GOVERN 1.2"
+    title: The characteristics of trustworthy AI are integrated into organizational policies
+    text: >-
+      The characteristics of trustworthy AI are integrated into organizational policies,
+      processes, procedures, and practices.
+    guidance: >-
+      Address each of the AI RMF's trustworthiness characteristics explicitly in policy —
+      valid and reliable, safe, secure and resilient, accountable and transparent,
+      explainable and interpretable, privacy-enhanced, and fair with harmful bias managed.
+      A policy that gestures at "responsible AI" without naming which properties are
+      managed gives an auditor nothing to test.
+    evidence_requirements:
+      - artefact_type: AI_POLICY
+        required_attributes: [trustworthy_ai_characteristics_addressed]
+    mappings:
+      - uco: UCO-AIGOV-006
+        coverage: FULL
+        confidence: 0.85
+        source: EXPERT
+        delta_conditions:
+          # Substring matching (see app/evaluate.py::contains_all) — a real
+          # extraction returns natural phrases, not canonical tokens. Four of the
+          # seven characteristics, not all seven: these are the ones a governance
+          # policy reliably names, and demanding all seven would fail documents
+          # that are genuinely adequate.
+          - attribute: trustworthy_ai_characteristics_addressed
+            operator: contains_all
+            value: ["valid", "safe", "secure", "transparent"]
+
+  - clause: "GOVERN 1.3"
+    title: Risk management activity is scaled to the organisation's stated risk tolerance
+    text: >-
+      Processes, procedures, and practices are in place to determine the needed level of risk
+      management activities based on the organization's risk tolerance.
+    guidance: >-
+      State the organisation's AI risk tolerance and how it decides which systems get which
+      level of scrutiny. Risk tolerance that exists only in someone's head cannot be applied
+      consistently or reviewed later.
+    evidence_requirements:
+      - artefact_type: AI_POLICY
+        required_attributes: [ai_risk_tolerance_defined, ai_risk_tiering_criteria]
+    mappings:
+      - uco: UCO-AIGOV-003
+        coverage: FULL
+        confidence: 0.85
+        source: EXPERT
+        delta_conditions:
+          - attribute: ai_risk_tolerance_defined
+            operator: "=="
+            value: true
+
+  - clause: "GOVERN 1.5"
+    title: The AI risk management process is monitored and periodically reviewed
+    text: >-
+      Ongoing monitoring and periodic review of the risk management process and its outcomes
+      are planned, and organizational roles and responsibilities are clearly defined,
+      including determining the frequency of periodic review.
+    guidance: >-
+      State the review cadence in the policy, then keep the dated record of each review that
+      actually happened. NIST leaves the frequency to you — so the requirement here is that
+      you meet the interval you set for yourself, not one we chose.
+    evidence_requirements:
+      - artefact_type: AI_POLICY
+        required_attributes: [ai_governance_review_frequency_days]
+      # Proof the review happened, judged against the cadence the policy above
+      # states — the organization-defined parameter pattern from ADR-013, reused
+      # rather than a second mechanism.
+      - artefact_type: REVIEW_RECORD
+        required_attributes: [ai_governance_review_date]
+        evidence_validity:
+          issued_attribute: ai_governance_review_date
+          org_defined_max_age_attribute: ai_governance_review_frequency_days
+    mappings:
+      - uco: UCO-AIGOV-003
+        coverage: PARTIAL
+        confidence: 0.8
+        source: EXPERT
+
+  - clause: "GOVERN 1.6"
+    title: AI systems are inventoried
+    text: >-
+      Mechanisms are in place to inventory AI systems and are resourced according to
+      organizational risk priorities.
+    guidance: >-
+      Maintain an inventory of AI systems with an owner and a risk tier for each, and keep it
+      dated. You cannot govern what you have not listed, and an inventory nobody has touched
+      in a year is evidence of the opposite of what it claims.
+    evidence_requirements:
+      - artefact_type: AI_INVENTORY
+        required_attributes: [ai_systems_inventoried, ai_inventory_last_updated, ai_inventory_owner_assigned]
+        evidence_validity:
+          issued_attribute: ai_inventory_last_updated
+          max_age_days: 365
+    mappings:
+      - uco: UCO-AIGOV-001
+        coverage: FULL
+        confidence: 0.9
+        source: EXPERT
+        delta_conditions:
+          - attribute: ai_systems_inventoried
+            operator: "=="
+            value: true
+          - attribute: ai_inventory_owner_assigned
+            operator: "=="
+            value: true
+
+  - clause: "GOVERN 1.7"
+    title: AI systems are decommissioned safely
+    text: >-
+      Processes and procedures are in place for decommissioning and phasing out AI systems
+      safely and in a manner that does not increase risks or decrease the organization's
+      trustworthiness.
+    guidance: >-
+      Document how an AI system is retired — what happens to its data and models, how
+      dependent users are notified, and who signs off. Decommissioning is where orphaned
+      models and their training data quietly outlive their governance.
+    evidence_requirements:
+      - artefact_type: AI_POLICY
+        required_attributes: [ai_decommissioning_process_defined]
+    mappings:
+      - uco: UCO-AIGOV-009
+        coverage: FULL
+        confidence: 0.85
+        source: EXPERT
+        delta_conditions:
+          - attribute: ai_decommissioning_process_defined
+            operator: "=="
+            value: true
+
+  - clause: "GOVERN 2.1"
+    title: Roles, responsibilities and lines of communication for AI risk are documented
+    text: >-
+      Roles and responsibilities and lines of communication related to mapping, measuring,
+      and managing AI risks are documented and are clear to individuals and teams throughout
+      the organization.
+    guidance: >-
+      Name the roles accountable for AI risk and say who escalates to whom. "The team is
+      responsible" is not a role, and cannot be tested or staffed against.
+    evidence_requirements:
+      - artefact_type: AI_POLICY
+        required_attributes: [ai_roles_documented, ai_escalation_path_defined]
+    mappings:
+      - uco: UCO-AIGOV-004
+        coverage: FULL
+        confidence: 0.9
+        source: EXPERT
+        delta_conditions:
+          - attribute: ai_roles_documented
+            operator: "=="
+            value: true
+
+  - clause: "GOVERN 2.2"
+    title: Personnel receive AI risk management training
+    text: >-
+      The organization's personnel and partners receive AI risk management training to enable
+      them to perform their duties and responsibilities consistent with related policies,
+      procedures, and agreements.
+    guidance: >-
+      State how often AI risk training is delivered and to whom, then keep the completion
+      records. As with review cadence, the interval tested is the one your own policy states.
+    evidence_requirements:
+      - artefact_type: AI_POLICY
+        required_attributes: [ai_training_frequency_days, ai_training_audience_defined]
+    mappings:
+      - uco: UCO-AIGOV-005
+        coverage: PARTIAL
+        confidence: 0.8
+        source: EXPERT
+        delta_conditions:
+          - attribute: ai_training_audience_defined
+            operator: "=="
+            value: true
+
+  - clause: "GOVERN 3.2"
+    title: Human oversight of AI systems is defined
+    text: >-
+      Policies and procedures are in place to define and differentiate roles and
+      responsibilities for human-AI configurations and oversight of AI systems.
+    guidance: >-
+      Say which decisions a human must make or be able to override, and who that human is.
+      "Human in the loop" with no named role and no defined intervention point is a slogan,
+      not an control.
+    evidence_requirements:
+      - artefact_type: AI_POLICY
+        required_attributes: [human_oversight_defined, human_override_capability]
+    mappings:
+      - uco: UCO-AIGOV-004
+        coverage: PARTIAL
+        confidence: 0.85
+        source: EXPERT
+        delta_conditions:
+          - attribute: human_oversight_defined
+            operator: "=="
+            value: true
+
+  - clause: "GOVERN 4.3"
+    title: AI testing, incident identification and information sharing are enabled
+    text: >-
+      Organizational practices are in place to enable AI testing, identification of incidents,
+      and information sharing.
+    guidance: >-
+      Define what counts as an AI incident, how it is reported, and whether findings are
+      shared beyond the team that found them. An AI incident that only the building team ever
+      hears about teaches nobody else.
+    evidence_requirements:
+      - artefact_type: AI_POLICY
+        required_attributes: [ai_incident_process_defined, ai_incident_reporting_channel]
+    mappings:
+      - uco: UCO-AIGOV-007
+        coverage: FULL
+        confidence: 0.85
+        source: EXPERT
+        delta_conditions:
+          - attribute: ai_incident_process_defined
+            operator: "=="
+            value: true
+
+  - clause: "GOVERN 6.1"
+    title: Third-party AI risks are addressed by policy
+    text: >-
+      Policies and procedures are in place that address AI risks associated with third-party
+      entities, including risks of infringement of a third-party's intellectual property or
+      other rights.
+    guidance: >-
+      Cover third-party models, datasets and APIs explicitly, including licensing and IP
+      terms. Most organisations' largest AI exposure is a vendor's model they did not train
+      and cannot inspect.
+    evidence_requirements:
+      - artefact_type: AI_POLICY
+        required_attributes: [third_party_ai_risk_policy_defined, third_party_ai_ip_terms_reviewed]
+    mappings:
+      - uco: UCO-AIGOV-008
+        coverage: FULL
+        confidence: 0.85
+        source: EXPERT
+        delta_conditions:
+          - attribute: third_party_ai_risk_policy_defined
+            operator: "=="
+            value: true

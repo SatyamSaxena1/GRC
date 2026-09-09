@@ -16,6 +16,14 @@ Python          decides compliance, deterministically, from content packs
 Human auditor   records the verdict that closes and locks a control
 ```
 
+Five parties, two tenancy axes. An **audit firm** onboards clients and staffs its
+**auditors** onto them; an **organisation** (the auditee) supplies evidence through its
+**org admin** and **control owners**. Firm-owned rows are scoped by `audit_firm_id`,
+auditee-owned rows by `org_id` — an auditor working a client carries both. The rule that
+matters: *belonging to a firm grants access to nothing*. Being staffed on an engagement
+(`EngagementAuditor`) is the grant, and an unstaffed client answers 404, indistinguishable
+from one that does not exist.
+
 The model never decides whether a control passes. It reports that the document says
 "8 characters, on page 6"; `app/evaluate.py` decides that 8 < 12 fails PCI DSS 8.3.6.
 That split is what makes a verdict reproducible, injection-resistant, and explainable
@@ -90,7 +98,7 @@ screen-by-screen mapping. No login system; sign in with a bootstrap identity tok
 
 | Path | What lives there |
 |------|------------------|
-| `app/content/` | Framework packs (YAML) — requirements, UCO mappings, delta conditions |
+| `app/content/` | Framework packs (YAML) — requirements, UCO mappings, delta conditions — plus the glossary |
 | `app/evaluate.py` | The deterministic evaluator. The product's core |
 | `app/normalize.py` | "12 March 2026" → a date, "quarterly" → 90 days, "Pass" → true |
 | `app/quality.py` | Evidence Quality Score — weighted, deterministic, always explained |
@@ -100,6 +108,7 @@ screen-by-screen mapping. No login system; sign in with a bootstrap identity tok
 | `app/ai/` | ModelGateway, prompts, structured extraction, validation |
 | `app/service.py` | Pipeline: extract → evaluate → links, gaps, tasks, ai_run |
 | `app/authorization.py` | Control-owner least privilege, engagement-scoped auditors |
+| `app/routers/firm.py` | The firm's side: onboarding approval, staffing, client dashboard |
 | `app/upload_security.py` | The trust boundary: size, MIME, allowlist, hash, malware |
 | `evaluation/` | Golden corpus, metrics, quality gates |
 | `docs/adr/` | Why the architecture is the way it is |
@@ -125,6 +134,48 @@ requirements:
 
 The same uploaded evidence is then evaluated against it automatically, and where the
 new framework is stricter, a specific gap is generated saying exactly what to fix.
+
+Eight packs ship today. Seven share the same IAM/vulnerability-management UCOs so one
+policy or scan report reuses across all of them: `ISO-27001`, `PCI-DSS`, `SOC-2`,
+`NIST-CSF`, `HIPAA`, `CIS-CONTROLS`, `GDPR`. Clause text is our own paraphrase, not
+quoted from any standard's licensed wording; numeric thresholds a framework doesn't
+state explicitly (e.g. HIPAA's addressable specifications) are flagged as our own
+baseline in a comment next to the clause.
+
+The eighth, `NIST-AI-RMF` ([ADR-016](docs/adr/016-ai-rmf-starter-pack.md)), is the deliberate
+exception: it owns a new `AI_GOVERNANCE` UCO domain because AI governance maps onto none of the
+existing objectives, its clause text is NIST's own (public domain), and it covers 11 of the 19
+GOVERN subcategories — only those a document can actually evidence. The rest are real outcomes
+that no attribute can honestly settle, and inventing one would manufacture a passing verdict
+rather than measure it.
+
+## Glossary
+
+Three layers behind one lookup (`GET /glossary`, and the `<Term>` tooltip) — 4,280 terms, see
+[ADR-015](docs/adr/015-glossary-layers.md):
+
+| File | Terms | What it is |
+|------|-------|------------|
+| `app/content/glossary.yaml` | ~70 | Hand-written: the platform's own vocabulary, legal definitions (GDPR Art. 4, HIPAA §160.103), paraphrased standards. **Edit this one.** |
+| `app/content/glossary-nist.json` | ~3.9k | NIST CSRC glossary, verbatim, public domain. Generated. |
+| `app/content/glossary-ai.json` | 447 | NIST's "Language of Trustworthy AI" — quotations from ISO/IEEE/papers, each keeping its own citation. Generated. |
+
+Earlier layers win every name collision. An empty search returns the curated layer only — the
+corpora are reached by searching, which also keeps the tooltip payload at ~20KB.
+
+**Regenerating** (never hand-edit the JSON; nothing fetches at runtime):
+
+```bash
+python -m scripts.import_nist_glossary
+```
+
+That downloads NIST's own published bulk export and verifies it against the sha256 NIST
+publishes beside it. The AI glossary has no stable bulk URL, so it takes the CSV exported from
+https://airc.nist.gov/glossary/ as a path:
+
+```bash
+python -m scripts.import_ai_glossary "path/to/Glossary.csv"
+```
 
 ## Known limitations
 
@@ -162,7 +213,10 @@ Honest list, kept current:
   proven, not just applied.
 - **Scanned PDFs need PyMuPDF** for page rasterization. Without it, unreadable pages
   degrade to missing attributes with a logged warning.
-- **Auth is a stub.** `authorization: org:<id>` / `user:<id>` / `auditor:<engagement>`.
-  The authorization *rules* are real and tested; identity is not.
+- **Auth is a stub.** `authorization: org:<id>` / `user:<id>` / `auditor:<engagement>` /
+  `firm:<audit_firm_id>`. The authorization *rules* are real and tested; identity is not.
+  Note `auditor:<engagement>` deliberately bypasses staffing — it is the dev/demo shortcut.
+  A firm *user* (`user:<id>` plus `x-engagement-id`) goes through the real staffing check,
+  and so does the OIDC path.
 - **Prompt injection is mitigated, not solved.** Hardened prompt plus the deterministic
   evaluator as backstop; tested against one probe corpus, not proven in general.

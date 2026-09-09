@@ -95,12 +95,22 @@ def test_auditor_with_matching_engagement_succeeds(client, bootstrap, upload, mo
     with Session(db_module.engine) as s:
         firm_id = s.get(Engagement, engagement_id).audit_firm_id
 
-    client.post("/admin/users", json={
+    auditor_id = client.post("/admin/users", json={
         "email": "auditor@bigfour.test", "audit_firm_id": firm_id, "role": "AUDITOR",
-    })
+    }).json()["id"]
     monkeypatch.setattr(oidc, "decode", lambda token: {"email": "auditor@bigfour.test"})
 
-    resp = client.get("/controls", headers={
-        "authorization": f"Bearer {FAKE_JWT}", "x-engagement-id": engagement_id,
-    })
-    assert resp.status_code == 200
+    headers = {"authorization": f"Bearer {FAKE_JWT}", "x-engagement-id": engagement_id}
+
+    # Belonging to the engagement's firm is not the grant — being staffed on it
+    # is (app/auth.py::_firm_user_actor). The OIDC path gets the same rule as
+    # the stub one, so an unstaffed auditor of the right firm still sees nothing.
+    assert client.get("/controls", headers=headers).status_code == 404
+
+    admin_id = client.post("/admin/users", json={
+        "email": "admin@bigfour.test", "audit_firm_id": firm_id, "role": "FIRM_ADMIN",
+    }).json()["id"]
+    client.post(f"/firm/engagements/{engagement_id}/auditors",
+                headers={"authorization": f"user:{admin_id}"}, json={"user_id": auditor_id})
+
+    assert client.get("/controls", headers=headers).status_code == 200

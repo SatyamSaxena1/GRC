@@ -56,6 +56,21 @@ def test_unknown_words_are_left_alone_not_coerced():
     assert normalize.to_days("when someone remembers") == "when someone remembers"
 
 
+@pytest.mark.parametrize("raw", ["Pass ☒", "☑ Pass", "Pass☑", "✓ Compliant"])
+def test_checkbox_glyphs_next_to_a_bool_word_still_match(raw):
+    """A real Aurionpro ASV executive-summary report states 'Compliance Status:
+    ☒ Pass' — a genuine, correctly-decoded checkbox glyph the model faithfully
+    includes in the extracted value. This must still read as compliant, not
+    fail a == True condition just because a checkbox character survived."""
+    assert normalize.to_bool(raw) is True
+
+
+def test_a_lone_checkbox_glyph_is_not_a_boolean():
+    """Stripping markers must not turn an empty/unmatched value into a false
+    match — nothing left after stripping is still 'not a boolean word'."""
+    assert normalize.to_bool("☒") == "☒"
+
+
 @pytest.mark.parametrize("a,b", [
     ("12 March 2026", "2026-03-12"),
     ("Pass", True),

@@ -57,18 +57,18 @@ function InviteUserCard({ orgId }: { orgId: string }) {
   const { run, busy, error, result } = useFormAction(() => createUser(email, orgId, role));
 
   return (
-    <div className="card">
+    <div className="card" id="invite-user">
       <strong>Invite a team member</strong>
       <p className="stat-sub">Creates a User row scoped to the current organisation.</p>
       {error && <div className="alert alert-error">{error}</div>}
       <div className="form-grid">
         <div>
-          <label>Email</label>
-          <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="owner@example.com" />
+          <label htmlFor="invite-email">Email</label>
+          <input id="invite-email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="owner@example.com" />
         </div>
         <div>
-          <label>Role</label>
-          <select value={role} onChange={(e) => setRole(e.target.value)}>
+          <label htmlFor="invite-role">Role</label>
+          <select id="invite-role" value={role} onChange={(e) => setRole(e.target.value)}>
             <option value="CONTROL_OWNER">Control owner</option>
             <option value="ORG_ADMIN">Org admin</option>
           </select>
@@ -89,7 +89,7 @@ function RegisterControlCard({ orgId }: { orgId: string }) {
   const { run, busy, error, result } = useFormAction(() => createControl(orgId, framework, clause));
 
   return (
-    <div className="card">
+    <div className="card" id="register-control">
       <strong>Register a control</strong>
       <p className="stat-sub">Controls are normally created automatically on first evaluation — this is for manual setup.</p>
       {error && <div className="alert alert-error">{error}</div>}
@@ -117,7 +117,7 @@ function AssignControlCard() {
   const { run, busy, error, result } = useFormAction(() => assignControl(controlId, userId));
 
   return (
-    <div className="card">
+    <div className="card" id="assign-control">
       <strong>Assign a control</strong>
       <p className="stat-sub">The sole access grant for a Control Owner — least privilege, enforced server-side.</p>
       {error && <div className="alert alert-error">{error}</div>}

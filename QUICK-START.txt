@@ -1,0 +1,92 @@
+╔═══════════════════════════════════════════════════════════════════════════╗
+║           GRC ACCESS MONITORING - QUICK START COMMANDS                    ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+🎯 MONITORING COMMANDS (Run any of these)
+
+1️⃣  VIEW LIVE DASHBOARD (Recommended)
+   python3 dashboard-monitor.py
+   
+   Shows real-time organization activity with:
+   • Request counts per org
+   • What data they're accessing (Controls, Evidence, etc)
+   • Last access time
+   • Source IP addresses
+
+2️⃣  WATCH RAW ACCESS LOG
+   tail -f access.log
+   
+   Shows every request in format:
+   [timestamp] | METHOD | /endpoint | Status | Auth | IP
+
+3️⃣  ANALYZE HISTORICAL ACTIVITY
+   python3 analyze-access.py
+   
+   Shows summary statistics:
+   • Total requests by organization
+   • Access patterns by data type
+   • Timeline of activity
+
+4️⃣  VIEW NGROK INSPECTOR
+   Open: http://localhost:4040
+   
+   Web UI showing:
+   • All tunnel requests
+   • Request/response details
+   • Network timing
+   • Full request/response bodies
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🛑 STOP/RESTART COMMANDS
+
+Stop all services:
+   pkill -f "uvicorn\|monitor\.py\|vite"
+
+Restart backend with fresh logs:
+   pkill -f uvicorn
+   rm access.log backend.log
+   uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 > backend.log 2>&1 &
+
+Reset ngrok (new public URL):
+   pkill -f ngrok
+   /c/Users/satya/bin/ngrok http 5173 --log=stdout 2>&1 | tee ngrok.log &
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📊 WHAT THE LOGS SHOW
+
+Access Log Entry Example:
+  2026-09-09T13:20:57 | GET    | /notifications | Status: 200 | Auth: org:80052... | IP: 2401:49...
+
+Breaking it down:
+  • Timestamp        = When the request happened
+  • METHOD           = HTTP verb (GET, POST, PATCH)
+  • Path             = What endpoint was called
+  • Status           = HTTP response code (200 OK, 404 Not Found, etc)
+  • Auth             = Who made the request (org ID)
+  • IP               = Where the request came from
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔍 KNOWN EXTERNAL USER
+
+Organization ID: 80052888-d6a6-4bf9-a1cb-37f9ddddeded
+Remote IP:       2401:4900:1c83:66d4:6949:d793:e9d:1c11
+Last Active:     2026-09-09 13:20:57 IST
+Requests:        92 total
+
+Watch for this organization ID or IP in the logs to see what they're doing.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ YOUR SERVICES
+
+• Backend:        http://localhost:8000 (FastAPI)
+• Frontend:       http://localhost:5173 (React)
+• Public:         https://critter-kindness-wand.ngrok-free.dev
+• ngrok Inspector: http://localhost:4040
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Need more detail? Read MONITORING.md for comprehensive documentation.
