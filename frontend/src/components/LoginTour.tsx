@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { Tab } from "../pages/Login";
 
 type Step = {
@@ -120,7 +121,10 @@ export function LoginTour({ onSelectTab }: { onSelectTab: (tab: Tab) => void }) 
         {localStorage.getItem(COMPLETE_KEY) && <span className="muted" style={{ marginLeft: "auto", fontWeight: 400 }}>Completed</span>}
       </button>
 
-      {current && (
+      {/* Portaled to <body> — see PageTour.tsx for why a fixed dialog nested in
+          the ordinary page tree can't be trusted to out-rank an unrelated
+          highlighted element by z-index alone. */}
+      {current && createPortal(
         <div className="tour-clickthrough-layer" role="presentation">
           <div
             className="tour-dialog tour-coachmark"
@@ -147,7 +151,8 @@ export function LoginTour({ onSelectTab }: { onSelectTab: (tab: Tab) => void }) 
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );

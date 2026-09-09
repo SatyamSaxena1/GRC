@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useSession } from "../lib/session";
 
@@ -135,7 +136,7 @@ export function GettingStartedTour() {
         <span aria-hidden="true">?</span> Guided tours
       </button>
 
-      {chooserOpen && !activeTour && (
+      {chooserOpen && !activeTour && createPortal(
         <div className="tour-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && close()}>
           <div className="tour-dialog tour-picker" role="dialog" aria-modal="true" aria-labelledby="tour-picker-title">
             <button className="tour-close" onClick={() => close()} aria-label="Close guided tours">×</button>
@@ -152,10 +153,15 @@ export function GettingStartedTour() {
               ))}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
 
-      {activeTour && current && (
+      {/* A direct child of <body>, not of the sidebar this launcher sits in —
+          fixed positioning + z-index only ranks reliably against elements in
+          the SAME stacking context, and a highlighted target elsewhere on the
+          page can end up outside this one. See PageTour.tsx for the full story. */}
+      {activeTour && current && createPortal(
         <div className="tour-clickthrough-layer" role="presentation">
           <div className="tour-dialog tour-coachmark" role="dialog" aria-labelledby="tour-title" ref={dialogRef} tabIndex={-1} onKeyDown={(event) => event.key === "Escape" && close()}>
             <div className="tour-progress" aria-label={`Step ${step + 1} of ${activeTour.steps.length}`}>
@@ -171,7 +177,8 @@ export function GettingStartedTour() {
               <button className="btn btn-primary" onClick={advance}>{step === activeTour.steps.length - 1 ? "Finish" : "Next instead"}</button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );

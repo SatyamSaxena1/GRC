@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 type PageTourStep = {
   title: string;
@@ -83,7 +84,15 @@ export function PageTour({
         {!localStorage.getItem(completeKey) && <span className="tour-unseen-dot" aria-hidden="true" />}
       </button>
 
-      {current && (
+      {current && createPortal(
+        // A direct child of <body>, not of wherever <PageTour> happens to sit
+        // in the page tree. Fixed positioning + z-index only ranks correctly
+        // against elements in the SAME stacking context; nested inside the
+        // ordinary page DOM, a wide/tall highlighted target elsewhere on the
+        // page could sit in a stacking context this dialog's z-index never
+        // actually competes in, and end up painted over anyway (see the
+        // Evidence page's evaluation-links grid, which spans nearly the full
+        // width and height). A portal sidesteps the question entirely.
         <div className="tour-clickthrough-layer" role="presentation">
           <div
             className={`tour-dialog tour-coachmark${coachmarkOnTop ? " tour-coachmark--top" : ""}`}
@@ -110,7 +119,8 @@ export function PageTour({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );
