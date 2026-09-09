@@ -1,0 +1,135 @@
+framework:
+  code: SOC-2
+  version: "2017"
+
+# AICPA Trust Services Criteria, Security category ("Common Criteria"). Clause
+# ids are the standard CC-series references; descriptions below are our own
+# paraphrase, not quoted from the licensed criteria text.
+requirements:
+  - clause: "CC6.1"
+    title: Logical access security policy
+    text: >
+      A logical access security policy defines how access to systems, data and other
+      protected assets is authorized and restricted based on job role.
+    evidence_requirements:
+      - artefact_type: POLICY
+        required_attributes: [approval_date, approver_role, effective_date, systems_covered]
+        evidence_validity:
+          expiry_attribute: next_review_date
+          issued_attribute: approval_date
+          max_age_days: 365
+          required: false
+    mappings:
+      - uco: UCO-IAM-001
+        coverage: FULL
+        confidence: 1.0
+        source: EXPERT
+        delta_conditions: []
+      - uco: UCO-IAM-002
+        coverage: SUPPORTING
+        confidence: 0.9
+        source: EXPERT
+        delta_conditions: []
+
+  - clause: "CC6.2"
+    title: Credential management
+    text: >
+      Credentials used to authenticate users meet a minimum strength standard before
+      access is granted.
+    evidence_requirements:
+      - artefact_type: POLICY
+        required_attributes: [password_min_length]
+    mappings:
+      - uco: UCO-IAM-011
+        coverage: FULL
+        confidence: 1.0
+        source: EXPERT
+        delta_conditions:
+          - attribute: password_min_length
+            operator: ">="
+            value: 12
+
+  - clause: "CC6.6"
+    title: Multi-factor authentication
+    text: >
+      Multi-factor authentication protects remote access and administrative access to
+      in-scope systems.
+    evidence_requirements:
+      - artefact_type: POLICY
+        required_attributes: [mfa_required_for]
+    mappings:
+      - uco: UCO-IAM-012
+        coverage: FULL
+        confidence: 1.0
+        source: EXPERT
+        delta_conditions:
+          - attribute: mfa_required_for
+            operator: contains_all
+            value: ["remote access", "administrative access"]
+
+  - clause: "CC6.3"
+    title: Periodic access review
+    text: >
+      User access rights are reviewed on a recurring basis to confirm they remain
+      appropriate to the user's current role.
+    evidence_requirements:
+      - artefact_type: POLICY
+        required_attributes: [access_review_frequency_days]
+      # The org's own stated cadence is the yardstick — see
+      # docs/adr/013-organization-defined-commitments.md.
+      - artefact_type: REVIEW_RECORD
+        required_attributes: [last_access_review_date]
+        evidence_validity:
+          issued_attribute: last_access_review_date
+          org_defined_max_age_attribute: access_review_frequency_days
+          required: true
+    mappings:
+      - uco: UCO-IAM-020
+        coverage: FULL
+        confidence: 1.0
+        source: EXPERT
+        delta_conditions: []
+
+  - clause: "CC6.7"
+    title: Protection of data in transit and at rest
+    text: >
+      Data is protected using encryption both while stored and while transmitted over
+      untrusted networks.
+    evidence_requirements:
+      - artefact_type: POLICY
+        required_attributes: [encryption_at_rest, encryption_in_transit]
+    mappings:
+      - uco: UCO-DATA-001
+        coverage: FULL
+        confidence: 1.0
+        source: EXPERT
+        delta_conditions:
+          - attribute: encryption_at_rest
+            operator: "=="
+            value: true
+          - attribute: encryption_in_transit
+            operator: "=="
+            value: true
+
+  - clause: "CC7.1"
+    title: Vulnerability detection
+    text: >
+      The system is monitored for vulnerabilities through recurring scanning, and
+      findings are tracked to resolution.
+    evidence_requirements:
+      - artefact_type: SCAN_REPORT
+        required_attributes:
+          [scan_completed_date, scan_expiry_date, compliance_status, asv_company]
+        evidence_validity:
+          expiry_attribute: scan_expiry_date
+          issued_attribute: scan_completed_date
+          max_age_days: 90
+    mappings:
+      - uco: UCO-VULN-001
+        coverage: FULL
+        confidence: 1.0
+        source: EXPERT
+        delta_conditions:
+          - attribute: compliance_status
+            operator: "=="
+            value: true

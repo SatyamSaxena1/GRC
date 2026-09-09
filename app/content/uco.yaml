@@ -1,4 +1,5 @@
-# Unified Control Objectives — IAM plus vulnerability-management (external scanning).
+# Unified Control Objectives — IAM, vulnerability management, data protection,
+# logging and AI governance.
 ucos:
   - code: UCO-VULN-001
     title: External-facing systems are scanned for vulnerabilities on a recurring basis
@@ -19,3 +20,41 @@ ucos:
   - code: UCO-IAM-020
     title: Access rights are reviewed and revoked on change or termination
     domain: IAM
+  - code: UCO-DATA-001
+    title: Sensitive data is encrypted at rest and in transit
+    domain: DATA_PROTECTION
+  - code: UCO-LOG-001
+    title: Security-relevant events are logged and retained for a defined period
+    domain: LOGGING
+
+  # AI governance. Deliberately framework-neutral rather than phrased in AI RMF's
+  # own words, because the point of a UCO is that a second framework maps onto it
+  # — ISO/IEC 42001 and the EU AI Act cover the same ground with different
+  # vocabulary, and should reuse these rather than add a parallel taxonomy.
+  - code: UCO-AIGOV-001
+    title: AI systems in use are inventoried, owned and kept current
+    domain: AI_GOVERNANCE
+  - code: UCO-AIGOV-002
+    title: Legal and regulatory obligations applying to AI are identified and documented
+    domain: AI_GOVERNANCE
+  - code: UCO-AIGOV-003
+    title: AI risk tolerance and the risk management process are defined and approved
+    domain: AI_GOVERNANCE
+  - code: UCO-AIGOV-004
+    title: Roles, responsibilities and human oversight of AI systems are assigned
+    domain: AI_GOVERNANCE
+  - code: UCO-AIGOV-005
+    title: Personnel are trained on AI risk management on a recurring basis
+    domain: AI_GOVERNANCE
+  - code: UCO-AIGOV-006
+    title: Trustworthy-AI characteristics are addressed in policy and system documentation
+    domain: AI_GOVERNANCE
+  - code: UCO-AIGOV-007
+    title: AI incidents and failures can be identified, escalated and shared
+    domain: AI_GOVERNANCE
+  - code: UCO-AIGOV-008
+    title: Third-party AI systems, models and data are risk-assessed before and during use
+    domain: AI_GOVERNANCE
+  - code: UCO-AIGOV-009
+    title: AI systems are decommissioned without increasing risk to affected parties
+    domain: AI_GOVERNANCE

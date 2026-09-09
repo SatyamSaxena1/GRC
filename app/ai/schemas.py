@@ -60,3 +60,20 @@ class AccessControlPolicy(BaseModel):
     access_review_frequency_days: Any = None
     privileged_access_controls: list = []
     logging_requirements: list = []
+    encryption_at_rest: Any = None
+    encryption_in_transit: Any = None
+    log_retention_days: Any = None
+
+
+class AccessReviewRecord(BaseModel):
+    """Canonical attribute contract for an access-review record — proof a
+    review actually happened, evaluated against the org's own policy-stated
+    cadence rather than a generic ceiling (see
+    docs/adr/013-organization-defined-commitments.md). Same documented-superset
+    convention as AccessControlPolicy: the extractor only ever asks for what a
+    content pack's required_attributes names."""
+    last_access_review_date: Any = None
+    reviewer_name: Any = None
+    review_scope: Any = None
+    accounts_reviewed_count: Any = None
+    accounts_revoked_count: Any = None

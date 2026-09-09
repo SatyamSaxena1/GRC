@@ -1,50 +1,53 @@
-import { useMemo } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import {
-  getControl,
-  getReadinessAll,
-  getReuseStats,
-  listControls,
-  listEvidence,
-  listGaps,
-  listTasks,
-  type ControlDetail,
-} from "../api/client";
+import { ApiError, downloadComplianceExport, getDashboard } from "../api/client";
 import { useApi } from "../lib/useApi";
+import { useSession } from "../lib/session";
 import { Badge } from "../components/Badge";
+import { PageTour } from "../components/PageTour";
 
-const VERDICT_RANK: Record<string, number> = { PASS: 3, PARTIAL: 2, FAIL: 1 };
-
-function bestVerdict(control: ControlDetail): string {
-  if (control.links.length === 0) return "NO_EVIDENCE";
-  return control.links.reduce((best, link) => {
-    const rank = VERDICT_RANK[link.verdict] ?? 0;
-    return rank > (VERDICT_RANK[best] ?? -1) ? link.verdict : best;
-  }, control.links[0].verdict);
-}
+const TOUR_STEPS = [
+  {
+    title: "Five numbers, one request",
+    body: "Controls, gaps, tasks, evidence and open requests — all computed server-side and delivered in one call, so this page loads as one round trip instead of fanning out per control.",
+    target: "[data-tour='stat-cards']",
+  },
+  {
+    title: "Evidence reuse is the whole thesis",
+    body: "One artefact can satisfy requirements across multiple frameworks. This is literally counting how many uploads that avoided.",
+    target: "[data-tour='reuse-cards']",
+  },
+  {
+    title: "Day-1 readiness",
+    body: "Shows what a framework you haven't even subscribed to yet would already look like, using only evidence already on file — the preview badge marks frameworks you're not subscribed to.",
+    target: "[data-tour='readiness']",
+  },
+] as const;
 
 export function OverviewPage() {
-  const reuse = useApi(() => getReuseStats(), []);
-  const readiness = useApi(() => getReadinessAll(), []);
-  const evidence = useApi(() => listEvidence({ lifecycle_status: "CURRENT" }), []);
-  const gaps = useApi(() => listGaps("OPEN"), []);
-  const tasks = useApi(() => listTasks({ status: "OPEN" }), []);
-  const controls = useApi(async () => {
-    const summaries = await listControls();
-    return Promise.all(summaries.map((c) => getControl(c.id)));
-  }, []);
+  const { identity } = useSession();
+  const [exportError, setExportError] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
 
-  const distribution = useMemo(() => {
-    if (!controls.data) return null;
-    const counts: Record<string, number> = { PASS: 0, PARTIAL: 0, FAIL: 0, NO_EVIDENCE: 0 };
-    for (const c of controls.data) counts[bestVerdict(c)] = (counts[bestVerdict(c)] ?? 0) + 1;
-    const lockedCount = controls.data.filter((c) => c.locked).length;
-    return { counts, total: controls.data.length, lockedCount };
-  }, [controls.data]);
+  const exportReport = async () => {
+    setExporting(true);
+    setExportError(null);
+    try {
+      await downloadComplianceExport();
+    } catch (err) {
+      setExportError(err instanceof ApiError ? String(err.detail) : (err as Error).message);
+    } finally {
+      setExporting(false);
+    }
+  };
 
-  const readyEvidence = evidence.data?.filter((row) => row.status === "READY").length;
-  const needsAttention = distribution
-    ? distribution.counts.PARTIAL + distribution.counts.FAIL + distribution.counts.NO_EVIDENCE
+  // Everything below used to be 7 separate calls plus one GET /controls/{id}
+  // per control (client-side fan-out) — now one round trip. See
+  // app/routers/analytics.py::dashboard.
+  const dashboard = useApi(() => getDashboard(), []);
+  const data = dashboard.data;
+  const needsAttention = data
+    ? data.controls.by_verdict.PARTIAL + data.controls.by_verdict.FAIL + data.controls.by_verdict.NO_EVIDENCE
     : null;
 
   return (
@@ -54,29 +57,57 @@ export function OverviewPage() {
           <h2>Workspace overview</h2>
           <p>Start with what needs attention, then drill into the exact evidence, gap, or control.</p>
         </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className="btn" disabled={exporting} onClick={exportReport}>
+            {exporting ? "Preparing…" : "Download compliance report (CSV)"}
+          </button>
+          <PageTour id="overview" steps={TOUR_STEPS} />
+        </div>
       </div>
 
-      <div className="card-grid">
+      {exportError && <div className="alert alert-error">{exportError}</div>}
+      {dashboard.error && <div className="alert alert-error">{dashboard.error}</div>}
+
+      {data && data.attention.total > 0 && (
+        <Link to="/evidence" className="alert alert-error" style={{ display: "block", marginBottom: 20 }}>
+          <strong>Needs attention:</strong>{" "}
+          {[
+            data.attention.expired.length > 0 && `${data.attention.expired.length} expired`,
+            data.attention.expiring_soon.length > 0 &&
+              `${data.attention.expiring_soon.length} expiring within ${data.attention.horizon_days} days`,
+            data.attention.failed.length > 0 && `${data.attention.failed.length} failed to process`,
+            data.attention.stuck.length > 0 && `${data.attention.stuck.length} stuck mid-upload`,
+          ].filter(Boolean).join(" · ")}
+          {" — see Evidence"}
+        </Link>
+      )}
+
+      <div className="card-grid" data-tour="stat-cards">
         <Link to="/controls" className="card stat-card action-card">
           <div className="stat-label">Controls tracked</div>
-          <div className="stat-value">{distribution?.total ?? "—"}</div>
-          <div className="stat-sub">{distribution?.lockedCount ?? 0} locked by an auditor</div>
+          <div className="stat-value">{data?.controls.total ?? "—"}</div>
+          <div className="stat-sub">{data?.controls.locked ?? 0} locked by an auditor</div>
         </Link>
         <Link to="/gaps" className="card stat-card action-card">
           <div className="stat-label">Open gaps</div>
-          <div className="stat-value">{gaps.data?.length ?? "—"}</div>
+          <div className="stat-value">{data?.gaps_open ?? "—"}</div>
           <div className="stat-sub">Specific evidence shortfalls to resolve</div>
         </Link>
         <Link to="/tasks" className="card stat-card action-card">
           <div className="stat-label">Open remediation tasks</div>
-          <div className="stat-value">{tasks.data?.length ?? "—"}</div>
+          <div className="stat-value">{data?.tasks_open ?? "—"}</div>
           <div className="stat-sub">One task is created for each active gap</div>
         </Link>
         <Link to="/evidence" className="card stat-card action-card">
           <div className="stat-label">Evidence ready</div>
-          <div className="stat-value">{readyEvidence ?? "—"}</div>
-          <div className="stat-sub">of {evidence.data?.length ?? "—"} current artefacts analysed</div>
+          <div className="stat-value">{data?.evidence.ready ?? "—"}</div>
+          <div className="stat-sub">of {data?.evidence.total ?? "—"} current artefacts analysed</div>
         </Link>
+        <div className="card stat-card">
+          <div className="stat-label">{identity?.kind === "auditor" ? "Open requests you've sent" : "Requests from your auditor"}</div>
+          <div className="stat-value">{data?.requests_open ?? "—"}</div>
+          <div className="stat-sub">Evidence and unlock requests awaiting a response — see each control's Discussion</div>
+        </div>
       </div>
 
       <div className="section-title">Priority work</div>
@@ -97,22 +128,22 @@ export function OverviewPage() {
       </div>
 
       <div className="section-title">Evidence intelligence</div>
-      <div className="card-grid">
+      <div className="card-grid" data-tour="reuse-cards">
         <div className="card stat-card">
           <div className="stat-label">Evidence reuse rate</div>
-          <div className="stat-value">{reuse.data ? `${Math.round(reuse.data.reuse_rate * 100)}%` : "—"}</div>
+          <div className="stat-value">{data ? `${Math.round(data.reuse.reuse_rate * 100)}%` : "—"}</div>
           <div className="stat-sub">
-            {reuse.data ? `${reuse.data.avoided_uploads} uploads avoided across ${reuse.data.distinct_evidence} artefact(s)` : "loading…"}
+            {data ? `${data.reuse.avoided_uploads} uploads avoided across ${data.reuse.distinct_evidence} artefact(s)` : "loading…"}
           </div>
         </div>
         <div className="card stat-card">
           <div className="stat-label">Effort saved</div>
-          <div className="stat-value">{reuse.data ? `${reuse.data.effort_hours_saved}h` : "—"}</div>
+          <div className="stat-value">{data ? `${data.reuse.effort_hours_saved}h` : "—"}</div>
           <div className="stat-sub">at the configured hours-per-artefact rate</div>
         </div>
       </div>
 
-      {distribution && (
+      {data && (
         <>
           <div className="section-title">Controls by verdict</div>
           <div className="card">
@@ -120,7 +151,7 @@ export function OverviewPage() {
               {(["PASS", "PARTIAL", "FAIL", "NO_EVIDENCE"] as const).map((v) => (
                 <div key={v}>
                   <Badge value={v} />
-                  <div style={{ fontSize: 22, fontWeight: 700, marginTop: 6 }}>{distribution.counts[v] ?? 0}</div>
+                  <div style={{ fontSize: 22, fontWeight: 700, marginTop: 6 }}>{data.controls.by_verdict[v] ?? 0}</div>
                 </div>
               ))}
             </div>
@@ -129,9 +160,8 @@ export function OverviewPage() {
       )}
 
       <div className="section-title">Framework readiness</div>
-      {readiness.error && <div className="alert alert-error">{readiness.error}</div>}
-      <div className="card-grid">
-        {readiness.data?.map((r) => (
+      <div className="card-grid" data-tour="readiness">
+        {data?.readiness.map((r) => (
           <div key={r.framework} className="card">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
               <strong>{r.framework}</strong>

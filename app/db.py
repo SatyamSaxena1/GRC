@@ -29,6 +29,16 @@ def set_tenant(db: Session, org_id: str | None) -> None:
                    {"tenant": org_id})
 
 
+def set_firm(db: Session, audit_firm_id: str | None) -> None:
+    """The second tenancy axis. Firm-owned rows (onboarding requests, staffing,
+    and a firm's view of its engagements) are scoped by audit_firm_id, not by
+    org_id, so RLS needs its own GUC for them — see the firm policies in
+    alembic/versions/*_firm_onboarding.py. A no-op on SQLite, as with set_tenant."""
+    if audit_firm_id and db.bind is not None and db.bind.dialect.name == "postgresql":
+        db.execute(text("SELECT set_config('app.firm_id', :firm, true)"),
+                   {"firm": audit_firm_id})
+
+
 def get_session():
     with Session(engine) as session:
         yield session

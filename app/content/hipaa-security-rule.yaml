@@ -1,0 +1,118 @@
+framework:
+  code: HIPAA
+  version: "45-CFR-164"
+
+# HIPAA Security Rule, 45 CFR Part 164 Subpart C (public law). Section
+# references are the regulation's own citations; most technical safeguards
+# here are "addressable" rather than a stated numeric threshold, so any
+# number below is our own reasonable baseline, flagged where it applies.
+requirements:
+  - clause: "164.308(a)(4)"
+    title: Information access management
+    text: >
+      Access to systems and information containing electronic protected health
+      information (ePHI) is authorized through a documented, approved policy.
+    evidence_requirements:
+      - artefact_type: POLICY
+        required_attributes: [approval_date, approver_role, effective_date, systems_covered]
+        evidence_validity:
+          expiry_attribute: next_review_date
+          issued_attribute: approval_date
+          max_age_days: 365
+          required: false
+    mappings:
+      - uco: UCO-IAM-001
+        coverage: FULL
+        confidence: 1.0
+        source: EXPERT
+        delta_conditions: []
+      - uco: UCO-IAM-002
+        coverage: SUPPORTING
+        confidence: 0.9
+        source: EXPERT
+        delta_conditions: []
+
+  - clause: "164.312(d)"
+    title: Person or entity authentication
+    text: >
+      Users are authenticated before being granted access to systems containing ePHI,
+      using credentials that meet a minimum strength standard.
+    evidence_requirements:
+      - artefact_type: POLICY
+        required_attributes: [password_min_length]
+    mappings:
+      # HIPAA does not itself state a minimum length; 8 is our own baseline.
+      - uco: UCO-IAM-011
+        coverage: FULL
+        confidence: 0.7
+        source: EXPERT
+        delta_conditions:
+          - attribute: password_min_length
+            operator: ">="
+            value: 8
+
+  - clause: "164.308(a)(4)(ii)(C)"
+    title: Access establishment and modification is reviewed
+    text: >
+      Workforce access to ePHI is reviewed on a recurring basis and modified or
+      revoked when no longer needed.
+    evidence_requirements:
+      - artefact_type: POLICY
+        required_attributes: [access_review_frequency_days]
+      # The org's own stated cadence is the yardstick — see
+      # docs/adr/013-organization-defined-commitments.md.
+      - artefact_type: REVIEW_RECORD
+        required_attributes: [last_access_review_date]
+        evidence_validity:
+          issued_attribute: last_access_review_date
+          org_defined_max_age_attribute: access_review_frequency_days
+          required: true
+    mappings:
+      # Addressable, no fixed cadence stated; the org's own policy sets it.
+      - uco: UCO-IAM-020
+        coverage: FULL
+        confidence: 0.8
+        source: EXPERT
+        delta_conditions: []
+
+  - clause: "164.312(a)(2)(iv)"
+    title: Encryption and decryption of ePHI
+    text: >
+      ePHI is encrypted at rest and in transit, as an addressable implementation
+      specification for access control and transmission security.
+    evidence_requirements:
+      - artefact_type: POLICY
+        required_attributes: [encryption_at_rest, encryption_in_transit]
+    mappings:
+      - uco: UCO-DATA-001
+        coverage: FULL
+        confidence: 1.0
+        source: EXPERT
+        delta_conditions:
+          - attribute: encryption_at_rest
+            operator: "=="
+            value: true
+          - attribute: encryption_in_transit
+            operator: "=="
+            value: true
+
+  - clause: "164.312(b)"
+    title: Audit controls
+    text: >
+      Hardware, software and procedural mechanisms record and examine activity in
+      systems that contain or use ePHI.
+    evidence_requirements:
+      - artefact_type: POLICY
+        required_attributes: [log_retention_days]
+    mappings:
+      # No specific retention period is stated for activity logs themselves
+      # (distinct from the 6-year documentation-retention rule in 164.316);
+      # 180 days is our own baseline.
+      - uco: UCO-LOG-001
+        coverage: FULL
+        confidence: 0.7
+        source: EXPERT
+        delta_conditions:
+          - attribute: log_retention_days
+            operator: ">="
+            value: 180

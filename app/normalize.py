@@ -33,6 +33,14 @@ _DATE_FORMATS = (
     "%d/%m/%Y", "%m/%d/%Y", "%d-%m-%Y", "%Y/%m/%d", "%d.%m.%Y",
 )
 
+# Checkbox/tick glyphs a real form-style report embeds right next to a value
+# ("Compliance Status: ☒ Pass") — genuine, correctly-decoded Unicode, not
+# an encoding bug (see the real Aurionpro ASV executive-summary report this
+# was found against). They carry no information the word itself doesn't
+# already state, but break an exact BOOL_WORDS match — stripped before lookup.
+_MARKER_CHARS = "☐☑☒✓✔✗✘●•"
+_MARKER_TABLE = {ord(c): None for c in _MARKER_CHARS}
+
 
 def text(value: Any) -> Any:
     """Lowercase/strip strings, recursively for sequences. Other types untouched."""
@@ -44,11 +52,16 @@ def text(value: Any) -> Any:
 
 
 def to_bool(value: Any) -> Any:
-    """'Pass' -> True. Returns the input unchanged when it is not a boolean word."""
+    """'Pass' -> True, 'Pass ☒' -> True. Returns the input unchanged when it is
+    not a boolean word."""
     if isinstance(value, bool):
         return value
     if isinstance(value, str):
-        return BOOL_WORDS.get(value.strip().lower(), value)
+        cleaned = value.strip().lower()
+        if cleaned in BOOL_WORDS:
+            return BOOL_WORDS[cleaned]
+        stripped = cleaned.translate(_MARKER_TABLE).strip()
+        return BOOL_WORDS.get(stripped, value)
     return value
 
 

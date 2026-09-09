@@ -1,0 +1,4951 @@
+{
+ "_comment": "GENERATED — do not hand-edit. Rebuild with `python -m scripts.import_ai_glossary <Glossary.csv>`. Hand-written entries belong in glossary.yaml, which wins on any name collision.",
+ "_source": "Compiled in 'The Language of Trustworthy AI: An In-Depth Glossary of Terms', NIST AI Resource Center (https://airc.nist.gov/glossary/). Definitions are quoted from the publication named in each entry's `source`, not authored by NIST.",
+ "terms": [
+  {
+   "term": "accountability",
+   "definition": "1) relates to an allocated responsibility. The responsibility can be based on regulation or agreement or through assignment as part of delegation; 2) For systems, a property that ensures that actions of an entity can be traced uniquely to the entity; 3) In a governance context, the obligation of an individual or organization to account for its activities, for completion of a deliverable or task, accept the responsibility for those activities, deliverables or tasks, and to disclose the results in a transparent manner.",
+   "source": "ISO/IEC TS 5723:2022(en)",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "accuracy",
+   "definition": "Closeness of computations or estimates to the exact or true values that the statistics were intended to measure.",
+   "source": "OECD",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "active learning",
+   "definition": "A proposed method for modifying machine learning algorithms by allowing them to specify test regions to improve their accuracy. At any point, the algorithm can choose a new point x, observe the output and incorporate the new (x, y) pair into its training base. It has been applied to neural networks, prediction functions, and clustering functions.",
+   "source": "Raynor",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "active learning agent",
+   "definition": "[a machine learning algorithm that can] decide what actions to take [with regards to its training data, in contrast to a passive learning agent, which is limited to a fixed policy].",
+   "source": "Russell and Norvig",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "activity",
+   "definition": "Work that an organization performs using business processes; can be singular or compound.",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "adaptive dynamic programming",
+   "definition": "An adaptive dynamic programming (or ADP) agent takes advantage of the constraints among the utilities of states by learning the transition model that connects them and solving the corresponding Markov decision process using dynamic programming.",
+   "source": "Russell and Norvig",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "adaptive learning",
+   "definition": "Updating predictive models online during their operation to react to concept drifts",
+   "source": "Gama, Joao",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "adversarial example",
+   "definition": "Machine learning input sample formed by applying a small but intentionally worst-case perturbation ... to a clean example, such that the perturbed input causes a learned model to output an incorrect answer.",
+   "source": "NISTIR 8269 Draft",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "adverse action notice",
+   "definition": "A notification of i) a refusal to grant credit in substantially the amount or on substantially the terms requested in an application unless the creditor makes a counteroffer (to grant credit in a different amount or on other terms) and the applicant uses or expressly accepts the credit offered; ii) A termination of an account or an unfavorable change in the terms of an account that does not affect all or substantially all of a class of the creditor's accounts or iii) A refusal to increase the amount of credit available to an applicant who has made an application for an increase.",
+   "source": "ECOA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "adverse impact ratio",
+   "definition": "privileged and unprivileged groups receiving different outcomes irrespective of the decision maker’s intent and irrespective of the decision-making procedure. Quantified as the ratio: disparate impact ratio = 𝑃( 𝑦̂ (𝑋) = fav ∣∣ 𝑍 = unpr )/𝑃( 𝑦̂ (𝑋) = fav ∣∣ 𝑍 = priv ) where 𝑃(𝑦̂ (𝑋) = fav) is the favorable label, (𝑍 = priv) is the privileged group, and (𝑍 = unpr) is the unprivileged group.",
+   "source": "Varshney, Kush",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "agile",
+   "definition": "a development approach that delivers software in increments by following the principles of the Manifesto for Agile Software Development.",
+   "source": "Gartner",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "AI principles",
+   "definition": "[An overarching concept, value, belief, or norm that guides AI development, testing, and deployment across the AI lifecycle. The OECD] identifies five complementary values-based principles for the responsible stewardship of trustworthy AI and calls on AI actors to promote and implement them: inclusive growth, sustainable development and well-being; human-centred values and fairness; transparency and explainability; robustness, security and safety; and accountability.",
+   "source": "OECD CAI recommendation",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "algorithm",
+   "definition": "A set of computational rules to be followed to solve a mathematical problem. More recently, the term has been adopted to refer to a process to be followed, often by a computer.",
+   "source": "Comptroller Office",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "algorithmic aversion",
+   "definition": "biased assessment of an algorithm which manifests in negative behaviours and attitudes towards the algorithm compared to a human agent.",
+   "source": "Ekaterina et al 2020",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "alignment",
+   "definition": "ensur[ing] that powerful AI is properly aligned with human values. ... The challenge of alignment has two parts. The first part is technical and focuses on how to formally encode values or principles in artificial agents so that they reliably do what they ought to do. ... The second part of the value alignment question is normative. It asks what values or principles, if any, we ought to encode in artificial agents.",
+   "source": "Gabriel 2020",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "amplification",
+   "definition": "[an act of amplifying, which is] to make larger or greater (as in amount, importance, or intensity).",
+   "source": "Merriam-Webster amplify",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "analytics",
+   "definition": "Analytics is the application of scientific & mathematical methods to the study & analysis of problems involving complex systems. There are three distinct types of analytics:* Descriptive Analytics gives insight into past events, using historical data. * Predictive Analytics provides insight on what will happen in the future.* Prescriptive Analytics helps with decision making by providing actionable advice.",
+   "source": "informs analytics 2022",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "annotation",
+   "definition": "Further documentation accompanying a requirement.",
+   "source": "IEEE Soft Vocab",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "anomaly",
+   "definition": "Anything observed in the documentation or operation of a system that deviates from expectations based on previously verified system, software, or hardware products or reference documents.",
+   "source": "IEEE Soft Vocab",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "anonymization",
+   "definition": "The process in which individually identifiable data is altered in such a way that it no longer can be related back to a given individual. Among many techniques, there are three primary ways that data is anonymized. Suppression is the most basic version of anonymization and it simply removes some identifying values from data to reduce its identifiability. Generalization takes specific identifying values and makes them broader, such as changing a specific age (18) to an age range (18-24). Noise addition takes identifying values from a given data set and switches them with identifying values from another individual in that data set. Note that all of these processes will not guarantee that data is no longer identifiable and have to be performed in such a way that does not harm the usability of the data.",
+   "source": "IAPP Privacy Glossary",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "anthropomorphism",
+   "definition": "the attribution of distinctively human-like feelings, mental states, and behavioral characteristics to inanimate objects, animals, and in general to natural phenomena and supernatural entities",
+   "source": "Anthropomorphism in AI 2020",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "application",
+   "definition": "A software program hosted by an information system.",
+   "source": "SP800-37",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "application programming interface",
+   "definition": "a software contract between the application and client, expressed as a collection of methods or functions. . . it defines the available functions you can execute; . . . the intermediary interface between the client and the application.",
+   "source": "Hands-On Smart Contract Dev",
+   "source_url": "",
+   "aliases": [
+    "API"
+   ],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "artificial intelligence (AI) system",
+   "definition": "an engineered or machine-based system that can, for a given set of objectives, generate outputs such as predictions, recommendations, or decisions influencing real or virtual environments. AI systems are designed to operate with varying levels of autonomy",
+   "source": "NIST AI RMF (Adapted from: OECD Recommendationon AI:2019; ISO/IEC 22989:2022).",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "artificial intelligence learning",
+   "definition": "The ingestion of a corpus, application of semantic mapping, and relevant ontology of structured and/or unstructured data that yields inference and correlation leading to the creation of useful conclusive or predictive capabilities in a given knowledge domain. Strong AI learning also includes the capability of creating unique hypotheses, attributing data relevance, processing data relationships, and updating its own lines of inquiry to further the usefulness of its purpose.",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "artificial narrow intelligence",
+   "definition": "[an AI system that] is designed to accomplish a specific problem-solving or reasoning task.",
+   "source": "OECD Artificial Intelligence in Society",
+   "source_url": "",
+   "aliases": [
+    "ANI"
+   ],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "artificial neural networks",
+   "definition": "A computing system, made up of a number of simple, highly interconnected processing elements, which processes information by its dynamic state response to external inputs.",
+   "source": "Reznik, Leon",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "assessment",
+   "definition": "Action of applying specific documented criteria to a specific software module, package or product for the purpose of determining acceptance or release of the software module, package or product.",
+   "source": "IEEE Soft Vocab",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "attack",
+   "definition": "Action targeting a learning system to cause malfunction.",
+   "source": "NISTIR 8269 Draft",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "attribute",
+   "definition": "Property associated with a a set of real or abstract things that is some characteristic of interest.",
+   "source": "IEEE Soft Vocab",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "audit",
+   "definition": "Systematic, independent, documented process for obtaining records, statements of fact, or other relevant information and assessing them objectively, to determine the extent to which specified requirements are fulfilled.",
+   "source": "IEEE Soft Vocab",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "audit log",
+   "definition": "A chronological record of system activities, including records of system accesses and operations performed in a given period.",
+   "source": "SP800-37",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "authenticity",
+   "definition": "property that an entity is what it claims to be",
+   "source": "ISO/IEC TS 5723:2022(en)",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "automation",
+   "definition": "Independent machine-managed choreography of the operation of one or more digital systems.",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "automation bias",
+   "definition": "over-relying on the outputs of AI systems",
+   "source": "David Leslie Morgan Briggs",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "autonomic",
+   "definition": "A monitor-analyze-plan-execute (MAPE) computer system capable of sensing environments, interpreting policy, accessing knowledge (data --- information --- knowledge), making decisions, and initiating dynamically assembled routines of choreographed activity to both complete a process and update the set of environmental variables that enables the autonomic system to self-manage its own operation and the processes it oversees. An autonomic system is identified by eight characteristics:a) Knows the resources to which it has access, what its capabilities and limitations are, and how and why it is connected to other systems.b) Is able to configure and reconfigure itself depending on the changing computing environment.c) Is able to optimize its performance to ensure the most efficient computing process.d) Is able to work around encountered problems either by repairing itself or routing functions away fromthe trouble.e) Is able to detect, identify, and protect itself against various types of attacks to maintain overall systemsecurity and integrity.f) Is able to adapt to its environment as it changes by interacting with neighboring systems and establishing communication protocols.g) Relies on open standards and requires access to proprietary environments to achieve full performance.h) Is able to anticipate the demand on its resources transparently to users.",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "autonomous vehicle",
+   "definition": "[an] automobile, bus, tractor, combine, boat, forklift, etc. . . . capable of sensing its environment and moving safely with little or no human input.",
+   "source": "Introduction to Information Systems",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "autonomy",
+   "definition": "A system’s level of independence from human involvement and ability to operate without human intervention. [Different AI systems have different levels of autonomy.]An autonomous system has a set of learning, adaptive and analytical capabilities to respond to situations that were not pre-programmed or anticipated (i.e., decision-based responses) prior to system deployment. Autonomous or semi-autonomous AI systems can be characterised as \"human-in-the-loop\", \"human-on-the-loop\", or \"human-out-of-the loop\" systems depending on their level of meaningful involvement of human beings.",
+   "source": "TTC6 Taxonomy Terminology",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "availability",
+   "definition": "Ensuring timely and reliable access to and use of information.",
+   "source": "SP800-37",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "back-testing",
+   "definition": "A form of outcomes analysis that involves the comparison of actual outcomes with modeled forecasts during a development sample time period (in-sample back-testing) and during a sample period not used in model development (out-of-time back-testing), and at an observation frequency that matches the forecast horizon or performance window of the model.",
+   "source": "Comptroller Office",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "batched automation",
+   "definition": "Process automation execution of intentionally segregated work processes that are able to be processed irrespective of their contextual placement within a service.",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "benchmark",
+   "definition": "Standard against which results can be measured or assessed; Procedure, problem, or test that can be used to compare systems or components to each other or to a standard.",
+   "source": "IEEE Soft Vocab",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "bias",
+   "definition": "A systematic error. In the context of fairness, we are concerned with unwanted bias that places privileged groups at systematic advantage and unprivileged groups at systematic disadvantage.",
+   "source": "AI Fairness 360",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "bias mitigation algorithm",
+   "definition": "A procedure for reducing unwanted bias in training data or models.",
+   "source": "AI Fairness 360",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "bias testing",
+   "definition": "As it relates to disparate impact, courts and regulators have utilized or considered as acceptable various statistical tests to evaluate evidence of disparate impact. Traditional methods of statistical bias testing look at differences in predictions across protected classes, such as race or sex. In particular, courts have looked to statistical significance testing to assess whether the challenged practice likely caused the disparity and was not the result of chance or a nondiscriminatory factor.",
+   "source": "SP1270",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "big data",
+   "definition": "consists of extensive datasets primarily in the characteristics of volume, variety, velocity, and/or variabilitythat require a scalable architecture for efficient storage, manipulation, and analysis",
+   "source": "NIST 1500",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "binning",
+   "definition": "a technique of lumping small ranges of values together into categories, or \"bins,\" for the purpose of reducing the variability (removing some of the fine structure) in a data set.",
+   "source": "Pyle, Dorian Data Preparation as a Process",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "biometric data",
+   "definition": "personal data resulting from specific technical processing relating to the physical, physiological or behavioural characteristics of a natural person, which allow or confirm the unique identification of that natural person, such as facial images or dactyloscopic data;",
+   "source": "GDPR",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "boosting",
+   "definition": "A machine learning technique that iteratively combines a set of simple and not very accurate classifiers (referred to as \"weak\" classifiers) into a classifier with high accuracy (a \"strong\" classifier) by upweighting the examples that the model is currently misclassifying",
+   "source": "aime measurement 2022, citing Machine Learning Glossary by Google",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "breach",
+   "definition": "The loss of control, compromise, unauthorized disclosure, unauthorized acquisition, or any similar occurrence where: a person other than an authorized user accesses or potentially accesses personally identifiable information; or an authorized user accesses personally identifiable information for another than authorized purpose.",
+   "source": "CSRC",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "broad artificial intelligence (broad AI)",
+   "definition": "Complex, computational, cognitive automation system capable of providing descriptive, predictive, prescriptive, and limited deductive analytics with relevance and accuracy exceeding human expertise in a broad, logically related set of knowledge domains.",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "bug-bounty",
+   "definition": "Reward given to independent security researchers, penetrations testers, and white hat hackers for discovering exploitable software vulnerabilities and sharing this knowledge with the operator of a particular bug-bounty program (BBP).",
+   "source": "Kuehn, Andreas",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "built-in test",
+   "definition": "Equipment or software embedded in the operational components or systems, as opposed to external support units, which perform a test or sequence of tests to verify mechanical or electrical continuity of hardware, or the proper automatic sequencing, data processing, and readout of hardware or software systems.",
+   "source": "SP1011",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "business process",
+   "definition": "A defined set of business activities that represent the steps or tasks required to achieve a business objective, including the flow and use of information, participants, and human or digital resources.",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "business process management",
+   "definition": "Discipline involving any combination of modeling, automation, execution, control, measurement and optimization of business activity flows, in support of enterprise goals, spanning systems, employees, customers, and partners within and beyond the enterprise boundaries.",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "business rule",
+   "definition": "Definition, constraint, dependency, or decision criteria that determine the method of execution of a task or tasks, or influences the order of execution of a task or tasks. Business rules assert control, or influence the behavior, of a business process within computing systems.",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "calibration",
+   "definition": "A comparison between a device under test and an established standard, such as UTC(NIST). When the calibration is finished, it should be possible to state the estimated time offset and/or frequency offset of the device under test with respect to the standard, as well as the measurement uncertainty.",
+   "source": "CSRC",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "capability",
+   "definition": "measure of capacity and the ability of an entity, person or organization to achieve its objectives",
+   "source": "ISO/IEC TS 5723:2022(en)",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "case",
+   "definition": "Single entry, single exit multiple way branch that defines a control expression, specifies the processing to be performed for each value of the control expression, and returns control in all instances to the statement immediately following the overall construct.",
+   "source": "IEEE Soft Vocab",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "chatbot",
+   "definition": "Conversational agent that dialogues with its user (for example: empathic robots available to patients, or automated conversation services in customer relations).",
+   "source": "COE AI Glossary",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "choreography",
+   "definition": "An ordered sequence of system-to-system message exchanges between two or more participants. In choreography, there is no central controller, responsible entity, or observer of the process.",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "classification",
+   "definition": "When the output is one of a finite set of values (such as sunny, cloudy or rainy), the learning problem is called classification, and is called Boolean or binary classification if there are only two values.",
+   "source": "AIMA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "classifier",
+   "definition": "A model that predicts categorical labels from features.",
+   "source": "AI Fairness 360",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "clustering",
+   "definition": "Detecting potentially useful clusters of input examples.",
+   "source": "AIMA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "cognitive automation",
+   "definition": "The identification, assessment, and application of available machine learning algorithms for the purpose of leveraging domain knowledge and reasoning to further automate the machine learning already present in a manner that may be thought of as cognitive. With cognitive automation, the system performs corrective actions driven by knowledge of the underlying analytics tool itself, iterates its own automation approaches and algorithms for more expansive or more thorough analysis, and is thereby able to fulfill its purpose. The automation of the cognitive process refines itself and dynamically generates novel hypotheses that it can likewise assess against its existing corpus and other information resources.",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "cognitive computing",
+   "definition": "Complex computational systems designed to— Sense (perceive the world and collect data);— Comprehend (analyze and understand the information collected);- Act (make informed decisions and provide guidance based on this analysis in an independent way);and— Adapt (adapt capabilities based on experience) in ways comparable to the human brain.",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "column",
+   "definition": "In the context of relational databases, a column is a set of data values, all of a single type, in a table.",
+   "source": "techopedia column 2022",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "computer vision",
+   "definition": "The digital process of perceiving and learning visual tasks in order to interpret and understand the world through cameras and sensors.",
+   "source": "NSCAI",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "concept drift",
+   "definition": "Use of a system outside the planned domain of application, and a common cause of performance gaps between laboratory settings and the real world.",
+   "source": "SP1270",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "confidentiality",
+   "definition": "Data confidentiality is a property of data, usually resulting from legislative measures, which prevents it from unauthorized disclosure.",
+   "source": "OECD",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "confusion matrix",
+   "definition": "A matrix showing the predicted and actual classifications. A confusion matrix is of size LxL, where L is the number of different label values",
+   "source": "Kohavi, Ron",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "consent",
+   "definition": "‘Consent’ of the data subject means any freely given, specific, informed and unambiguous indication of the data subject's wishes by which he or she, by a statement or by a clear affirmative action, signifies agreement to the processing of personal data relating to him or her.",
+   "source": "GDPR",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "constituent system",
+   "definition": "independent system that forms part of a system of systems (SoS) (note: Constituent systems can be part of one or more SoS. Each constituent system is a useful system by itself, having its own development, management, utilization, goals, and resources, but interacts within the SoS to provide the unique capability of the SoS).",
+   "source": "ISO/IEC TS 5723:2022(en)",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "constraint",
+   "definition": "Specification of what may be contained in a data or metadata set in terms of the content or, for data only, in terms of the set of key combinations to which specific attributes (defined by the data structure) may be attached.",
+   "source": "OECD",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "construct validity",
+   "definition": "the degree to which the application of constructs to phenomena is warranted with respect to the research goals and questions.",
+   "source": "Wieringa, Roel J.",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "content validity",
+   "definition": "Refers to the extent to which a measure thoroughly and appropriately assesses the skills or characteristics it is intended to measure.",
+   "source": "fink survey 2010",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "context",
+   "definition": "The context is the circumstances, purpose, and perspective under which an object is defined or used.",
+   "source": "OECD",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "context-of-use",
+   "definition": "The Context of Use is the actual conditions under which a given artifact/software product is used, or will be used in a normal day to day working situation.",
+   "source": "interaction context 2023",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "contextual learning",
+   "definition": "A computing system with sufficient knowledge regarding its purpose that it understands the source, relevance, and utility of data and inputs.",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "control class",
+   "definition": "(control group) the set of observations in an experiment or prospective study that do not receive the experimental treatment(s). These observations serve (a) as a comparison point to evaluate the magnitude and significance of each experimental treatment, (b) as a reality check to compare the current observations with previous observation history, and (c) as a source of data for establishing the natural experimental error.",
+   "source": "nist statistics 2012",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "controllability",
+   "definition": "property of a system that allows a human or another external agent to intervene in the system’s functioning; such a system is heteronomous.",
+   "source": "ISO/IEC TS 5723:2022(en)",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "controller",
+   "definition": "‘Controller’ means the natural or legal person, public authority, agency or other body which, alone or jointly with others, determines the purposes and means of the processing of personal data; where the purposes and means of such processing are determined by Union or Member State law, the controller or the specific criteria for its nomination may be provided for by Union or Member State law;",
+   "source": "GDPR",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "copilot",
+   "definition": "An artificial intelligence powered software program designed to assist users with various tasks and automate features within compatible applications using advanced language models, machine-learning algorithms, and conversational interfaces to understand user requests and provide suggestions, summaries, and content generation in response.",
+   "source": "NIST Trustworthy AI glossary",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "corpus (corpora)",
+   "definition": "A deliberately assembled collection of knowledge and data (structured and/or unstructured) believed to contain relevant information on a topic or topics to be used by software systems for which useful analysis, prediction, or outcome is being sought.",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "correlation",
+   "definition": "In its most general sense correlation denoted the interdependence between quantitative or qualitative data. In this sense it would include the association of dichotomised attributes and the contingency of multiply-classified attributes.",
+   "source": "OECD",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "counterfactual explanation",
+   "definition": "Statements taking the form: Score p was returned because variables V had values (v1, v2,...) associated with them. If V instead had values (v1', v2',...) score p' would have been returned.",
+   "source": "wachter counterfactual 2018",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "counterfactual fairness",
+   "definition": "A fairnessmetric that checks whether a classifier produces the same result for one individualas it does for another individual who is identical to the first, except withrespect to one or more sensitive attributes. Evaluating a classifier for counterfactualfairness is one method for surfacing potential sources of bias in amodel",
+   "source": "aime measurement 2022, citing Machine Learning Glossary by Google",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "countermeasure",
+   "definition": "Actions, devices, procedures, techniques, or other measures that reduce the vulnerability of a system. Synonymous with security controls and safeguards.",
+   "source": "SP800-37",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "criterion validity",
+   "definition": "compares responses to future performance or to those obtained from other, more well-established surveys. Criterion validity is made up two subcategories: predictive and concurrent. Predictive validity refers to the extent to which a survey measure forecasts future performance. A graduate school entry examination that predicts who will do well in graduate school has predictive validity. Concurrent validity is demonstrated when two assessments agree or a new measure is compared favorably with one that is already considered valid.",
+   "source": "fink survey 2010",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "crowdsource",
+   "definition": "a type of participative online activity in which an individual, an institution, a non-profit organization, or company proposes to a group of individuals of varying knowledge, heterogeneity, and number, via a flexible open call, the voluntary undertaking of a task.",
+   "source": "Enrique",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "customer",
+   "definition": "The beneficiary of the execution of an automated task, process, or service.",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "cybersecurity",
+   "definition": "Prevention of damage to, protection of, and restoration of computers, electronic communications systems, electronic communications services, wire communication, and electronic communication, including information contained therein, to ensure its availability, integrity, authentication, confidentiality, and nonrepudiation.",
+   "source": "SP800-37",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "dark pattern",
+   "definition": "“Dark pattern” means a user interface designed or manipulated with the substantial effect of subverting or impairing user autonomy, decisionmaking, or choice, as further defined by regulation.",
+   "source": "CCPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "data",
+   "definition": "Characteristics or information, usually numerical, that are collected through observation.",
+   "source": "OECD",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "data analytics",
+   "definition": "the process of applying graphical, statistical, or quantitative techniques to a set of observations or measurements in order to summarize it or to find general patterns.",
+   "source": "APA data analysis",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "data cleaning",
+   "definition": "Data Cleaning is the process of identifying, correcting, or removing inaccurate or corrupt data records",
+   "source": "Ranschaert, Erik",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "data control",
+   "definition": "management oversight of information policies for an organization’s information; observing and reporting on how processes are working and managing issues.",
+   "source": "Egnyte",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "data dredging",
+   "definition": "A statistical bias in which testing huge numbers of hypotheses of a dataset may appear to yield statistical significance even when the results are statistically nonsignificant.",
+   "source": "SP1270",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "data drift",
+   "definition": "The change in model input data that leads to model performance degradation.",
+   "source": "Microsoft Azure documentation",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "data fabric",
+   "definition": "A data corpus, after the application of semantic mapping, relevant ontologies, and data seeding sufficient for artificial intelligence (AI) or machine learning algorithms to provide meaningful insight, prediction, and/or prescription.",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "data fusion",
+   "definition": "A process in which data, generated by multiple sensory sources, is integrated and/or correlated to create information, knowledge, and/or intelligence that may be displayed for user or be actionable to accomplish the tasks.",
+   "source": "SP1011",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "data governance",
+   "definition": "A set of processes that ensures that data assets are formally managed throughout the enterprise. A data governance model establishes authority and management and decision making parameters related to the data produced or managed by the enterprise.",
+   "source": "CSRC",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "data mining",
+   "definition": "computational process that extracts patternsby analysing quantitative data from different perspectives and dimensions, categorizingthem, and summarizing potential relationships and impacts",
+   "source": "aime measurement 2022 citinig ISO/IEC 22989",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "data point",
+   "definition": "a discrete unit of information.",
+   "source": "TechTarget data point",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "data preparation",
+   "definition": "We define data preparation as the set of preprocessing operations performed in early stages of a data processing pipeline, i.e., data transformations at the structural and syntactical levels",
+   "source": "hameed data 2020",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "data proxy",
+   "definition": "Data that are closely related to and serve in place of data that are either unobservable or immeasurable.",
+   "source": "Comptroller Office",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "data quality",
+   "definition": "degree to which the characteristics of data satisfy stated and implied needs when used under specified conditions",
+   "source": "IEEE Soft Vocab",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "data science",
+   "definition": "Methodology for the synthesis of useful knowledge directly from data through a process of discovery or of hypothesis formulation and hypothesis testing.",
+   "source": "NIST 1500",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "data scientist",
+   "definition": "A practitioner who has sufficient knowledge in the overlapping regimes of business needs, domain knowledge, analytical skills, and software and systems engineering to manage the end-to-end data processes in the analytics life cycle.",
+   "source": "NIST 1500",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "data seeding",
+   "definition": "The intentional introduction of initial state conditions, influencing factors, and outcomes (both successful and unsuccessful) in a data fabric to create sufficient machine learning analysis signals to enable encouragement/discouragement to enrich deterministic relationships between data elements in a given information domain.",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "data wrangling",
+   "definition": "process by which the data required by an application is identified, extracted, cleaned and integrated, to yield a data set that is suitable for exploration and analysis.",
+   "source": "Furche, Tim",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "data-driven",
+   "definition": "Data-driven decision making (DDD) refers to the practice of basing decisions on the analysis of data rather than purely on intuition.",
+   "source": "provost data 2013",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "decision",
+   "definition": "A conclusion reached after consideration of business rules and relevant data within a given process.",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "decision point",
+   "definition": "A point within a business process where the process flow can take one of several alternative paths, including recursive.",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "decision support system",
+   "definition": "a computer program application used to improve a company's decision-making capabilities. It analyzes large amounts of data and presents an organization with the best possible options available[; they] bring together data and knowledge from different areas and sources to provide users with information beyond the usual reports and summaries. This is intended to help people make informed decisions.",
+   "source": "TechTarget decision support system",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "decision tree",
+   "definition": "Tree‐structure resembling a flowchart, where every node represents a test to an attribute, each branch represents the possible outcomes of that test, and the leaves represent the class labels.",
+   "source": "Reznik, Leon",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "decision-making",
+   "definition": "the cognitive process resulting in the selection of a belief or a course of action among several possible alternative options. It could be either rational or irrational. The decision-making process is a reasoning process based on assumptions of values, preferences and beliefs of the decision-maker. Every decision-making process produces a final choice, which may or may not prompt action.",
+   "source": "Wikipedia Decision-making",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "decommission",
+   "definition": "the total or partial removal of existing components and their corresponding sub-components from Production and any relevant environment, minimizing risks and impacts, ensuring policy compliance, and maximizing the financial benefits (i.e., optimizing the cost reduction).",
+   "source": "IG1190M AIOps Decommission v1.0.0",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "deductive analytics",
+   "definition": "Insights, reporting, and information answering the question, \"What would likely happen IF…?” Deductive analytics evaluates causes and outcomes of possible future events.",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "deep learning",
+   "definition": "Deep learning is a broad family of techniques for machine learning in which hypotheses take the form of complex algebraic circuits with tunable connection strengths. The word “deep” refers to the fact that the circuits are typically organized into many layers, which means that computation paths from inputs to outputs have many steps. Deep learning is currently the most widely used approach for applications such as visual object recognition, machine translation, speech recognition, speech synthesis, and image synthesis; it also plays a significant role in reinforcement learning applications.",
+   "source": "Russell and Norvig",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "deepfake",
+   "definition": "AI-generated or manipulated image, audio or video content that resembles existing persons, objects, places or other entities or events andwould falsely appear to a person to be authentic or truthful.",
+   "source": "TTC6 Taxonomy Terminology",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "deletion",
+   "definition": "Of an <X>, the action of destroying an instantiated <X>.",
+   "source": "IEEE Soft Vocab",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "denial-of-service",
+   "definition": "The prevention of authorized access to resources or the delaying of time-critical operations. (Time-critical may be milliseconds or it maybe hours, depending upon the service provided).",
+   "source": "SP800-12",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "dependability",
+   "definition": "<of an item> ability to perform as and when required (note 1: includes availability, reliability, recoverability, maintainability, and maintenance support performance, and, in some cases, other characteristics such as durability, safety and security. Note 2: used as a collective term for the time-related quality characteristics of an item).",
+   "source": "ISO/IEC TS 5723:2022(en)",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "deployment",
+   "definition": "Phase of a project in which a system is put into operation and cutover issues are resolved",
+   "source": "IEEE Soft Vocab",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "descriptive analytics",
+   "definition": "Insights, reporting, and information answering the question, “Why did something happen?” Descriptive analytics determines information useful to understanding the cause(s) of an event(s).",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "deterministic",
+   "definition": "modelling [that] produces consistent outcomes for a given set of inputs, regardless of how many times the model is recalculated. The mathematical characteristics are known in this case. None of them is random, and each problem has just one set of specified values as well as one answer or solution. The unknown components in a deterministic model are external to the model. It deals with the definitive outcomes as opposed to random results and doesn’t make allowances for error.",
+   "source": "Sourabh Mehta deterministic",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "deterministic algorithm",
+   "definition": "An algorithm that, given the same inputs, always produces the same outputs.",
+   "source": "CSRC",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "developer",
+   "definition": "A general term that includes developers or manufacturers of systems, system components, or system services; systems integrators; vendors; and product resellers. Development of systems, components, or services can occur internally within organizations or through external entities.",
+   "source": "SP800-37",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "diagnostic analytics",
+   "definition": "Insights, reporting, and information answering the question, “Why did something happen?” Diagnostic analytics determines information useful to understanding the cause(s) of an event(s).",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "diagnostics",
+   "definition": "Pertaining to the detection and isolation of faults or failures",
+   "source": "IEEE Software Vocab",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "differential privacy",
+   "definition": "Differential privacy is a method for measuring how much information the output of a computation reveals about an individual. It is based on the randomised injection of \"noise\". Noise is a random alteration of data in a dataset so that values such as direct or indirect identifiers of individuals are harder to reveal. An important aspect of differential privacy is the concept of “epsilon” or ɛ, which determines the level of added noise. Epsilon is also known as the “privacy budget” or “privacy parameter”.",
+   "source": "privacy-enhancing technologies",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "differential validity",
+   "definition": "Differential validity states that the validities in two applicant populations are unequal, that is, pi != pa.",
+   "source": "hunter differential 1979",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "digital labor",
+   "definition": "Digital automation of information technology systems and/or business processes that successfully delivers work output previously performed by human labor or new work output that would typically or alternatively have been performed by human labor.",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "digital workforce",
+   "definition": "The collective suite of automation technologies delivering existing or new work output as applied in a business; the manifestation of digital labor.",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "dimension",
+   "definition": "The dimension of an object is a topological measure of the size of its covering properties. Roughly speaking, it is the number of coordinates needed to specify a point on the object.",
+   "source": "wolfram math 2022",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "dimension reduction",
+   "definition": "Dimensionality reduction is the process of taking data in a high dimensional space and mapping it into a new space whose dimensionality is much smaller",
+   "source": "Shalev-Shwartz, Shai",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "disparate impact",
+   "definition": "For Predictor Y and Sensitive Impact S. Definition 6.2 Disparate Impact (DI) =P[Yˆ = 1 | S != 1]/P[Yˆ = 1 | S = 1]",
+   "source": "friedler comparative 2019",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "disparate treatment",
+   "definition": "Intentional discrimination, including (i) decisions explicitly based on protected characteristics; and (ii) intentional discrimination via proxy variables (e.g literacy tests for voting eligibility).",
+   "source": "Lipton, Zachary",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "distributional robustness",
+   "definition": "Optimizing the predictive accuracy for a whole class of distributions instead of just a single target distribution.",
+   "source": "Meinshausen, Nicolai",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "diversity",
+   "definition": "the practice of including the many communities, identities, races, ethnicities, backgrounds, abilities, cultures, and beliefs of the American people, including underserved communities.",
+   "source": "EO DEIA 2021",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "documentation",
+   "definition": "Collection of documents on a given subject; written or pictorial information describing, defining, specifying, reporting, or certifying activities, requirements, procedures, or results.",
+   "source": "IEEE Soft Vocab",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "domain",
+   "definition": "Distinct scope, within which common characteristics are exhibited, common rules observed, and over which a distribution transparency is preserved.",
+   "source": "IEEE Soft Vocab",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "domain expertise",
+   "definition": "Domain expertise implies knowledge and understanding of the essential aspects of a specific field of inquiry.",
+   "source": "McCue Colleen",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "domain shift",
+   "definition": "Differences between the source and target domain data",
+   "source": "Stacke, Karin",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "drinking your own champagne",
+   "definition": "The practice in which tech workers use their own product consistently to see how well it works and where improvements can be made.",
+   "source": "kelley dogfooding 2022",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "dynamic process",
+   "definition": "The process in which one or more paths are defined and may be utilized based on the conditions present at the time of execution.",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "edge case",
+   "definition": "a problem or situation, especially in computer programming, that only happens at the highest or lowest end of a range of possible values or in extreme situations:",
+   "source": "cambridge dictionary 2022",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "embedding",
+   "definition": "An embedding is a representation of a topological object, manifold, graph, field, etc. in a certain space in such a way that its connectivity or algebraic properties are preserved. For example, a field embedding preserves the algebraic structure of plus and times, an embedding of a topological space preserves open sets, and a graph embedding preserves connectivity.One space X is embedded in another space Y when the properties of Y restricted to X are the same as the properties of X.",
+   "source": "wolfram math 2022",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "emulation",
+   "definition": "The use of a data processing system to imitate another data processing system, so that the imitating system accepts the same data, executes the same programs, and achieves the same results as the imitated system.",
+   "source": "IEEE Soft Vocab",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "end event",
+   "definition": "An activity, task, or output that describes or defines the conclusion of a process.",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "engineer",
+   "definition": "n. 3a: a designer or builder of engines; b: a person who is trained in or follows as a profession a branch of engineering; c: a person who carries through an enterprise by skillful or artful contrivance; 4: a person who runs or supervises an engine or an apparatus.v. 1: to lay out, construct, or manage as an engineer.",
+   "source": "Merriam-Webster engineer",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "ensemble",
+   "definition": "a machine learning paradigm where multiple models (often called “weak learners”) are trained to solve the same problem and combined to get better results. The main hypothesis is that when weak models are correctly combined we can obtain more accurate and/or robust models.",
+   "source": "Joseph Rocca Ensemble methods",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "environment",
+   "definition": "Anything affecting a subject system or affected by a subject system through interactions with it, or anything sharing an interpretation of interactions with a subject system",
+   "source": "IEEE Soft Vocab",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "equality of odds",
+   "definition": "(Equalized odds). We say that a predictor bY satisfies equalized odds with respect to protected attribute A and outcome Y, if bY and A are independent conditional on Y.",
+   "source": "hardt equality 2016",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "equality of opportunity",
+   "definition": "(Equal opportunity). We say that a binary predictor bY satisfies equal opportunity with respect to A and Y if Pr{bY = 1 | A = 0; Y = 1} = Pr{bY = 1 | A = 1; Y = 1}.",
+   "source": "hardt equality 2016",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "error",
+   "definition": "The difference between the observed value of an index and its “true” value. Errors maybe random or systematic. Random errors are generally referred to as “errors”. Systematic errors are called “biases”.",
+   "source": "OECD",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "error propagation",
+   "definition": "the way in which uncertainties in the variables affect the uncertainty in the calculated results.",
+   "source": "Dorf 2018",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "ethics",
+   "definition": "definition 1a: \"a set of moral principles : a theory or system of moral values\"; definition 1b: \"the principles of conduct governing an individual or a group\"; definition 1c: \"a consciousness of moral importance\"; definition 1d: \"a guiding philosophy\"; definition 2: \"a set of moral issues or aspects (such as rightness)\"; definition 3: \"the discipline dealing with what is good and bad and with moral duty and obligation\"",
+   "source": "Merriam-Webster ethic",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "ethics by design",
+   "definition": "An approach to technology ethics and a key component of responsible innovation that aims to integrate ethics in the design and development stage of the technology. Sometimes formulated as \"embedding values in design.\" Similar terms are \"value-sensitive design\" and \"ethically aligned design.\"",
+   "source": "AI Ethics Mark Coeckelbergh",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "evaluation",
+   "definition": "(1) systematic determination of the extent towhich an entity meets its specified criteria; (2) action that assesses the value ofsomething",
+   "source": "aime measruement 2022, citing ISO/IEC 24765",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "example",
+   "definition": "definition 1: \"one that serves as a pattern to be imitated or not to be imitated\"; definition 3: \"one that is representative of all of a group or type\"; definition 4: \"a parallel or closely similar case especially when serving as a precedent or model\"; definition 5: \"an instance (such as a problem to be solved) serving to illustrate a rule or precept or to act as an exercise in the application of a rule\"",
+   "source": "Merriam-Webster example",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "exception",
+   "definition": "An event that occurs during the performance of the process that causes a diversion from the normal flow of the process. Exceptions are generated by an unanticipated event within a process due to an undefined or unknown input, undefined or unexpected outcome, or unforeseen sequencing of a task or event.",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "execute",
+   "definition": "To carry out a plan, a task command, or another instruction",
+   "source": "SP1011",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "experiment",
+   "definition": "a series of observations conducted under controlled conditions to study a relationship with the purpose of drawing causal inferences about that relationship. An experiment involves the manipulation of an independent variable, the measurement of a dependent variable, and the exposure of various participants to one or more of the conditions being studied. Random selection of participants and their random assignment to conditions also are necessary in experiments.",
+   "source": "apa experiment 2023",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "expert system",
+   "definition": "A form of AI that attempts to replicate a human's expertise in an area, such as medical diagnosis. It combines a knowledge base with a set of hand-coded rules for applying that knowledge. Machine-learning techniques are increasingly replacing hand coding.",
+   "source": "Hutson, Matthew",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "expertise",
+   "definition": "The accumulation of specialized knowledge is often called expertise. Passive expertise is a type of knowledge-based specialization that arises from experiences in life and one's position in a society or culture. Formal expertise is the result of a self-selection of a domain of knowledge that is mastered deliberately and for which there are clear benchmarks of success.",
+   "source": "Schneider McGrew in Flanagan McDonough 2018",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "explainability",
+   "definition": "The ability to provide a human interpretable explanation for a machine learning prediction and produce insights about the causes of decisions, potentially to line up with human reasoning.",
+   "source": "NISTIR 8269 Draft",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "explainer",
+   "definition": "Functionality for providing details on or causes for fairness metric results.",
+   "source": "AI Fairness 360",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "explanation",
+   "definition": "Systems deliver accompanying evidence or reason(s) for all outputs.",
+   "source": "NISTIR 8269 Draft",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "exploratory",
+   "definition": "Exploratory Data Analysis (EDA) is an approach/philosophy for data analysis that employs a variety of techniques (mostly graphical) to 1. maximize insight into a data set; 2. uncover underlying structure; 3. extract important variables; 4. detect outliers and anomalies; 5. test underlying assumptions; 6. develop parsimonious models; and 7. determine optimal factor settings.",
+   "source": "nist statistics 2012",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "external validity",
+   "definition": "the extent to which the results of research or testing can be generalized beyond the sample that generated them. The more specialized the sample, the less likely will it be that the results are highly generalizable to other individuals, situations, and time periods.",
+   "source": "APA external validity",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "facial recognition",
+   "definition": "Face recognition algorithms, however, have no built-in notion of a particular person. They are not built to identify particular people; instead they include a face detector followed by a feature extraction algorithm that converts one or more images of a person into a vector of values that relate to the identity of the person. The extractor typically consists of a neural network that has been trained on ID-labeled images available to the developer. In operations, they act as generic extractors of identity-related information from photos of persons they have usually never seen before. Recognition proceeds as a differential operator: Algorithms compare two feature vectors and emit a similarity score. This is a vendor-defined numeric value expressing how similar the parent faces are. It is compared to a threshold value to decide whether two samples are from, or represent, the same person or not. Thus, recognition is mediated by persistent identity information stored in a feature vector (or “template”).",
+   "source": "NISTIR 8280",
+   "source_url": "",
+   "aliases": [
+    "FR"
+   ],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "fairness metric",
+   "definition": "A quantification of unwanted bias in training data or models.",
+   "source": "AI Fairness 360",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "false negative",
+   "definition": "An example in which the predictive model mistakenly classifies an item as in the negative class.",
+   "source": "NSCAI",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "false positive",
+   "definition": "An example in which the model mistakenly classifies an item as in the positive class",
+   "source": "NSCAI",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "fault tolerance",
+   "definition": "The ability of a system or component to continue normal operation despite the presence of hardware or software faults",
+   "source": "SP1011",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "favorable label",
+   "definition": "A label whose value corresponds to an outcome that provides an advantage to the recipient. The opposite is an unfavorable label.",
+   "source": "AI Fairness 360",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "feature",
+   "definition": "An attribute containing information for predicting the label.",
+   "source": "AI Fairness 360",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "feature extraction",
+   "definition": "a more general method in which one tries to develop a transformation of the input space onto the lowdimensional subspace that preserves most of the relevant information",
+   "source": "khalid feature 2014",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "feature importance",
+   "definition": "how important the feature was for the classification performance of the model; a measure of the individual contribution of the corresponding feature for a particular classifier, regardless of theshape (e.g., linear or nonlinear relationship) or direction of the feature effect",
+   "source": "saarela feature 2021",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "feature shift",
+   "definition": "Unlike joint distribution shift detection, which cannot localize which features caused the shift, we define a new hypothesis test for each feature individually. Naïvely, the simplest test would be to check if the marginal distributions have changed for each feature (as explored by [25]); however, the marginal distribution would be easy for an adversary to simulate (e.g., by looping the sensor values from a previous day). Thus, marginal tests are not sufficient for our purpose. Therefore, we propose to use conditional distribution tests. More formally, our null and alternative hypothesis for the j-th feature is that its full conditional distribution (i.e., its distribution given all other features) has not shifted for all values of the other features.",
+   "source": "kulinski feature 2020",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "federated learning",
+   "definition": "An approach to machine learning which addresses problems of data governance and privacy by training algorithms collaboratively without transferring the data to a central location. Each federated device trains on data locally and shares its local model parameters instead of sharing the training data. Different federated learning systems have different topologies that involve different ways ofsharing parameters.",
+   "source": "TTC6 Taxonomy Terminology",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "feedback loop",
+   "definition": "describes the process of leveraging the output of an AI system and corresponding end-user actions in order to retrain and improve models over time. The AI-generated output (predictions or recommendations) are compared against the final decision (for example, to perform work or not) and provides feedback to the model, allowing it to learn from its mistakes.",
+   "source": "C3.ai feedback loop",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "firmware",
+   "definition": "Computer programs and data stored in hardware - typically in read-only memory (ROM) or programmable read-only memory (PROM) - such that the programs and data cannot be dynamically written or modified during execution of the programs.",
+   "source": "SP800-37",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "fitting",
+   "definition": "Fitting is the process of verifying whether the data item value is in the previously specified interval.",
+   "source": "OECD",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "Forecasting",
+   "definition": "Estimate or prediction of conditions and events in the project's future based on information and knowledge available at the time of the forecast. The information is based on the project's past performance and expected future performance, and includes information that could impact the project in the future, such as estimate at completion and estimate to complete.",
+   "source": "IEEE Soft Vocab",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "fraud detection",
+   "definition": "Monitoring the behavior of populations of users in order to estimate, detect, or avoid undesirable behavior.",
+   "source": "Kou, Yufeng",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "fully autonomous",
+   "definition": "Accomplishes its assigned mission, within a defined scope, without human intervention while adapting to operational and environmental conditions",
+   "source": "SP1011",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "generative adversarial network",
+   "definition": "Generative Adversarial Networks, or GANs for short, are an approach to generative modeling using deep learning methods, such as convolutional neural networks. Generative modeling is an unsupervised learning task in machine learning that involves automatically discovering and learning the regularities or patterns in input data in such a way that the model can be used to generate or output new examples that plausibly could have been drawn from the original dataset.",
+   "source": "Brownlee, Jason",
+   "source_url": "",
+   "aliases": [
+    "GAN"
+   ],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "global",
+   "definition": "A global explanation produces a model that approximates the non-interpretable model.",
+   "source": "NISTIR 8312 Full",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "governance",
+   "definition": "The actions to ensure stakeholder needs, conditions, and options are evaluated to determine balanced, agreed-upon enterprise objectives; setting direction through prioritization and decision-making; and monitoring performance and ompliance against agreed-upon directions and objectives. AI governance may include policies on the nature of AI applications developed and deployed versus those limited or withheld.",
+   "source": "NSCAI",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "graph",
+   "definition": "Diagram that represents the variation of a variable in comparison with that of one or more other variables. Diagram or other representation consisting of a finite set of nodes and internode connections called edges or arcs.",
+   "source": "IEEE Soft Vocab",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "graphical processing unit",
+   "definition": "A specialized chip capable of highly parallel processing. GPUs are well-suited for running machine learning and deep learning algorithms. GPUs were first developed for efficient parallel processing of arrays of values used in computer graphics. Modern-day GPUs are designed to be optimized for machine learning.",
+   "source": "NSCAI",
+   "source_url": "",
+   "aliases": [
+    "GPU"
+   ],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "ground truth",
+   "definition": "information provided by direct observation as opposed to information provided by inference",
+   "source": "Collins Dictionary ground truth",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "group fairness",
+   "definition": "The goal of groups defined by protected attributes receiving similar treatments or outcomes.",
+   "source": "AI Fairness 360",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "hacker",
+   "definition": "Unauthorized user who attempts to or gains access to an information system.",
+   "source": "Reznik, Leon",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "hardware",
+   "definition": "Physical equipment used to process, store, or transmit computer programs or data",
+   "source": "IEEE Soft Vocab",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "harm",
+   "definition": "An undesired outcome [whose] cost exceeds some threshold[; ...] the key points in the definition of safety are that: costs have to be sufficiently high in some human sense for events to be harmful, and that safety involves reducing both the probability of expected harms and the possibility of unexpected harms.",
+   "source": "Engineering safety in machine learning",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "harmful bias",
+   "definition": "Harmful bias can be either conscious or unconscious. Unconscious, also known as implicit bias, involves associations outside conscious awareness that lead to a negative evaluation of a person on the basis of characteristics such as race, gender, sexual orientation, or physical ability. Discrimination is behavior; discriminatory actions perpetrated by individuals or institutions refer to inequitable treatment of members of certain social groups that results in social advantages or disadvantages",
+   "source": "humphrey addressing 2020",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "human subjects",
+   "definition": "a living individual about whom an investigator (whether professional or student) conducting research: (i) Obtains information or biospecimens through intervention or interaction with the individual, and uses, studies, or analyzes the information or biospecimens; or (ii) Obtains, uses, studies, analyzes, or generates identifiable private information or identifiable biospecimens.",
+   "source": "45 CFR 46 2018 Requirements (2018 Common Rule)",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "human system integration",
+   "definition": "methods and approaches for testing and optimizing all human-related considerations from a “whole-system” or “system-of-systems” level.",
+   "source": "Poore Lawrence ARLIS 2023-01",
+   "source_url": "",
+   "aliases": [
+    "HSI"
+   ],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "human-assisted",
+   "definition": "The type of human-robot-interaction that that refers to situations during which human interactions are needed at the level of detail of task plans, i.e., during the execution of a task",
+   "source": "SP1011",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "human-cognitive bias",
+   "definition": "Human-cognitive biases relate to how an individual or group perceives AI system information to make a decision or fill in missing information, or how humans think about purposes and functions of an AI system. Human biases are omnipresent in decision-making processes across the AI lifecycle and system use, including the design, implementation, operation, and maintenance of AI.",
+   "source": "NIST AI RMF 1.0",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "human-computer interaction",
+   "definition": "methods and approaches for designing and architecting user interfaces and the interactions between humans and computer (or information) technology.",
+   "source": "Poore Lawrence ARLIS 2023-01",
+   "source_url": "",
+   "aliases": [
+    "HCI"
+   ],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "human-enabled machine learning",
+   "definition": "Detection, correlation, and pattern recognition generated through machine-based observation of human operation of software systems capturing successful or unsuccessful operations to enable the creation of a useful predictive analytics capability.",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "human-in-the-loop",
+   "definition": "An AI system that requires human interaction.",
+   "source": "DOD Modeling and Simulation Glossary",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "human-machine teaming",
+   "definition": "The ability of humans and AI systems to work together to undertake complex, evolving tasks in a variety of environments with seamless handoff both ways between human and AI team members. Areas of effort include developing effective policies for controlling human and machine initiatives, computing methods that ideally complement people, methods that optimize goals of teamwork, and designs that enhance human-AI interaction.",
+   "source": "NSCAI",
+   "source_url": "",
+   "aliases": [
+    "HMT"
+   ],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "human-operator-intervention",
+   "definition": "The need for human interaction in a normally fully autonomous behavior due to some extenuating circumstances.",
+   "source": "SP1011",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "hyperparameters",
+   "definition": "the parameters that are used to either configure a ML model (e.g., the penalty parameter C in a support vector machine, and the learning rate to train a neural network) or to specify the algorithm used to minimize the loss function (e.g., the activation function and optimizer types in a neural network, and the kernel type in a support vector machine).",
+   "source": "On Hyperparameter Optimization",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "hypothesis testing",
+   "definition": "A term used generally to refer to testing significance when specific alternatives to the null hypothesis are considered.",
+   "source": "OECD",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "impact assessment",
+   "definition": "a risk management tool that seeks to ensure an organization has sufficiently considered a system's relative benefits and costs before implementation. In the context of AI, an impact assessment helps to answer a simple question: alongside this system’s intended use, for whom could it fail?",
+   "source": "Bipartisan Policy Center impact assessments",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "impersonation",
+   "definition": "A malicious individual is able to impersonate a legitimate data subject to the data controller. The adversary forges a valid access request and goes through the identity verification enforced by the data controller. The data controller sends to the adversary the data of a legitimate data subject. Defeating impersonation is the primary objective of any authentication protocol. The result of this attack is a data breach (e.g. blaggers [sic] pretend to be someone they are not in order to wheedle out the information they are seeking obtaining information illegaly which they then sell for a specified price).",
+   "source": "Security Analysis of Subject Access",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "in silico",
+   "definition": "carrying out some experiment by means of a computer simulation",
+   "source": "World Wide Words In silico",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "in-processing",
+   "definition": "Techniques that modify the algorithms in order to mitigate bias during model training. Model training processes could incorporate changes to the objective (cost) function or impose a new optimization constraint.",
+   "source": "SP1270",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "in-processing algorithm",
+   "definition": "A bias mitigation algorithm that is applied to a model during its training.",
+   "source": "AI Fairness 360",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "incident",
+   "definition": "a situation in which AI systems caused, or nearly caused, real-world harm.",
+   "source": "AI Incident Database",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "incident response",
+   "definition": "a public official response to an incident ... from an entity (i.e. company, organization, individual) allegedly responsible for developing or deploying the AI or AI system involved in said incident.",
+   "source": "AIID incident response",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "independence",
+   "definition": "Of software quality assurance (SQA), situation in which SQA is free from technical, managerial, and financial influences, intentional or unintentional",
+   "source": "IEEE Soft Vocab",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "individual fairness",
+   "definition": "The goal of similar individuals receiving similar treatments or outcomes.",
+   "source": "AI Fairness 360",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "inference",
+   "definition": "The stage of ML in which a model is applied to a task. For example, a classifier model produces the classification of a test sample.",
+   "source": "NISTIR 8269 Draft",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "information input component",
+   "definition": "One of the three components of a model. This component delivers assumptions and data to the model.",
+   "source": "Comptroller Office",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "information security",
+   "definition": "preservation of confidentiality, integrity and availability of information; in addition, other properties, such as authenticity, accountability, non-repudiation, and reliability can also be involved.",
+   "source": "ISO/IEC TS 5723:2022(en)",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "input",
+   "definition": "Data received from an external source",
+   "source": "IEEE Soft Vocab",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "insider attack",
+   "definition": "Those who are within [an] organisation may have authorised access to vast amounts of sensitive company records that are essential for maintaining competitiveness and market position, and knowledge of information services and procedures that are crucial for daily operations. . . .[and] should an individual choose to act against the organisation, then with their privileged access and their extensive knowledge, they are well positioned to cause serious damage.",
+   "source": "IEEE Caught in the Act",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "instance",
+   "definition": "Discrete, bounded thing with an intrinsic, immutable, and unique identity. Individual occurrence of a type",
+   "source": "IEEE Soft Vocab",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "instance weight",
+   "definition": "A numerical value that multiplies the contribution of a data point in a model.",
+   "source": "AI Fairness 360",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "integrity",
+   "definition": "Degree to which a system, product, or component prevents unauthorized access to, or modification of, computer programs or data.",
+   "source": "IEEE Soft Vocab",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "intelligent process automation",
+   "definition": "A preconfigured software instance that combines business rules, experience- based context determination logic, and decision criteria to initiate and execute multiple interrelated human and automated processes in a dynamic context. The goal is to complete the execution of a combination of processes, activities, and tasks in one or more unrelated software systems that deliver a result or service with minimal or no human intervention.",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "interaction",
+   "definition": "Action that takes place with the participation of the environment of the object.",
+   "source": "IEEE Soft Vocab",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "internal validity",
+   "definition": "the degree to which a study or experiment is free from flaws in its internal structure and its results can therefore be taken to represent the true nature of the phenomenon. In other words, internal validity pertains to the soundness of results obtained within the controlled conditions of a particular study, specifically with respect to whether one can draw reasonable conclusions about cause-and-effect relationships among variables.",
+   "source": "APA internal validity",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "interoperability",
+   "definition": "The ability of software or hardware systems or components to operate together successfully with minimal effort by end user",
+   "source": "SP1011",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "interpretability",
+   "definition": "The ability to understand the value and accuracy of system output. Interpretability refers to the extent to which a cause and effect can be observed within a system or to which what is going to happen given a change in input or algorithmic parameters can be predicted.",
+   "source": "NSCAI",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "interpretable model",
+   "definition": "An interpretable machine learning model obeys a domain-specific set of constraints to allow it (or its predictions, or the data) to be more easily understood by humans. These constraints can differ dramatically depending on the domain.",
+   "source": "rudin interpretable 2022",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "intervenability",
+   "definition": "the property that intervention is possible concerning all ongoing or planned privacy relevant data processing[; ...] the data subjects themselves should be able to intervene with regards to the processing of their own data ... [to ensure] that data subjects have the ability to control how their data is processed and by whom.",
+   "source": "Covert et al",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "knowledge",
+   "definition": "The sum of all information derived from diagnostic, descriptive, predictive, and prescriptive analytics embedded in or available to or from a cognitive computing system.",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "label",
+   "definition": "A value corresponding to an outcome.",
+   "source": "AI Fairness 360",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "label shift",
+   "definition": "Under label shift, the label distribution p(y) might change but the class-conditionaldistributions p(x|y) do not. ... We work with the label shift assumption, i.e., ps(x|y) = pt(x|y)",
+   "source": "saurabh label 2020",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "language model",
+   "definition": "A language model is an approximative description that captures patterns and regularities present in natural language and is used for making assumptions on previously unseen language fragments.",
+   "source": "Gustavii, Ebba",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "large language model",
+   "definition": "a class of language models that use deep-learning algorithms and are trained on extremely large textual datasets that can be multiple terabytes in size. LLMs can be classed into two types: generative or discriminatory. Generative LLMs are models that output text, such as the answer to a question or even writing an essay on a specific topic. They are typically unsupervised or semi-supervised learning models that predict what the response is for a given task. Discriminatory LLMs are supervised learning models that usually focus on classifying text, such as determining whether a text was made by a human or AI.",
+   "source": "AI Assurance 2022",
+   "source_url": "",
+   "aliases": [
+    "LLM"
+   ],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "learning",
+   "definition": "A procedure in artificial intelligence by which an artificial intelligence program improves its performance by gaining knowledge.",
+   "source": "Dennis Mercadal",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "least privilege",
+   "definition": "The principle that a security architecture should be designed so that each entity is granted the minimum system resources and authorizations that the entity needs to perform its function.",
+   "source": "CSRC",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "lemmatization",
+   "definition": "the process of grouping together the different inflected forms of a word so they can be analyzed as a single item.",
+   "source": "Artasanchez Joshi AI with Python",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "linear model",
+   "definition": "[a supervised learning algorithm that uses] a simple formula to find a best-fit line through a set of data points.",
+   "source": "dataiku ML and linear models",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "local",
+   "definition": "A local explanation explains a subset of decisions or is a per-decision explanation.",
+   "source": "NISTIR 8312 Full",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "localization",
+   "definition": "Creation of a national or specific regional version of a product.",
+   "source": "IEEE Soft Vocab",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "logistic model",
+   "definition": "(logistic equation) The continuous version of the logistic model is described by the differential equation (dN)/(dt)=(rN(K-N))/K, (1)where r is the Malthusian parameter (rate of maximum population growth) and K is the so-called carrying capacity (i.e., the maximum sustainable population). Dividing both sides by K and defining x=N/K then gives the differential equation (dx)/(dt)=rx(1-x), (2)which is known as the logistic equation and has solution x(t)=1/(1+(1/(x_0)-1)e^(-rt)). (3)The function x(t) is sometimes known as the sigmoid function.",
+   "source": "wolfram mathworld 2022",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "machine learning",
+   "definition": "A branch of Artificial Intelligence (AI) that focuses on the development of systems capable of learning from data to perform a task without being explicitly programmed to perform that task. Learning refers to the process of optimizing model parameters through computational techniques such that the model's behaviour is optimized for the training task.",
+   "source": "TTC6 Taxonomy Terminology",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "machine observation",
+   "definition": "Machine detection and interpretation of relevant and meaningful events and conditions that impact operation of the computer system itself or other dependent mechanisms or processes essential to the purpose of the system.",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "malware",
+   "definition": "Hardware, firmware, or software that is intentionally included or inserted in a system for a harmful purpose.",
+   "source": "Reznik, Leon",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "materiality",
+   "definition": "Refers to the significance of a matter in relation to a set of financial or performance information. If a matter is material to the set of information, then it is likely to be of significance to a user of that information",
+   "source": "OECD",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "McNamara fallacy",
+   "definition": "presum[ing] that (A) quantitative models of reality are always more accurate than other models; (B) the quantitative measurements that can be made most easily must be the most relevant; and (C) factors other than those currently being used in quantitative metrics must either not exist or not have a significant influence on success. Also known as the quantitative fallacy.",
+   "source": "McNamara Fallacy",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "measurability",
+   "definition": "ability to assess an attribute of an entity against a metric (note 1: \"measurable\" is the adjective form of \"measurability\")",
+   "source": "ISO/IEC TS 5723:2022(en)",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "measurement",
+   "definition": "(Quantitative) (1) act or process of assigning a number or category to anentity to describe an attribute of that entity; (2) assignment of numbers toobjects in a systematic way to represent properties of the object; (3) use ofa metric to assign a value (e.g., a number or category) from a scale to anattribute of an entity; (4) set of operations having the object of determining avalue of a measure; (5) assignment of values and labels to aspects of softwareengineering work products, processes, and resources plus the models that arederived from them, whether these models are developed using statistical orother techniques; (6) figure, extent, or amount obtained by measuring",
+   "source": "aime measurement 2022, citing ISO/IEC 24765",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "measurement method",
+   "definition": "generic description of a logical organization of operations used in a measurement",
+   "source": "aime measurement 2022, citing ISO/IEC Guide 99",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "measurement model",
+   "definition": "The initial confirmatory factory analysis (CFA) model that underlies the structural model [that] tests the adequacy (as indexed by model fit) of the specified relations whereby indicators are linked to their underlying construct.",
+   "source": "Little 2013",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "membership inference",
+   "definition": "given a machine learning model and a record, determining whether the record was used as part of the model's training dataset or not.",
+   "source": "NIST Trustworthy AI glossary",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "metadata",
+   "definition": "Metadata is data that defines and describes other data.",
+   "source": "OECD",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "metric",
+   "definition": "defined measurement method and measurement scale",
+   "source": "ISO/IEC TS 5723:2022(en)",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "minimization",
+   "definition": "(Part of the ICO framework for auditing AI) AI systems generally require large amounts of data. However, organisations must comply with the minimisation principle under data protection law if using personal data. This means ensuring that any personal data is adequate, relevant and limited to what is necessary for the purposes for which it is processed. […] The default approach of data scientists in designing and building AI systems will not necessarily take into account any data minimisation constraints. Organisations must therefore have in place risk management practices to ensure that data minimisation requirements, and all relevant minimisation techniques, are fully considered from the design phase, or, if AI systems are bought or operated by third parties, as part of the procurement process due diligence",
+   "source": "ICO data minimisation",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "mixed methods",
+   "definition": "In mixed methods, the researcher collects and analyzes both qualitative and quantitative data rigorously in response to research questions and hypotheses; integrates the two forms of data and their results; organizes these procedures into specific research designs that provide the logic and procedures for conducting the study; and frames these procedures within theory and philosophy.",
+   "source": "Creswell Clark mixed methods",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "MLOPS",
+   "definition": "MLOps (machine learning operations) stands for the collection of techniques and tools for the deployment of ML models in production.",
+   "source": "symeonidis MLOps 2022",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "model",
+   "definition": "A function that takes features as input and predicts labels as output.",
+   "source": "AI Fairness 360",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "model assertion",
+   "definition": "Model assertions are arbitrary functions over a model’s input and output that indicate when errors may be occurring",
+   "source": "Kang, Daniel",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "model card",
+   "definition": "short documents accompanying trained machine learning models that provide benchmarked evaluation in a variety of conditions, such as across different cultural, demographic, or phenotypic groups (e.g., race, geographic location, sex, Fitzpatrick skin type) and intersectional groups (e.g., age and race, or sex and Fitzpatrick skin type) that are relevant to the intended application domains. [They] also disclose the context in which models are intended to be used, details of the performance evaluation procedures, and other relevant information.",
+   "source": "Model Cards for Model Reporting",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "model debugging",
+   "definition": "Model debugging aims to diagnose a model’s failures.",
+   "source": "Jain Saachi",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "model decay",
+   "definition": "Model decay depicts that the performance of the model is degrading over time",
+   "source": "Nayak, Pragati",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "model editing",
+   "definition": "An area of research that aims to enable fast, data-efficient updates to a pre-trained base model’s behavior for only a small region of the domain, without damaging model performance on other inputs of interest",
+   "source": "Mitchell, Eric",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "model extraction",
+   "definition": "Adversaries maliciously exploiting the query interface to steal the model. More precisely, in a model extraction attack, a good approximation of a sensitive or proprietary model held by the server is extracted (i.e. learned) by a dishonest user who interacts with the server only via the query interface.",
+   "source": "Chandrasekaran, Varun",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "model governance",
+   "definition": "Model Governance is the name for the overall internal framework of a firm or organization that controls the processes for Model Development, Model Validation and Model Usage, assign responsibilities and roles etc.",
+   "source": "open risk 2022",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "model inventory",
+   "definition": "in the context of Risk Management, [...] a database/[management information system] developed for the purpose of aggregating quantitative model related information that is in use by a firm or organization.",
+   "source": "ORM model inventory",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "model overlay",
+   "definition": "Judgmental or qualitative adjustments to model inputs or outputs to compensate for model, data, or other known limitations. A model overlay is a type of override.",
+   "source": "Comptroller Office",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "model risk management",
+   "definition": "model risk management encompasses governance and control mechanisms such as board and senior management oversight, policies and procedures, controls and compliance, and an appropriate incentive and organizational structure",
+   "source": "Fed Reserve",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "model suite",
+   "definition": "A group of models that work together.",
+   "source": "Comptroller Office",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "model training",
+   "definition": "the phase in the data science development lifecycle where practitioners try to fit the best combination of weights and bias to a machine learning algorithm to minimize a loss function over the prediction range",
+   "source": "C3.ai Model Training",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "model validation",
+   "definition": "the set of processes and activities intended to verify that models are performing as expected.",
+   "source": "yields.io model validation",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "monitoring",
+   "definition": "Examination of the status of the activities of a supplier and of their results by the acquirer or a third party.",
+   "source": "IEEE Soft Vocab",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "moral agency",
+   "definition": "The capacity for moral action, reasoning, judgment, and decision making, as opposed to merely having moral consequences.",
+   "source": "AI Ethics Mark Coeckelbergh",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "moral patiency",
+   "definition": "The moral standing of an entity in the sense of how that entity should be treated.",
+   "source": "AI Ethics Mark Coeckelbergh",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "naive Bayes",
+   "definition": "The naive Bayes classifier is a Bayesian learning method that has been found to be useful in many practical applications. It is called \"naive\" because it incorporates the simplifying assumption that attribute values are conditionally independent, given the classification of the instance. The naive Bayes classifier applies to learning tasks where each instance x is described by a conjunction of attribute values and where the target function f(x) can take on any value from some finite set V.",
+   "source": "Mitchell, Tom",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "natural language processing",
+   "definition": "The field concerned with machines capable of processing, analysing,and generating human language, either spoken, written or signed.",
+   "source": "TTC6 Taxonomy Terminology",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "neural network",
+   "definition": "A model that, taking inspiration from the brain, is composed of layers (at least one of which is hidden) consisting of simple connected units or neurons followed by nonlinearities",
+   "source": "aime measurement 2022, citing Machine Learnign Glossary by Google",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "nondiscrimination",
+   "definition": "the practice of treating people, companies, countries, etc. in the same way as others in order to be fair:",
+   "source": "Cambridge Dictionary",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "normal flow",
+   "definition": "The intended flow of a process originating from a start event, continuing through all defined activities, and concluding successfully to its defined end event.",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "normalization",
+   "definition": "Conceptual procedure in database design that removes redundancy in a complex database by establishing dependencies and relationships between database entities. Normalization reduces storage requirements and avoids database inconsistencies.",
+   "source": "OECD",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "objective evidence",
+   "definition": "data supporting the existence or verity of something (note: can be obtained through observation, measurement, test, or other means).",
+   "source": "ISO/IEC TS 5723:2022(en)",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "observation",
+   "definition": "a piece of information received online from users, sensors, or other knowledge sources",
+   "source": "poole mackworth observation",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "offline learning",
+   "definition": "implies ... a static dataset that [one] know[s] from the start and the parameters of [one's] machine learning algorithm are adjusted to the whole dataset at once often loading the whole dataset into memory or in batches.",
+   "source": "Ben Auffarth 2021",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "online learning",
+   "definition": "fitting [one's] model incrementally as the data flows in (streaming data).",
+   "source": "Ben Auffarth 2021",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "ontology",
+   "definition": "A set of concepts and categories in a subject area or knowledge domain that shows their properties and the relationships among them to enable interoperability among disparate elements and systems and specify interfaces to independent, knowledge-based services for the purpose of enabling certain kinds of automated reasoning.",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "opacity",
+   "definition": "The nature of some AI techniques whereby the inferential operations are complex, hidden, or otherwise opaque to their developers and end users in terms of providing an understanding of how classifications, recommendations, or actions are generated and what overall performance will be.",
+   "source": "NSCAI",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "operationalization",
+   "definition": "Putting AI systems or related concepts into use so they can be measured.",
+   "source": "NIST Trustworthy AI glossary",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "operator",
+   "definition": "A role assumed by the person performing remote control or teleoperation, semi-autonomous operations, or other human-in-the-loop types of operations",
+   "source": "SP1011",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "opt-in",
+   "definition": "an individual makes an active affirmative indication of choice via a user interface signaling a desire to share their information with third parties.",
+   "source": "IAPP Privacy Glossary",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "opt-out",
+   "definition": "an individual makes an active affirmative indication of choice via a user interface signaling a desire not to share their information with third parties.",
+   "source": "IAPP Privacy Glossary",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "outcome",
+   "definition": "something that follows as a result or consequence",
+   "source": "merriam webster outcome",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "outlier",
+   "definition": "An outlier is a data point that is far from other points.",
+   "source": "Russell and Norvig",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "output",
+   "definition": "Data transmitted to an external destination",
+   "source": "IEEE Soft Vocab",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "overfitting",
+   "definition": "Given a hypothesis space H, a hypothesis h element of H is said to overfit the training data if there exists some alternative hypothesis h' element of H, such that h has smaller error than h' over the training examples, but h' has a smaller error than h over the entire distribution of instance.",
+   "source": "Mitchell, Tom",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "package",
+   "definition": "a folder with all the code and metadata needed to train and serve a machine learning model.",
+   "source": "about ML packages",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "parametric",
+   "definition": "A learning model that summarizes data with a set of parameters offixed size (independent of the number of training examples)",
+   "source": "Russell and Norvig",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "parent process",
+   "definition": "A process that may contain one or more sub-processes, activities, and tasks.",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "parity",
+   "definition": "Bit(s) used to determine whether a block of data has been altered. Rationale: Term has been replaced by the term “parity bit”.",
+   "source": "NIST CSRC parity",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "participant",
+   "definition": "A computer system, data, input, business rule, human intervention, and other contributor to the flow of a process.",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "participation",
+   "definition": "engag[ing] multiple stakeholders in deliberative processes in order to achieve consensus.",
+   "source": "Sloane et al 2020",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "passive learning agent",
+   "definition": "A passive learning agent has a fixed policy that determines its behavior. An active learning agent gets to decide what actions to take.",
+   "source": "Russell and Norvig",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "personal data",
+   "definition": "‘Personal data’ means any information relating to an identified or identifiable natural person (‘data subject’); an identifiable natural person is one who can be identified, directly or indirectly, in particular by reference to an identifier such as a name, an identification number, location data, an online identifier or to one or more factors specific to the physical, physiological, genetic, mental, economic, cultural or social identity of that natural person.",
+   "source": "GDPR",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "policy",
+   "definition": "The general principles by which a government is guided in its management of public affairs, or the legislature in its measures. This term, as applied to a law, ordinance, or rule of law, denotes its general purpose or tendency considered as directed to the POLICY",
+   "source": "law policy 2023",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "positionality",
+   "definition": "the researcher's starting points and standpoints before and during inquiry, as well as the conditions shaping the research situation, process, and product.",
+   "source": "Charmaz Henwood",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "post-hoc explanation",
+   "definition": "Post-hoc explainability targets models that are not readily interpretable by design by resorting to diverse means to enhance their interpretability, such as text explanations, visual explanations, local explanations, explanations by example, explanations by simplification and feature relevance explanations techniques. Each of these techniques covers one of the most common ways humans explain systems and processes by themselves.",
+   "source": "NISTIR 8312 Full",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "post-processing",
+   "definition": "Typically performed with the help of a holdout dataset (data not used in the training of the model). Here, the learned model is treated as a black box and its predictions are altered by a function during the post-processing phase. The function is deduced from the performance of the black box model on the holdout dataset.",
+   "source": "SP1270",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "post-processing algorithm",
+   "definition": "A bias mitigation algorithm that is applied to predicted labels.",
+   "source": "AI Fairness 360",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "practical significance",
+   "definition": "a conceptual framework for evaluating discrimination cases developed primarily on statistical evidence that is the subject of increasing interest and discussion by some in the equal employment opportunity (EEO) field.",
+   "source": "DOL Practical Significance",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "pre-processing algorithm",
+   "definition": "A bias mitigation algorithm that is applied to training data.",
+   "source": "AI Fairness 360",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "precision",
+   "definition": "A metric for classification models. Precision identifies the frequency with which a model was correct when classifying the positive class.",
+   "source": "NSCAI",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "prediction",
+   "definition": "Forecasting quantitative or qualitative outputs through function approximation, applied on input data or measurements.",
+   "source": "NSCAI",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "predictive analysis",
+   "definition": "The organization of analyses of structured and unstructured data for inference and correlation that provides a useful predictive capability to new circumstances or data.",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "predictive analytics",
+   "definition": "Insights, reporting, and information answering the question, \"What is likely to happen?\" Predictive analytics support high confidence foretelling of future event(s).",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "preprocessing",
+   "definition": "Transforming the data so that the underlying discrimination is mitigated. This method can be used if a modeling pipeline is allowed to modify the training data.",
+   "source": "SP1270",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "prescriptive analytics",
+   "definition": "Insights, reporting, and information answering the question, “What should I do about it?\" Prescriptive analytics determines information that provides high confidence actions necessary to recover from an event or fulfill a need.",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "privacy",
+   "definition": "freedom from intrusion into the private life or affairs of an individual",
+   "source": "ISO/IEC TS 5723:2022(en)",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "privacy-by-design",
+   "definition": "Embedding privacy measures and privacy enhancing technologies directly into the design of information technologies and systems.",
+   "source": "ENISA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "privacy-enhancing technology",
+   "definition": "A coherent system of ICT (Information and Communications Technology) measures that protects privacy by eliminating or reducing personal data or by preventing unnecessary and/or undesired processing of personal data, all without losing the functionality of the information system.",
+   "source": "PET Handbook",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "privileged protected attribute",
+   "definition": "A value of a protected attribute indicating a group that has historically been at systematic advantage.",
+   "source": "AI Fairness 360",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "procedure",
+   "definition": "Information item that presents an ordered series of steps to perform a process, activity, or task.",
+   "source": "IEEE Soft Vocab",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "process",
+   "definition": "A sequence or flow of activities in an organization with the objective of carrying out work, which may include a set of activities, events, tasks, and decisions in a sequenced flow that adhere to finite execution semantics. Process levels will generally follow structure at the capability maturity model integration (CMMI) level.",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "process flow",
+   "definition": "The defined representation of the overall progression of how a process is intended to be performed, including all exceptions.",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "processing",
+   "definition": "‘Processing’ means any operation or set of operations which is performed on personal data or on sets of personal data, whether or not by automated means, such as collection, recording, organisation, structuring, storage, adaptation or alteration, retrieval, consultation, use, disclosure by transmission, dissemination or otherwise making available, alignment or combination, restriction, erasure or destruction.",
+   "source": "GDPR",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "processing environment",
+   "definition": "the combination of software and hardware on which the Application runs.",
+   "source": "Law Insider processing environment",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "processor",
+   "definition": "‘Processor’ means a natural or legal person, public authority, agency or other body which processes personal data on behalf of the controller.",
+   "source": "GDPR",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "product manager",
+   "definition": "a specialized product management professional whose job is to manage the planning, development, launch, and success of products/solutions powered by AI, machine learning, and deep learning technologies.",
+   "source": "productmanagerHQ Josh Fechter",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "product owner",
+   "definition": "[person who is] focused on providing direction and prioritization for the cross-functional AI team, ensuring everyone remains focused on the overall vision and road map. This role is responsible for unifying individuals with diverse skills and backgrounds toward a common goal.",
+   "source": "Forbes Tracy Kemp",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "productization",
+   "definition": "[turning the best performing model] into an actual \"data product,\" ready to be used in live services.",
+   "source": "Towards Productizing",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "profiling",
+   "definition": "‘Profiling’ means any form of automated processing of personal data consisting of the use of personal data to evaluate certain personal aspects relating to a natural person, in particular to analyse or predict aspects concerning that natural person's performance at work, economic situation, health, personal preferences, interests, reliability, behaviour, location or movements.",
+   "source": "GDPR",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "protected attribute",
+   "definition": "An attribute that partitions a population into groups whose outcomes should have parity. Examples include race, gender, caste, and religion. Protected attributes are not universal, but are application specific.",
+   "source": "AI Fairness 360",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "protected class",
+   "definition": "[a feature] that may not be used as the basis for decisions [and] could be chosen because of legal mandates or because of organizational values. Some common protected [classes] include race, religion, national origin, gender, marital status, age, and socioeconomic status.",
+   "source": "MIT Protected Attributes",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "prototype",
+   "definition": "A prototype is an original model constructed to include all the technical characteristics and performances of the new product.",
+   "source": "OECD",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "provisioning",
+   "definition": "The granting of access rights and executional privilege to an agent (human or machine) within an application(s) or system(s).",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "proxy",
+   "definition": "A variable that can stand in for another, usually not directly observable or measurable, variable.",
+   "source": "SP1270",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "pseudo-anonymization (pseudonymization)",
+   "definition": "‘Pseudonymisation’ means the processing of personal data in such a manner that the personal data can no longer be attributed to a specific data subject without the use of additional information, provided that such additional information is kept separately and is subject to technical and organisational measures to ensure that the personal data are not attributed to an identified or identifiable natural person;",
+   "source": "GDPR",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "quality",
+   "definition": "The totality of features and characteristics of a product or service that bear on its ability to satisfy stated or implied needs.",
+   "source": "OECD",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "racialized",
+   "definition": "A socio-political process by which groups are ascribed a racial identity, whether or not members of the group self-identify as such",
+   "source": "AAAS AI and Bias 2022-09",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "ranking",
+   "definition": "a type of machine learning that sorts data in a relevant order[; often used by companies] to optimize search and recommendations.",
+   "source": "DEV ranking",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "recall",
+   "definition": "A metric for classification models; identifies the frequency with which a model correctly classifies the true positive items.",
+   "source": "NSCAI",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "recognition",
+   "definition": "the automatic discovery of regularities in data through the use of computer algorithms and with the use of these regularities to take actions such as classifying the data into different categories.",
+   "source": "Pattern Recognition and Machine Learning",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "recommendation system",
+   "definition": "A software tool and techniques that provide suggestion based on the customer's taste to discover new appropriate thing for them by filtering personalized information based on the user's preferences from a large volume of information",
+   "source": "Das, Debashis",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "rectification",
+   "definition": "An individual’s right to have personal data about them corrected or amended by a business or other organization if it is inaccurate.",
+   "source": "IAPP Privacy Glossary",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "red-team",
+   "definition": "A group of people authorized and organized to emulate a potential adversary’s attack or exploitation capabilities against an enterprise’s security posture. The Red Team’s objective is to improve enterprise cybersecurity by demonstrating the impacts of successful attacks and by demonstrating what works for the defenders (i.e., the Blue Team) in an operational environment. Also known as Cyber Red Team.",
+   "source": "CSRC",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "reference class",
+   "definition": "A class which is intended to describe structure and behavior of object identifiers. Its instances, called references, are passed by-value and indirectly represent objects by substituting for some primitive reference.",
+   "source": "IGI Global reference class",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "reflexivity",
+   "definition": "A form of critical thinking that prompts us to consider the ‘whys’ and ‘hows’ of research, critically questioning the utility, ethics, and value of what, whom, and how we study",
+   "source": "Jamieson Govaart Pownall",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "regression",
+   "definition": "Regression is a process of predicting the value to a yes or no label provided it falls on a continuous spectrum of input values, subcategory of supervised learning.",
+   "source": "Ranschaert, Erik",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "reinforcement learning",
+   "definition": "A method of training algorithms to make suitable actions by maximizing rewarded behavior over the course of its actions. This type of learning can take place in simulated environments, such as game-playing, which reduces the need for real-world data.",
+   "source": "NSCAI",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "reliability",
+   "definition": "Reliability refers to the closeness of the initial estimated value(s) to the subsequent estimated values.",
+   "source": "OECD",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "remediation",
+   "definition": "The process of treating data by cleaning, organizing, and migrating it to a safe and secure environment for optimized usage is called data remediation. Generally [understood] as a process involving deleting unnecessary or unused data. However, the actual process . . . is very detailed and includes several steps, including replacing, updating, or modifying data along with cleaning it, organizing it, and getting rid of unnecessary data.",
+   "source": "CPO Magazine Amar Kanagaraj",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "reproducibility",
+   "definition": "Closeness of the agreement between the results of measurements of the same measurand carried out under changed conditions of measurement.",
+   "source": "IEEE Soft Vocab",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "requirement",
+   "definition": "something essential to the existence or occurrence of something else : CONDITION",
+   "source": "Merriam-Webster requirement",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "residual",
+   "definition": "Residuals are differences between the one-step-predicted output from the model and the measured output from the validation data set. Thus, residuals represent the portion of the validation data not explained by the model.",
+   "source": "MathWorks Residual",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "resilience",
+   "definition": "The ability to prepare for and adapt to changing conditions and withstand and recover rapidly from disruptions. Resilience includes the ability to withstand and recover from deliberate attacks, accidents, or naturally occurring threats or incidents. The ability of a system to adapt to and recover from adverse conditions.",
+   "source": "NISTIR 8269 Draft",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "responsible AI",
+   "definition": "An AI system that aligns development and behavior to goals and values. This includes developing and fielding AI technology in a manner that is consistent with democratic values.",
+   "source": "NSCAI",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "result",
+   "definition": "The consequential outcome of completing a process.",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "retention limit",
+   "definition": "refers to the amount of information that is stored long-term, and can be measured in volume (the size of the total collected logs in bytes) and time (the number of months or years that logs are stored for).",
+   "source": "Industrial Network Security 2011",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "risk",
+   "definition": "The composite measure of an event’s probability of occurring and the magnitude or degree of the consequences of the corresponding event. The impacts, or consequences, of AI systems can be positive, negative, or both and can result in opportunities or threats (Adapted from: iso 31000:2018 )",
+   "source": "NIST AI RMF 1.0",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "risk control",
+   "definition": "mechanisms at the design, implementation, and evaluation stages [that can be taken] into consideration when developing responsible AI for organizations that includes security risks (cyber intrusion risks, privacy risks, and open source software risk), economic risks (e.g., job displacement risks), and performance risks (e.g., risk of errors and bias and risk of black box, and risk of explainability).",
+   "source": "Toward an understanding of responsible artificial intelligence practices",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "risk tolerance",
+   "definition": "Risk tolerance refers to the organization’s or AI actor’s ... readiness to bear the risk in order to achieve its objectives. Risk tolerance can be influenced by legal or regulatoryrequirements.",
+   "source": "NIST AI RMF 1.0",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "robotic desktop automation",
+   "definition": "The computer application that makes available to a human operator a suite of predefined activity choreography to complete the execution of processes, activities, transactions, and tasks in one or more unrelated software systems to deliver a result or service in the course of human-initiated or -managed workflow.",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [
+    "RDA"
+   ],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "robotic process automation",
+   "definition": "A preconfigured software instance that uses business rules and predefined activity choreography to complete the autonomous execution of a combination of processes, activities, transactions, and tasks in one or more unrelated software systems to deliver a result or service with human exception management.",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [
+    "RPA"
+   ],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "robust AI",
+   "definition": "An AI system that is resilient in real-world settings, such as an object-recognition application that is robust to significant changes in lighting. The phrase also refers to resilience when it comes to adversarial attacks on AI components.",
+   "source": "NSCAI",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "robustness",
+   "definition": "ability of a system to maintain its level of performance under a variety of circumstances",
+   "source": "ISO/IEC TS 5723:2022(en)",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "root-mean-square deviation",
+   "definition": "of an estimator of a parameter[; ...] the square-root of the mean squared error (MSE) of the estimator. In symbols, if X is an estimator of the parameter t, thenRMSE(X) = ( E( (X−t)2 ) )½.The RMSE of an estimator is a measure of the expected error of the estimator. The units of RMSE are the same as the units of the estimator.",
+   "source": "Glossary of Statistical Terms",
+   "source_url": "",
+   "aliases": [
+    "RMSD"
+   ],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "row",
+   "definition": "describes a single entity or observation and the columns describe properties about that entity or observation. The more rows you have, the more examples from the problem domain that you have.",
+   "source": "Machine Learning Mastery Jason Brownlee",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "safety",
+   "definition": "property of a system such that it does not, under defined conditions, lead to a state in which human life, health, property, or the environment is endangered; [safety involves reducing both the probability of expected harms and the possibility of unexpected harms].",
+   "source": "ISO/IEC TS 5723:2022(en)",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "scalability",
+   "definition": "The ability to increase or decrease the computational resources required to execute a varying volume of tasks, processes, or services.",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "score",
+   "definition": "A continuous value output from a classifier. Applying a threshold to a score results in a predicted label.",
+   "source": "AI Fairness 360",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "screen out",
+   "definition": "Screen-out discrimination occurs when “a disability prevents a job applicant or employee from meeting—or lowers their performance on—a selection criterion, and the applicant or employee loses a job opportunity as a result.”",
+   "source": "EEOC ADA AI",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "security",
+   "definition": "resistance to intentional, unauthorized act(s) designed to cause harm or damage to a system",
+   "source": "ISO/IEC TS 5723:2022(en)",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "segmentation",
+   "definition": "The process of identifying homogeneous subgroups within a data table.",
+   "source": "Raynor",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "self-aware system",
+   "definition": "A computing platform imbued with sufficient knowledge and analytic capability to make useful conclusions about its inputs, its own processing, and the use of its output so that it is capable of self- judgment and improvement consistent with its purpose.",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "self-diagnosis",
+   "definition": "Ability of a system to adequately take measurement information from sensors, validate the data, and communicate the processes and results to other devices",
+   "source": "SP1011",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "self-healing system",
+   "definition": "A computing system able to perceive that it is not operating correctly and, without human intervention, make the necessary adjustments to restore itself to normalcy.",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "semantic mapping",
+   "definition": "A strategic schema or framework of metadata labels applied to all data, data groups, data fields, data types, or data content used to introduce new or raw data into a corpus or data fabric to give machine learning algorithms direction for investigating known or potential relationships between data. A semantic map provides a structure for the introduction of new data, information, or knowledge",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "sensitivity analysis",
+   "definition": "A “what-if” type of analysis to determine the sensitivity of the outcomes to changes in parameters. If a small change in a parameter results in relatively large changes in the outcomes, the outcomes are said to be sensitive to that parameter.",
+   "source": "OECD",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "sensory digitization",
+   "definition": "The conversion of typically analog or human sensory perception (e.g., vision, speech) to a digital format useful for machine-to-human interaction or machine processing of traditionally analog sensory information [e.g., optical character recognition (OCR)].",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "service",
+   "definition": "A collection of coordinated processes that takes one or more kinds of input, performs a value-added transformation, and creates an output that fulfills the needs of a customer [or shareholder].",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "shallow learning",
+   "definition": "Techniques that separate the process of feature extraction from learning itself.",
+   "source": "Reznik, Leon",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "signal detection theory",
+   "definition": "a framework for interpreting data from experiments in which accuracy is measured.",
+   "source": "Signal Detection Theory",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "situational awareness",
+   "definition": "Perception of elements in the system and/or environment and a comprehension of their meaning, which could include a projection of the future status of perceived elements and the uncertainty associated with that status.",
+   "source": "SP800-160",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "socio-technical system",
+   "definition": "how humans interact with technology within the broader societal context",
+   "source": "NIST SP1270",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "software testing",
+   "definition": "Activity in which a system or component is executed under specified conditions, the results are observed or recorded, and an evaluation is made of some aspect of the system or component.",
+   "source": "IEEE Soft Vocab",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "sparsity",
+   "definition": "refers to a matrix of numbers that includes many zeros or values that will not significantly impact a calculation.",
+   "source": "Dave Salvator sparsity",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "specification",
+   "definition": "A document that specifies, in a complete, precise, verifiable manner, the requirements, design, behavior, or other characteristics of a system or component and often the procedures for determining whether these provisions have been satisfied.",
+   "source": "SP800-37",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "stakeholder",
+   "definition": "Individual or organization having a right, share, claim, or interest in a system or in its possession of characteristics that meet their needs and expectations. An individual, group, or organization who may affect, be affected by, or perceive itself to be affected by a decision, activity, or outcome of a project.",
+   "source": "IEEE Soft Vocab",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "standard deviation",
+   "definition": "The most widely used measure of dispersion of a frequency distribution introduced by K. Pearson (1893). It is equal to the positive square root of the variance. The standard deviation should not be confused with the root mean square deviation.",
+   "source": "OECD",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "start event",
+   "definition": "An activity, task, or input that describes or defines the beginning of a process.",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "statistical bias",
+   "definition": "A systematic tendency for estimates or measurements to be above or below their true values. Statistical biases arise from systematic as opposed to random error. Statistical bias can occur in the absence of prejudice, partiality, or discriminatory intent.",
+   "source": "SP1270",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "statistical parity",
+   "definition": "The independence between the protected attribute and the outcome of the decision rule",
+   "source": "Besse, Philippe",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "statistical significance",
+   "definition": "When the probability of obtaining a statistic of a given size due strictly to random sampling error, or chance, is less than the selected alpha level [or the probability of a type I error]; also represents a rejection of the null hypothesis.",
+   "source": "Statistics in Plain English",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "statistics",
+   "definition": "Numerical data relating to an aggregate of individuals; the science of collecting, analysing and interpreting such data",
+   "source": "OECD",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "stereotype",
+   "definition": "a set of cognitive generalizations (e.g., beliefs, expectations) about the qualities and characteristics of the members of a group or social category. Stereotypes, like schemas, simplify and expedite perceptions and judgments, but they are often exaggerated, negative rather than positive, and resistant to revision even when perceivers encounter individuals with qualities that are not congruent with the stereotype.",
+   "source": "APA stereotype",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "stochastic",
+   "definition": "The adjective “stochastic” implies the presence of a random variable; e.g. stochastic variation is variation in which at least one of the elements is a variate and a stochastic process is one wherein the system incorporates an element of randomness as opposed to a deterministic system.",
+   "source": "OECD",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "straight-through processing",
+   "definition": "The successful execution of a service, process, or transaction performed entirely through traditional application platforms with predefined interfaces (i.e., application programming interfaces [APIs]).",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [
+    "STP"
+   ],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "strawperson",
+   "definition": "a fallacious argument which irrelevantly attacks a position that appears similar to, but is actually different from, an opponent's position, and concludes that the opponent's real position has thereby been refuted.",
+   "source": "Hughes Lavery Critical Thinking",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "stress test",
+   "definition": "Type of performance efficiency testing conducted to evaluate a test item's behavior under conditions of loading above anticipated or specified capacity requirements, or of resource availability below minimum specified requirements",
+   "source": "IEEE Soft Vocab",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "structured data",
+   "definition": "Data that has a predefined data model or is organized in a predefined way.",
+   "source": "NIST 1500",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "sub-process",
+   "definition": "A subordinate process that can be included within a parent process. It can be present and/or repeated within other parent processes.",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "supervised learning",
+   "definition": "A type of machine learning in which the algorithm compares its outputs with the correct outputs during training. In unsupervised learning, the algorithm merely looks for patterns in a set of data.",
+   "source": "Hutson, Matthew",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "support vector machines",
+   "definition": "A supervised machine learning model for data classification and regression analysis. One of the most used classifiers in machine learning. It optimizes the width of the gap between the points of separate categories in feature space.",
+   "source": "Ranschaert, Erik",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "system",
+   "definition": "combination of interacting elements organized to achieve one or more stated purposes",
+   "source": "ISO/IEC TS 5723:2022(en)",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "system of systems",
+   "definition": "set of systems and system elements that interact to provide a unique capability that none of the constituent systems can accomplish on its own (note: can be necessary to facilitate interaction of the constituent systems in the system of systems)",
+   "source": "ISO/IEC TS 5723:2022(en)",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "systemic bias",
+   "definition": "Systemic biases result from procedures and practices of particular institutions that operate in ways which result in certain social groups being advantaged or favored and others being disadvantaged or devalued. This need not be the result of any conscious prejudice or discrimination but rather of the majority following existing rules or norms.",
+   "source": "D. Chandler and R. Munday, A Dictionary of Media and Communication. OxfordUniversity Press, Jan. 2011, publication Title: A Dictionary of Media andCommunication",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "target",
+   "definition": "a method for solving a problem that an AI algorithm parses its training data to find. Once an algorithm finds its target function, that function can be used to predict results (predictive analysis). The function can then be used to find output data related to inputs for real problems where, unlike training sets, outputs are not included.",
+   "source": "TechTarget target function",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "task",
+   "definition": "The performance of a discrete activity with a defined start, stop, and outcome that cannot be broken down to a finer level of detail.",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "taxonomy",
+   "definition": "Taxonomy refers to classification according to presumed natural relationships among types and their subtypes.",
+   "source": "OECD",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "technical control",
+   "definition": "Security controls (i.e., safeguards or countermeasures) for an information system that are primarily implemented and executed by the information system through mechanisms contained in the hardware, software, or firmware components of the system.",
+   "source": "NIST SP 800-30 Rev 1",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "technochauvinism",
+   "definition": "The belief that technology is always the solution",
+   "source": "M. Broussard, Artificial Unintelligence: How Computers Misunderstand the World. MIT Press, 2018.",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "test",
+   "definition": "Technical operation to determine one or more characteristics of or to evaluate the performance of a given product, material, equipment, organism, physical phenomenon, process or service according to a specified procedure.",
+   "source": "UNODC Glossary QA GLP",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "Test and Evaluation, Verification and Validation",
+   "definition": "A framework for assessing, incorporating methods and metrics to determine that a technology or system satisfactorily meets its design specifications and requirements, and that it is sufficient for its intended use.",
+   "source": "NSCAI Report",
+   "source_url": "",
+   "aliases": [
+    "TEVV"
+   ],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "third party",
+   "definition": "an entity that is involved in some way in an interaction that is primarily between two other entities. [Please see note, especially regarding NIST CSRC terms that we might incorporate into this definition.]",
+   "source": "TechTarget third party",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "three lines of defense",
+   "definition": "Most financial institutions follow a three-lines-of-defense model, which separates front line groups, which are generally accountable for business risks (the First Line), from other risk oversight and independent challenge groups (the Second Line) and assurance (the Third Line)",
+   "source": "AIRS Penn",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "traceability",
+   "definition": "Ability to trace the history, application or location of an entity by means of recorded identification. [\"Chain of custody\" is a related term.] Alternatively, traceability is a property of the result of a measurement or the value of a standard whereby it can be related with a stated uncertainty, to stated references, usually national or international standards, i.e. through an unbroken chain of comparisons. In this context, The standards referred to here are measurement standards rather than written standards.",
+   "source": "UNODC Glossary QA GLP",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "training data",
+   "definition": "A dataset from which a model is learned.",
+   "source": "AI Fairness 360",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "transaction",
+   "definition": "Enactment of a process represented by a set of coordinated activities carried out by multiple systems and/or participants in accordance with defined relationships. This coordination leads to an intentional, consistent, and verifiable result across all participants.",
+   "source": "IEEE Guide IPA",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "transfer learning",
+   "definition": "A technique in machine learning in which an algorithm learns to perform one task, such as recognizing cars, and builds on that knowledge when learning a different but related task, such as recognizing cats.",
+   "source": "Hutson, Matthew",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "transformer",
+   "definition": "A procedure that modifies a dataset.",
+   "source": "AI Fairness 360",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "transparency",
+   "definition": "<information> open, comprehensive, accessible, clear and understandable presentation of information; <systems> property of a system or process to imply openness and accountability",
+   "source": "ISO/IEC TS 5723:2022(en)",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "true negative",
+   "definition": "outcome where the model correctly predicts the negative class.",
+   "source": "google dev classification-true-false-positive-negative",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "true positive",
+   "definition": "an outcome where the model correctly predicts the positive class.",
+   "source": "google dev classification-true-false-positive-negative",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "trust",
+   "definition": "the system status in the mind of human beings based on their perception of and experience with the system; concerns the attitude that a person or technology will help achieve specific goals in a situation characterized by uncertainty and vulnerability.",
+   "source": "DOD TEVV",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "trustworthiness",
+   "definition": "The degree to which an information system (including the information technology components that are used to build the system) can be expected to preserve the confidentiality, integrity, and availability of the information being processed, stored, or transmitted by the system across the full range of threats and individuals’ privacy.",
+   "source": "SP800-37",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "trustworthy AI",
+   "definition": "Characteristics of trustworthy AI systems include: valid and reliable, safe, secure and resilient, accountable and transparent, explainable and interpretable, privacy-enhanced, and fair with harmful bias managed.",
+   "source": "NIST AI RMF 1.0",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "type I error",
+   "definition": "The null hypothesis H0 is rejected, even though it is [true]",
+   "source": "berthold guide 2020",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "type II error",
+   "definition": "The null hypothesis H0 is accepted, even though it is [false]",
+   "source": "berthold guide 2020",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "uncertainty",
+   "definition": "Result of not having accurate or sufficient knowledge of a situation; state, even partial, of deficiency of information related to understanding or knowledge of an event, its consequence, or likelihood",
+   "source": "IEEE Soft Vocab",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "underfitting",
+   "definition": "Underfitting occurs when a statistical model cannot adequately capture the underlying structure of the data.",
+   "source": "Ranschaert, Erik",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "underrepresentation",
+   "definition": "inadequately represented. (See note.)",
+   "source": "Merriam-Webster underrepresented",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "unexplainable",
+   "definition": "impossibility of providing an explanation for certain decisions made by an intelligent system which is both 100% accurate and comprehensible.",
+   "source": "Roman V. Yampolskiy Unexplainability",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "unstructured data",
+   "definition": "Data that does not have a predefined data model or is not organized in a predefined way",
+   "source": "NIST Trustworthy AI glossary",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "unsupervised learning",
+   "definition": "A learning strategy that consists in observing and analyzing different entities and determining that some of their subsets can be grouped into certain classes, without any correctness test being performed on acquired knowledge through feedback from external knowledge sources.Note 1 to entry: Once a concept is formed, it is given a name that may be used in subsequent learning of other concepts.",
+   "source": "iso 2382 1997",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "usability",
+   "definition": "extent to which a system product or service can be used by specified users to achieve specified goals with effectiveness, efficiency and satisfaction in a specified context of use (note 1: The “specified” users, goals and context of use refer to the particular combination of users, goals and context of use for which usability is being considered; note 2: used as a qualifier to refer to the design knowledge, competencies, activities and design attributes that contribute to usability, such as usability expertise, usability professional, usability engineering, usability method, usability evaluation, usability heuristic). [See also: ISO/IEC 9241-11 Ergonomic of Human-System Interaction — Part 11: Usability: Definitions and Concepts. ISO, Geneva, Switzerland, 2018, https://www.iso.org/standard/63500.html.]",
+   "source": "ISO/IEC TS 5723:2022(en)",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "usability testing",
+   "definition": "refers to evaluating a product or service by testing it with representative users. Typically, during a test, participants will try to complete typical tasks while observers watch, listen and takes notes. The goal is to identify any usability problems, collect qualitative and quantitative data and determine the participant's satisfaction with the product.",
+   "source": "Usabilitygov",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "user",
+   "definition": "individual or group that interacts with a system or benefits from a system during its utilization",
+   "source": "IEEE Soft Vocab",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "user-centered design",
+   "definition": "the practice of the following principles, the active involvement of users for a clear understanding of user and task requirements, iterative design and evaluation, and a multi-disciplinary approach",
+   "source": "Vredenburg, Karel",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "validation",
+   "definition": "Confirmation by examination and provision of objective evidence that the particular requirements for a specific intended use are fulfilled.",
+   "source": "UNODC Glossary QA GLP",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "value sensitive design",
+   "definition": "a theoretically grounded approach to the design of technology that accounts for human values in a principled and systematic manner throughout the design process.",
+   "source": "Friedman et al 2017",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "variable",
+   "definition": "A variable is a characteristic of a unit being observed that may assume more than one of a set of values to which a numerical measure or a category from a classification can be assigned.",
+   "source": "OECD",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "variance",
+   "definition": "The variance is the mean square deviation of the variable around the average value. It reflects the dispersion of the empirical values around its mean.",
+   "source": "OECD",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "verifiable",
+   "definition": "can be checked for correctness by a person or tool",
+   "source": "ISO/IEC TS 5723:2022(en)",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  },
+  {
+   "term": "word embedding",
+   "definition": "a popular framework to represent text data as vectors which has been used in many machine learning and natural language processing tasks. . . . A word embedding, trained on word co-occurrence in text corpora, represents each word (or common phrase) w as a d-dimensional word vector w~ 2 Rd. It serves as a dictionary of sorts for computer programs that would like to use word meaning. First, words with similar semantic meanings tend to have vectors that are close together. Second, the vector differences between words in embeddings have been shown to represent relationships between words.",
+   "source": "Bolukbasi et al Debiasing Word Embeddings",
+   "source_url": "",
+   "aliases": [],
+   "tags": [
+    "ai"
+   ],
+   "imported": true
+  }
+ ]
+}

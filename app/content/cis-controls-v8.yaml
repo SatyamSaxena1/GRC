@@ -1,0 +1,157 @@
+framework:
+  code: CIS-CONTROLS
+  version: "8"
+
+# CIS Controls v8 (Center for Internet Security, freely licensed for reuse
+# with attribution). Safeguard ids are the framework's own numbering;
+# descriptions below are our own paraphrase.
+requirements:
+  - clause: "5.1"
+    title: Account management policy
+    text: >
+      A documented process governs how user and administrator accounts are
+      inventoried, authorized and assigned.
+    evidence_requirements:
+      - artefact_type: POLICY
+        required_attributes: [approval_date, approver_role, effective_date, systems_covered]
+        evidence_validity:
+          expiry_attribute: next_review_date
+          issued_attribute: approval_date
+          max_age_days: 365
+          required: false
+    mappings:
+      - uco: UCO-IAM-001
+        coverage: FULL
+        confidence: 1.0
+        source: EXPERT
+        delta_conditions: []
+      - uco: UCO-IAM-002
+        coverage: SUPPORTING
+        confidence: 0.9
+        source: EXPERT
+        delta_conditions: []
+
+  - clause: "5.2"
+    title: Unique password requirements
+    text: >
+      Accounts use passwords that meet a minimum length, longer where multi-factor
+      authentication is not also in place.
+    evidence_requirements:
+      - artefact_type: POLICY
+        required_attributes: [password_min_length]
+    mappings:
+      # CIS Safeguard 5.2: minimum 8 characters with MFA, 14 without. We check
+      # the stricter, MFA-independent floor.
+      - uco: UCO-IAM-011
+        coverage: FULL
+        confidence: 1.0
+        source: EXPERT
+        delta_conditions:
+          - attribute: password_min_length
+            operator: ">="
+            value: 14
+
+  - clause: "6.3"
+    title: MFA for externally-exposed applications
+    text: >
+      Multi-factor authentication is required for remote access and for
+      administrative access to enterprise assets.
+    evidence_requirements:
+      - artefact_type: POLICY
+        required_attributes: [mfa_required_for]
+    mappings:
+      - uco: UCO-IAM-012
+        coverage: FULL
+        confidence: 1.0
+        source: EXPERT
+        delta_conditions:
+          - attribute: mfa_required_for
+            operator: contains_all
+            value: ["remote access", "administrative access"]
+
+  - clause: "6.2"
+    title: Access revoking process
+    text: >
+      A process reviews and revokes access for accounts that no longer need it, run
+      on a recurring schedule.
+    evidence_requirements:
+      - artefact_type: POLICY
+        required_attributes: [access_review_frequency_days]
+      # The org's own stated cadence is the yardstick (an "organization-defined
+      # parameter" — see docs/adr/013-organization-defined-commitments.md), not a
+      # generic ceiling: the POLICY entry above only needs to state a number, this
+      # entry holds the org to it via a review record that actually happened.
+      - artefact_type: REVIEW_RECORD
+        required_attributes: [last_access_review_date]
+        evidence_validity:
+          issued_attribute: last_access_review_date
+          org_defined_max_age_attribute: access_review_frequency_days
+          required: true
+    mappings:
+      - uco: UCO-IAM-020
+        coverage: FULL
+        confidence: 1.0
+        source: EXPERT
+        delta_conditions: []
+
+  - clause: "3.10-3.11"
+    title: Encryption of sensitive data
+    text: >
+      Sensitive data is encrypted in transit across networks and at rest on
+      end-user devices and enterprise assets.
+    evidence_requirements:
+      - artefact_type: POLICY
+        required_attributes: [encryption_at_rest, encryption_in_transit]
+    mappings:
+      - uco: UCO-DATA-001
+        coverage: FULL
+        confidence: 1.0
+        source: EXPERT
+        delta_conditions:
+          - attribute: encryption_at_rest
+            operator: "=="
+            value: true
+          - attribute: encryption_in_transit
+            operator: "=="
+            value: true
+
+  - clause: "7.5-7.6"
+    title: Vulnerability scanning
+    text: >
+      Internal and external enterprise assets are scanned for vulnerabilities at
+      least quarterly, with rescans until findings are resolved.
+    evidence_requirements:
+      - artefact_type: SCAN_REPORT
+        required_attributes:
+          [scan_completed_date, scan_expiry_date, compliance_status, asv_company]
+        evidence_validity:
+          expiry_attribute: scan_expiry_date
+          issued_attribute: scan_completed_date
+          max_age_days: 90
+    mappings:
+      - uco: UCO-VULN-001
+        coverage: FULL
+        confidence: 1.0
+        source: EXPERT
+        delta_conditions:
+          - attribute: compliance_status
+            operator: "=="
+            value: true
+
+  - clause: "8.3"
+    title: Adequate audit log retention
+    text: >
+      Audit logs are retained for a period sufficient to support detection and
+      investigation of incidents.
+    evidence_requirements:
+      - artefact_type: POLICY
+        required_attributes: [log_retention_days]
+    mappings:
+      - uco: UCO-LOG-001
+        coverage: FULL
+        confidence: 1.0
+        source: EXPERT
+        delta_conditions:
+          - attribute: log_retention_days
+            operator: ">="
+            value: 90

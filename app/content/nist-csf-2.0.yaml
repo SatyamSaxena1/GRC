@@ -1,0 +1,147 @@
+framework:
+  code: NIST-CSF
+  version: "2.0"
+
+# NIST Cybersecurity Framework 2.0 (public domain, NIST.CSWP.29). Subcategory
+# ids are the framework's own references; descriptions are our own paraphrase.
+requirements:
+  - clause: "PR.AA-01"
+    title: Identities and credentials are managed
+    text: >
+      Identities and credentials for authorized users, services and hardware are
+      issued, managed and revoked through a defined process, and meet a minimum
+      strength standard.
+    evidence_requirements:
+      - artefact_type: POLICY
+        required_attributes: [approval_date, approver_role, effective_date, systems_covered]
+        evidence_validity:
+          expiry_attribute: next_review_date
+          issued_attribute: approval_date
+          max_age_days: 365
+          required: false
+      - artefact_type: POLICY
+        required_attributes: [password_min_length]
+    mappings:
+      - uco: UCO-IAM-001
+        coverage: FULL
+        confidence: 1.0
+        source: EXPERT
+        delta_conditions: []
+      - uco: UCO-IAM-002
+        coverage: SUPPORTING
+        confidence: 0.9
+        source: EXPERT
+        delta_conditions: []
+      # NIST SP 800-63B favors length over mandated complexity; 8 is our own
+      # reasonable floor, not a number NIST CSF states directly.
+      - uco: UCO-IAM-011
+        coverage: FULL
+        confidence: 0.8
+        source: EXPERT
+        delta_conditions:
+          - attribute: password_min_length
+            operator: ">="
+            value: 8
+
+  - clause: "PR.AA-03"
+    title: Users are authenticated commensurate with risk
+    text: >
+      Multi-factor authentication is required for remote access and for
+      administrative access to higher-risk systems.
+    evidence_requirements:
+      - artefact_type: POLICY
+        required_attributes: [mfa_required_for]
+    mappings:
+      - uco: UCO-IAM-012
+        coverage: FULL
+        confidence: 1.0
+        source: EXPERT
+        delta_conditions:
+          - attribute: mfa_required_for
+            operator: contains_all
+            value: ["remote access", "administrative access"]
+
+  - clause: "PR.AA-05"
+    title: Access permissions incorporate least privilege and are reviewed
+    text: >
+      Access permissions and authorizations are defined on least privilege, and
+      reviewed on a recurring basis to remove access that is no longer needed.
+    evidence_requirements:
+      - artefact_type: POLICY
+        required_attributes: [access_review_frequency_days]
+      # The org's own stated cadence is the yardstick — see
+      # docs/adr/013-organization-defined-commitments.md.
+      - artefact_type: REVIEW_RECORD
+        required_attributes: [last_access_review_date]
+        evidence_validity:
+          issued_attribute: last_access_review_date
+          org_defined_max_age_attribute: access_review_frequency_days
+          required: true
+    mappings:
+      - uco: UCO-IAM-020
+        coverage: FULL
+        confidence: 1.0
+        source: EXPERT
+        delta_conditions: []
+
+  - clause: "PR.DS-01"
+    title: Data-at-rest and data-in-transit are protected
+    text: >
+      The confidentiality of data is protected while stored and while in transit,
+      commensurate with its sensitivity.
+    evidence_requirements:
+      - artefact_type: POLICY
+        required_attributes: [encryption_at_rest, encryption_in_transit]
+    mappings:
+      - uco: UCO-DATA-001
+        coverage: FULL
+        confidence: 1.0
+        source: EXPERT
+        delta_conditions:
+          - attribute: encryption_at_rest
+            operator: "=="
+            value: true
+          - attribute: encryption_in_transit
+            operator: "=="
+            value: true
+
+  - clause: "DE.CM-08"
+    title: Vulnerability scans are performed
+    text: >
+      External-facing systems are scanned for vulnerabilities on a recurring basis,
+      and findings are tracked until remediated.
+    evidence_requirements:
+      - artefact_type: SCAN_REPORT
+        required_attributes:
+          [scan_completed_date, scan_expiry_date, compliance_status, asv_company]
+        evidence_validity:
+          expiry_attribute: scan_expiry_date
+          issued_attribute: scan_completed_date
+          max_age_days: 90
+    mappings:
+      - uco: UCO-VULN-001
+        coverage: FULL
+        confidence: 1.0
+        source: EXPERT
+        delta_conditions:
+          - attribute: compliance_status
+            operator: "=="
+            value: true
+
+  - clause: "PR.PT-01"
+    title: Audit log records are generated and retained
+    text: >
+      Logs of security-relevant activity are generated and retained long enough to
+      support detection and investigation.
+    evidence_requirements:
+      - artefact_type: POLICY
+        required_attributes: [log_retention_days]
+    mappings:
+      - uco: UCO-LOG-001
+        coverage: FULL
+        confidence: 0.9
+        source: EXPERT
+        delta_conditions:
+          - attribute: log_retention_days
+            operator: ">="
+            value: 90

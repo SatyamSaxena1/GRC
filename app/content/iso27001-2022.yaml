@@ -12,13 +12,13 @@ requirements:
     evidence_requirements:
       - artefact_type: POLICY
         required_attributes: [approval_date, approver_role, effective_date, systems_covered]
-    # ISO expects topic-specific policies to be reviewed at planned intervals.
-    # Absent a stated review date, treat an approval older than a year as stale.
-    evidence_validity:
-      expiry_attribute: next_review_date
-      issued_attribute: approval_date
-      max_age_days: 365
-      required: false
+        # ISO expects topic-specific policies to be reviewed at planned intervals.
+        # Absent a stated review date, treat an approval older than a year as stale.
+        evidence_validity:
+          expiry_attribute: next_review_date
+          issued_attribute: approval_date
+          max_age_days: 365
+          required: false
     mappings:
       - uco: UCO-IAM-001
         coverage: FULL
@@ -58,12 +58,17 @@ requirements:
     evidence_requirements:
       - artefact_type: POLICY
         required_attributes: [access_review_frequency_days]
+      # The org's own stated cadence is the yardstick — see
+      # docs/adr/013-organization-defined-commitments.md.
+      - artefact_type: REVIEW_RECORD
+        required_attributes: [last_access_review_date]
+        evidence_validity:
+          issued_attribute: last_access_review_date
+          org_defined_max_age_attribute: access_review_frequency_days
+          required: true
     mappings:
       - uco: UCO-IAM-020
         coverage: FULL
         confidence: 1.0
         source: EXPERT
-        delta_conditions:
-          - attribute: access_review_frequency_days
-            operator: "<="
-            value: 365
+        delta_conditions: []

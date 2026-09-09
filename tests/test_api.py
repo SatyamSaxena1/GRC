@@ -127,6 +127,42 @@ def test_gaps_carry_actionable_remediation(client, bootstrap, upload):
                for g in gaps)
 
 
+def test_control_detail_carries_requirement_text_and_owners(client, bootstrap, upload):
+    """The record header needs more than a bare clause code to be readable —
+    see app/routers/controls.py::_requirement_text / _owner_emails."""
+    org_id, _ = bootstrap(client)
+    upload(client, org_id)
+    headers = {"authorization": f"org:{org_id}"}
+    control_id = next(c["id"] for c in client.get("/controls", headers=headers).json())
+
+    detail = client.get(f"/controls/{control_id}", headers=headers).json()
+    assert detail["title"] and detail["text"]
+    assert detail["owner_emails"] == []
+
+    owner = client.post("/admin/users", json={
+        "email": "owner@acme.test", "org_id": org_id, "role": "CONTROL_OWNER",
+    }).json()
+    client.post("/admin/control-assignments",
+               json={"org_control_id": control_id, "user_id": owner["id"]})
+
+    detail = client.get(f"/controls/{control_id}", headers=headers).json()
+    assert detail["owner_emails"] == ["owner@acme.test"]
+
+
+def test_submitting_a_control_appears_in_its_own_history(client, bootstrap, upload):
+    """CONTROL_SUBMITTED is recorded against the control itself, not a link —
+    a filter that only matched link ids silently dropped it forever."""
+    org_id, _ = bootstrap(client)
+    upload(client, org_id)
+    headers = {"authorization": f"org:{org_id}"}
+    control_id = next(c["id"] for c in client.get("/controls", headers=headers).json())
+
+    assert client.post(f"/controls/{control_id}/submit", headers=headers).status_code == 200
+
+    history = client.get(f"/controls/{control_id}/history", headers=headers).json()
+    assert any(e["action"] == "CONTROL_SUBMITTED" for e in history)
+
+
 def test_tasks_are_created_per_gap(client, bootstrap, upload):
     org_id, _ = bootstrap(client)
     upload(client, org_id)

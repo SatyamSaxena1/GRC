@@ -16,28 +16,46 @@ from fastapi import Depends, Header, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app import oidc
-from app.db import get_session, set_tenant
-from app.models import Engagement, User
+from app.db import get_session, set_firm, set_tenant
+from app.models import AuditFirm, Engagement, EngagementAuditor, User
 
 
 @dataclass(frozen=True)
 class Actor:
+    """Who is calling, on which of the two tenancy axes.
+
+    `org_id` is the auditee tenant. `audit_firm_id` is the firm tenant, and is
+    set for anyone on the firm side — an auditor working an engagement has
+    both. A firm user with no engagement selected has an empty `org_id`: it can
+    reach the firm console (app/routers/firm.py) and nothing auditee-owned.
+    """
+
     org_id: str
     engagement_id: str | None = None  # set only for an auditor acting under an engagement
     user_id: str | None = None
+    audit_firm_id: str | None = None  # set for firm-side callers
     role: str = "ORG_ADMIN"
     request_id: str = ""  # carried so every audit row can be traced to its request
 
     def label(self) -> str:
         if self.engagement_id:
-            return f"auditor:{self.engagement_id}"
+            # keep the human when there is one: "which auditor" matters in the
+            # trail now that several of a firm's staff can share an engagement
+            return (f"auditor:{self.engagement_id}/user:{self.user_id}"
+                    if self.user_id else f"auditor:{self.engagement_id}")
         if self.user_id:
             return f"user:{self.user_id}"
+        if self.audit_firm_id:
+            return f"firm:{self.audit_firm_id}"
         return f"org:{self.org_id}"
 
     @property
     def is_auditor(self) -> bool:
         return self.engagement_id is not None
+
+    @property
+    def is_firm(self) -> bool:
+        return self.audit_firm_id is not None
 
 
 def current_actor(
@@ -52,6 +70,7 @@ def current_actor(
     actor = _resolve(authorization, db, x_engagement_id)
     actor = replace(actor, request_id=getattr(request.state, "request_id", ""))
     set_tenant(db, actor.org_id)
+    set_firm(db, actor.audit_firm_id)
     return actor
 
 
@@ -63,9 +82,19 @@ def _resolve(authorization: str, db: Session, engagement_header: str | None = No
     if authorization.startswith("org:"):
         return Actor(org_id=authorization.removeprefix("org:"))
 
+    if authorization.startswith("firm:"):
+        firm_id = authorization.removeprefix("firm:")
+        if db.get(AuditFirm, firm_id) is None:
+            raise HTTPException(401)
+        return Actor(org_id="", audit_firm_id=firm_id, role="FIRM_ADMIN")
+
     if authorization.startswith("user:"):
         user = db.get(User, authorization.removeprefix("user:"))
-        if user is None or user.org_id is None:
+        if user is None:
+            raise HTTPException(401)
+        if user.audit_firm_id:
+            return _firm_user_actor(db, user, engagement_header)
+        if user.org_id is None:
             raise HTTPException(401)
         return Actor(org_id=user.org_id, user_id=user.id, role=user.role)
 
@@ -96,15 +125,43 @@ def _resolve_oidc(token: str, db: Session, engagement_header: str | None) -> Act
     if user is None:
         raise HTTPException(401, "no user provisioned for this identity")
 
-    if user.role == "AUDITOR":
-        if not engagement_header:
+    if user.audit_firm_id:
+        if user.role == "AUDITOR" and not engagement_header:
             raise HTTPException(401, "x-engagement-id header required for an auditor")
-        engagement = db.get(Engagement, engagement_header)
-        if (engagement is None or not engagement.active
-                or engagement.audit_firm_id != user.audit_firm_id):
-            raise HTTPException(404)
-        return Actor(org_id=engagement.org_id, engagement_id=engagement.id, role="AUDITOR")
+        return _firm_user_actor(db, user, engagement_header)
 
     if user.org_id is None:
         raise HTTPException(401)
     return Actor(org_id=user.org_id, user_id=user.id, role=user.role)
+
+
+def _firm_user_actor(db: Session, user: User, engagement_header: str | None) -> Actor:
+    """The one place a firm user's engagement access is decided, for both the
+    stub and the OIDC path.
+
+    With no engagement selected the caller gets a firm-console actor bound to no
+    auditee. With one selected, firm membership alone is not enough: an AUDITOR
+    must be staffed on that engagement (EngagementAuditor). An unstaffed client
+    answers 404 like any other invisible resource — a firm's auditor must not be
+    able to enumerate the clients it was not put on.
+    """
+    if not engagement_header:
+        return Actor(org_id="", audit_firm_id=user.audit_firm_id,
+                     user_id=user.id, role=user.role)
+
+    engagement = db.get(Engagement, engagement_header)
+    if (engagement is None or not engagement.active
+            or engagement.audit_firm_id != user.audit_firm_id):
+        raise HTTPException(404)
+
+    if user.role != "FIRM_ADMIN" and not is_staffed(db, engagement.id, user.id):
+        raise HTTPException(404)
+
+    return Actor(org_id=engagement.org_id, engagement_id=engagement.id,
+                 user_id=user.id, audit_firm_id=user.audit_firm_id, role="AUDITOR")
+
+
+def is_staffed(db: Session, engagement_id: str, user_id: str) -> bool:
+    return db.query(EngagementAuditor).filter_by(
+        engagement_id=engagement_id, user_id=user_id
+    ).first() is not None

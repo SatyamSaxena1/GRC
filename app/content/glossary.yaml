@@ -1,0 +1,716 @@
+# GRC glossary — the vocabulary this product actually uses on screen.
+#
+# Reference data, not tenant data: it lives here for the same reason uco.yaml
+# does ("content is data, not code"), is identical for every organisation, and
+# is loaded once at import time rather than stored per-tenant.
+#
+# SOURCING RULE (the same precedence a compliance lexicographer applies): a
+# definition written into a law or regulation outranks one from a standard,
+# which outranks wording we invented. `source` records which applies, so a
+# disputed term is traceable to the document that settles it.
+#
+# COPYRIGHT: verbatim text is used only where the source is public domain —
+# NIST publications (US Government work) and EU/US legislation. Standards under
+# copyright (ISO, PCI SSC, AICPA) are paraphrased and cited, never copied.
+#
+# `aliases` exist because in GRC people type the acronym, not the term.
+
+terms:
+
+  # ------------------------------------------------------------------ platform
+  # Our own vocabulary. Nobody else defines these, so we must.
+
+  - term: Control
+    definition: >-
+      An organisation's instance of one framework requirement — the pairing of a
+      framework and a clause that this organisation is on the hook for. Evidence
+      is evaluated against controls, and a control is what an auditor signs off.
+    source: PLATFORM
+    tags: [platform]
+
+  - term: Unified Control Objective
+    aliases: [UCO]
+    definition: >-
+      A framework-neutral statement of what a control is meant to achieve, that
+      clauses from several frameworks all map onto. The reason one uploaded
+      document can satisfy an ISO clause, a PCI requirement and a SOC 2 criterion
+      at once instead of being uploaded three times.
+    source: PLATFORM
+    tags: [platform, reuse]
+
+  - term: Evidence
+    definition: >-
+      A document uploaded to demonstrate that a control is met — a policy, a
+      review record, a scan report. Stored with its hash and version history so a
+      verdict can always be traced back to the exact file it was based on.
+    source: PLATFORM
+    tags: [platform, evidence]
+
+  - term: Artefact type
+    definition: >-
+      What kind of document a piece of evidence is — POLICY, REVIEW_RECORD or
+      SCAN_REPORT. Decides which attributes get extracted and which freshness
+      rule applies, because a policy and a scan report go stale differently.
+    source: PLATFORM
+    tags: [platform, evidence]
+
+  - term: Verdict
+    definition: >-
+      The evaluation outcome for one piece of evidence against one requirement —
+      PASS, PARTIAL or FAIL. Computed deterministically from extracted
+      attributes, never by the model alone.
+    source: PLATFORM
+    tags: [platform, evaluation]
+
+  - term: Gap
+    definition: >-
+      A specific, named reason a verdict was not PASS — which attribute fell
+      short, what the value was, and what it needed to be. A gap is what a
+      remediation task is opened against.
+    source: PLATFORM
+    tags: [platform, evaluation]
+
+  - term: Engagement
+    definition: >-
+      The relationship that lets an audit firm's staff see an auditee's rows.
+      Scoped to named frameworks and a period; without an active engagement
+      allocating a framework, an auditor sees nothing of that client.
+    source: PLATFORM
+    tags: [platform, audit]
+
+  - term: Commitment
+    definition: >-
+      An organisation's own stated value for an organisation-defined parameter,
+      taken from its policy — what "review access on a recurring basis" actually
+      means for this organisation. Failing it is failing your own stated
+      commitment, not an externally imposed number.
+    source: PLATFORM
+    source_url: docs/adr/013-organization-defined-commitments.md
+    tags: [platform, evaluation]
+
+  - term: Lock
+    definition: >-
+      An auditor freezing a verdict so it can no longer move as evidence changes.
+      Locked verdicts are what an audit opinion rests on; unlocking requires a
+      recorded reason.
+    source: PLATFORM
+    tags: [platform, audit]
+
+  - term: Evidence validity
+    aliases: [Freshness]
+    definition: >-
+      How long a piece of evidence stays good for a given requirement — either an
+      expiry the document states itself, or an issue date plus a maximum age.
+      Judged against the audit period, so a verdict means "current for this
+      audit" rather than "current when the job happened to run".
+    source: PLATFORM
+    tags: [platform, evidence]
+
+  - term: Reuse rate
+    definition: >-
+      The share of control-evidence links served by a document that was already
+      uploaded for something else. The headline number for how much duplicate
+      evidence-gathering the shared UCO layer avoided.
+    source: PLATFORM
+    tags: [platform, reuse]
+
+  # ------------------------------------------------------------------ core GRC
+
+  - term: Governance, Risk and Compliance
+    aliases: [GRC]
+    definition: >-
+      The combined discipline of directing an organisation (governance),
+      identifying and treating what could go wrong (risk), and demonstrating
+      adherence to external obligations (compliance). Treated together because
+      the same controls and the same evidence serve all three.
+    source: PLATFORM
+    tags: [core]
+
+  # Quoted verbatim, US spelling included — a quotation is not the place to
+  # impose this file's British spelling elsewhere.
+  - term: Security control
+    definition: >-
+      A safeguard or countermeasure prescribed for an information system or an
+      organization designed to protect the confidentiality, integrity, and
+      availability of its information and to meet a set of defined security
+      requirements.
+    source: NIST SP 800-53 Rev. 5
+    source_url: https://doi.org/10.6028/NIST.SP.800-53r5
+    tags: [core, nist]
+
+  - term: Compensating control
+    definition: >-
+      An alternative measure put in place where a stated requirement cannot be
+      met as written, which must meet the intent and rigour of the original
+      requirement and be justified and documented. (Paraphrased from the PCI DSS
+      compensating-controls guidance.)
+    source: PCI DSS v4.0.1
+    source_url: https://www.pcisecuritystandards.org/document_library/
+    tags: [core, pci]
+
+  - term: Organization-defined parameter
+    aliases: [ODP]
+    definition: >-
+      The variable part of a control or control enhancement that is instantiated
+      by an organization during the tailoring process by either assigning an
+      organization-defined value or selecting a value from a predefined list
+      provided as part of the control or control enhancement.
+    note: >-
+      In this product: the catalogue says "at an organisation-defined frequency",
+      the organisation's own policy supplies the number, and compliance is then
+      measured against the value it committed to — see
+      docs/adr/013-organization-defined-commitments.md.
+    source: NIST SP 800-53A Rev. 5
+    source_url: https://doi.org/10.6028/NIST.SP.800-53Ar5
+    tags: [core, nist, evaluation]
+
+  - term: Nonconformity
+    definition: >-
+      A failure to meet a requirement of the standard or of the organisation's
+      own management system. Distinguished from an observation, which notes a
+      weakness that does not yet breach a requirement. (Paraphrased from ISO
+      management-system terminology.)
+    source: ISO/IEC 27001:2022
+    source_url: https://www.iso.org/standard/27001
+    tags: [core, iso, audit]
+
+  - term: Scope
+    definition: >-
+      The boundary of what is being assessed — which systems, locations, people
+      and data an audit or certification covers. Everything outside scope is
+      untested, which is why scope reduction is the most powerful compliance
+      lever there is.
+    source: PLATFORM
+    tags: [core, audit]
+
+  # ------------------------------------------------------- security principles
+
+  # The CIA triad. All three are statutory definitions from 44 U.S.C. § 3542,
+  # which FIPS 199 and FIPS 200 both carry; NIST's own glossary attributes them
+  # to FIPS 200, so that is what is cited here rather than FIPS 199.
+  - term: Confidentiality
+    definition: >-
+      Preserving authorized restrictions on information access and disclosure,
+      including means for protecting personal privacy and proprietary
+      information.
+    source: FIPS 200, from 44 U.S.C. § 3542
+    source_url: https://doi.org/10.6028/NIST.FIPS.200
+    tags: [security, nist, cia]
+
+  - term: Integrity
+    definition: >-
+      Guarding against improper information modification or destruction, and
+      includes ensuring information non-repudiation and authenticity.
+    source: FIPS 200, from 44 U.S.C. § 3542
+    source_url: https://doi.org/10.6028/NIST.FIPS.200
+    tags: [security, nist, cia]
+
+  - term: Availability
+    definition: >-
+      Ensuring timely and reliable access to and use of information.
+    source: FIPS 200, from 44 U.S.C. § 3542
+    source_url: https://doi.org/10.6028/NIST.FIPS.200
+    tags: [security, nist, cia]
+
+  - term: Least privilege
+    definition: >-
+      The principle that a security architecture is designed so that each entity
+      is granted the minimum system resources and authorizations that the entity
+      needs to perform its function.
+    source: NIST SP 800-53 Rev. 5
+    source_url: https://doi.org/10.6028/NIST.SP.800-53r5
+    tags: [security, iam, nist]
+
+  - term: Need-to-know
+    definition: >-
+      Restricting access to information to those whose duties actually require
+      it, even when they hold sufficient clearance or privilege to see it.
+      Applied alongside least privilege, not instead of it.
+    source: Adapted from NIST SP 800-53 Rev. 5
+    source_url: https://doi.org/10.6028/NIST.SP.800-53r5
+    tags: [security, iam, nist]
+
+  - term: Separation of duties
+    aliases: [SoD, Segregation of duties]
+    definition: >-
+      Dividing mission and support functions among different individuals so that
+      no single individual can subvert a critical process on their own — for
+      example, the person who requests access is not the person who approves it.
+    source: Adapted from NIST SP 800-53 Rev. 5 (AC-5)
+    source_url: https://doi.org/10.6028/NIST.SP.800-53r5
+    tags: [security, iam, nist]
+
+  - term: Defence in depth
+    definition: >-
+      Layering independent security measures so that the failure of any one of
+      them does not by itself expose the asset. The reason a control failing an
+      audit is a finding rather than an immediate breach.
+    source: Adapted from NIST SP 800-53 Rev. 5
+    source_url: https://doi.org/10.6028/NIST.SP.800-53r5
+    tags: [security, nist]
+
+  # ------------------------------------------------------------------- identity
+
+  - term: Authentication
+    definition: >-
+      Verifying the identity of a user, process, or device, often as a
+      prerequisite to allowing access to resources in an information system.
+    source: FIPS 200
+    source_url: https://doi.org/10.6028/NIST.FIPS.200
+    tags: [iam, nist]
+
+  - term: Authorization
+    definition: >-
+      The right or permission granted to a system entity to access a system
+      resource.
+    note: >-
+      Distinct from authentication: authentication establishes who you are,
+      authorization establishes what you may do.
+    source: Adapted from NIST SP 800-53 Rev. 5
+    source_url: https://doi.org/10.6028/NIST.SP.800-53r5
+    tags: [iam, nist]
+
+  - term: Multi-factor authentication
+    aliases: [MFA, 2FA, Two-factor authentication]
+    definition: >-
+      Authentication using two or more different factors to achieve
+      authentication. Factors include something you know (e.g., PIN, password),
+      something you have (e.g., cryptographic identification device, token) or
+      something you are (e.g., biometric).
+    source: NIST SP 800-172A
+    source_url: https://csrc.nist.gov/glossary/term/multi_factor_authentication
+    tags: [iam, nist]
+
+  - term: Privileged account
+    definition: >-
+      An information system account with approved authorizations of a privileged
+      user.
+    note: >-
+      In practice: administrator, root or equivalent — able to change security
+      settings or read data broadly. Attracts stricter controls precisely because
+      compromising one compromises everything below it.
+    source: CNSSI 4009-2015
+    source_url: https://csrc.nist.gov/glossary/term/privileged_account
+    tags: [iam, nist]
+
+  - term: Access review
+    aliases: [User access review, Recertification, UAR]
+    definition: >-
+      A periodic check that every account's access rights are still appropriate
+      for the holder's current role, with anything no longer justified revoked.
+      The standard evidence is a dated, approved record naming who reviewed what
+      and what was removed.
+    source: PLATFORM
+    tags: [iam, evidence]
+
+  - term: Joiner-Mover-Leaver
+    aliases: [JML]
+    definition: >-
+      The lifecycle process governing access as people join an organisation,
+      change role, and leave. The leaver leg carries the most audit weight,
+      because orphaned accounts of departed staff are a recurring finding.
+    source: PLATFORM
+    tags: [iam]
+
+  # ------------------------------------------------------------ data protection
+
+  - term: Data at rest
+    definition: >-
+      Data in persistent storage — on disk, in a database, on backup media — as
+      opposed to data moving across a network. Protected primarily by encryption
+      and access control.
+    source: Adapted from NIST SP 800-53 Rev. 5 (SC-28)
+    source_url: https://doi.org/10.6028/NIST.SP.800-53r5
+    tags: [data, nist]
+
+  - term: Data in transit
+    aliases: [Data in motion]
+    definition: >-
+      Data moving between systems or across a network. Protected primarily by
+      transport encryption such as TLS, so that interception yields ciphertext.
+    source: Adapted from NIST SP 800-53 Rev. 5 (SC-8)
+    source_url: https://doi.org/10.6028/NIST.SP.800-53r5
+    tags: [data, nist]
+
+  - term: Encryption
+    definition: >-
+      The process of transforming plaintext into ciphertext for the purpose of
+      security or privacy.
+    note: >-
+      Compliance value depends entirely on key management: encryption with keys
+      stored beside the data protects against almost nothing.
+    source: NIST SP 800-175A
+    source_url: https://doi.org/10.6028/NIST.SP.800-175A
+    tags: [data, nist]
+
+  - term: Data retention
+    definition: >-
+      How long data is kept before it must be deleted or archived. Cuts both
+      ways in compliance: some regimes set a minimum (keep audit logs for a
+      year), privacy regimes set a maximum (do not keep personal data longer
+      than necessary).
+    source: PLATFORM
+    tags: [data, privacy]
+
+  # ------------------------------------------------- vulnerability & operations
+
+  - term: Vulnerability
+    definition: >-
+      Weakness in an information system, system security procedures, internal
+      controls, or implementation that could be exploited or triggered by a
+      threat source.
+    source: NIST SP 800-53 Rev. 5
+    source_url: https://doi.org/10.6028/NIST.SP.800-53r5
+    tags: [vuln, nist]
+
+  - term: Threat
+    definition: >-
+      Any circumstance or event with the potential to adversely impact
+      organizational operations (including mission, functions, image, or
+      reputation), organizational assets, individuals, other organizations, or
+      the Nation through an information system via unauthorized access,
+      destruction, disclosure, or modification of information, and/or denial of
+      service.
+    source: NIST SP 800-30 Rev. 1
+    source_url: https://doi.org/10.6028/NIST.SP.800-30r1
+    tags: [vuln, risk, nist]
+
+  - term: Risk
+    definition: >-
+      A measure of the extent to which an entity is threatened by a potential
+      circumstance or event, and typically a function of: (i) the adverse impacts
+      that would arise if the circumstance or event occurs; and (ii) the
+      likelihood of occurrence.
+    source: NIST SP 800-30 Rev. 1
+    source_url: https://doi.org/10.6028/NIST.SP.800-30r1
+    tags: [risk, nist]
+
+  - term: Vulnerability scan
+    definition: >-
+      An automated check of systems against a database of known weaknesses,
+      producing a ranked report of findings. Audit evidence is normally the dated
+      scan report plus proof of remediation, not the scan alone.
+    source: PLATFORM
+    tags: [vuln, evidence]
+
+  - term: Approved Scanning Vendor
+    aliases: [ASV, ASV scan]
+    definition: >-
+      An organisation approved by the PCI Security Standards Council to perform
+      the external vulnerability scans PCI DSS requires. An internal scan, however
+      thorough, does not substitute for one. (Paraphrased from PCI SSC
+      programme documentation.)
+    source: PCI DSS v4.0.1
+    source_url: https://www.pcisecuritystandards.org/document_library/
+    tags: [vuln, pci]
+
+  - term: Penetration test
+    aliases: [Pen test]
+    definition: >-
+      A security test in which testers actively attempt to defeat controls and
+      exploit weaknesses, rather than only enumerating them. Deeper and less
+      frequent than a vulnerability scan, and the two are not interchangeable in
+      any framework that names both.
+    source: Adapted from NIST SP 800-53 Rev. 5 (CA-8)
+    source_url: https://doi.org/10.6028/NIST.SP.800-53r5
+    tags: [vuln, nist]
+
+  - term: Security incident
+    aliases: [Incident]
+    definition: >-
+      An occurrence that actually or imminently jeopardizes, without lawful
+      authority, the integrity, confidentiality, or availability of information
+      or an information system; or constitutes a violation or imminent threat of
+      violation of law, security policies, security procedures, or acceptable use
+      policies.
+    source: NIST SP 800-61r3
+    source_url: https://csrc.nist.gov/glossary/term/incident
+    tags: [incident, nist]
+
+  - term: Audit log
+    aliases: [Audit trail, Audit record]
+    definition: >-
+      A chronological record of information system activities, including records
+      of system accesses and operations performed in a given period.
+    note: >-
+      Its compliance value rests on being tamper-evident and retained long enough
+      to investigate after the fact — a log an administrator can quietly edit
+      evidences nothing.
+    source: NIST SP 800-53 Rev. 4
+    source_url: https://doi.org/10.6028/NIST.SP.800-53r5
+    tags: [logging, nist]
+
+  # ---------------------------------------------------------------- privacy law
+
+  - term: Personal data
+    definition: >-
+      Any information relating to an identified or identifiable natural person
+      ('data subject'); an identifiable natural person is one who can be
+      identified, directly or indirectly, in particular by reference to an
+      identifier such as a name, an identification number, location data, an
+      online identifier or to one or more factors specific to the physical,
+      physiological, genetic, mental, economic, cultural or social identity of
+      that natural person.
+    source: GDPR Article 4(1)
+    source_url: https://eur-lex.europa.eu/eli/reg/2016/679/oj
+    tags: [privacy, gdpr, law]
+
+  - term: Processing
+    definition: >-
+      Any operation or set of operations which is performed on personal data or
+      on sets of personal data, whether or not by automated means, such as
+      collection, recording, organisation, structuring, storage, adaptation or
+      alteration, retrieval, consultation, use, disclosure by transmission,
+      dissemination or otherwise making available, alignment or combination,
+      restriction, erasure or destruction.
+    source: GDPR Article 4(2)
+    source_url: https://eur-lex.europa.eu/eli/reg/2016/679/oj
+    tags: [privacy, gdpr, law]
+
+  - term: Controller
+    aliases: [Data controller]
+    definition: >-
+      The natural or legal person, public authority, agency or other body which,
+      alone or jointly with others, determines the purposes and means of the
+      processing of personal data.
+    source: GDPR Article 4(7)
+    source_url: https://eur-lex.europa.eu/eli/reg/2016/679/oj
+    tags: [privacy, gdpr, law]
+
+  - term: Processor
+    aliases: [Data processor]
+    definition: >-
+      A natural or legal person, public authority, agency or other body which
+      processes personal data on behalf of the controller.
+    source: GDPR Article 4(8)
+    source_url: https://eur-lex.europa.eu/eli/reg/2016/679/oj
+    tags: [privacy, gdpr, law]
+
+  - term: Personal data breach
+    definition: >-
+      A breach of security leading to the accidental or unlawful destruction,
+      loss, alteration, unauthorised disclosure of, or access to, personal data
+      transmitted, stored or otherwise processed.
+    source: GDPR Article 4(12)
+    source_url: https://eur-lex.europa.eu/eli/reg/2016/679/oj
+    tags: [privacy, gdpr, law, incident]
+
+  - term: Data Protection Impact Assessment
+    aliases: [DPIA]
+    definition: >-
+      An assessment required before processing that is likely to result in a high
+      risk to the rights and freedoms of natural persons, describing the
+      processing, assessing its necessity and proportionality, and setting out
+      the measures addressing the risks.
+    source: GDPR Article 35
+    source_url: https://eur-lex.europa.eu/eli/reg/2016/679/oj
+    tags: [privacy, gdpr, law]
+
+  - term: Protected Health Information
+    aliases: [PHI]
+    definition: >-
+      Individually identifiable health information transmitted or maintained in
+      any form or medium by a covered entity or its business associate, excluding
+      certain education and employment records.
+    source: HIPAA, 45 CFR § 160.103
+    source_url: https://www.ecfr.gov/current/title-45/part-160/section-160.103
+    tags: [privacy, hipaa, law]
+
+  - term: Electronic Protected Health Information
+    aliases: [ePHI]
+    definition: >-
+      Protected health information that is transmitted by or maintained in
+      electronic media. The subset of PHI the HIPAA Security Rule governs.
+    source: HIPAA, 45 CFR § 160.103
+    source_url: https://www.ecfr.gov/current/title-45/part-160/section-160.103
+    tags: [privacy, hipaa, law]
+
+  - term: Covered entity
+    definition: >-
+      A health plan, a health care clearinghouse, or a health care provider who
+      transmits any health information in electronic form in connection with a
+      transaction covered by the HIPAA rules.
+    source: HIPAA, 45 CFR § 160.103
+    source_url: https://www.ecfr.gov/current/title-45/part-160/section-160.103
+    tags: [privacy, hipaa, law]
+
+  - term: Business associate
+    definition: >-
+      A person or entity that performs functions or activities on behalf of, or
+      provides certain services to, a covered entity that involve the use or
+      disclosure of protected health information. Bound by a business associate
+      agreement rather than by the rules directly.
+    source: HIPAA, 45 CFR § 160.103
+    source_url: https://www.ecfr.gov/current/title-45/part-160/section-160.103
+    tags: [privacy, hipaa, law]
+
+  # ------------------------------------------------------------------ card data
+
+  - term: Cardholder data
+    aliases: [CHD]
+    definition: >-
+      The primary account number, together with cardholder name, expiration date
+      and service code when stored alongside it. (Paraphrased from the PCI DSS
+      glossary.)
+    source: PCI DSS v4.0.1
+    source_url: https://www.pcisecuritystandards.org/document_library/
+    tags: [pci, data]
+
+  - term: Sensitive authentication data
+    aliases: [SAD]
+    definition: >-
+      Full magnetic-stripe or equivalent chip data, card verification codes, and
+      PINs or PIN blocks. Must not be retained after authorisation, even
+      encrypted. (Paraphrased from the PCI DSS glossary.)
+    source: PCI DSS v4.0.1
+    source_url: https://www.pcisecuritystandards.org/document_library/
+    tags: [pci, data]
+
+  - term: Cardholder data environment
+    aliases: [CDE]
+    definition: >-
+      The people, processes and technology that store, process or transmit
+      cardholder data or sensitive authentication data, plus anything connected
+      to them. Defining and shrinking it is the central scoping exercise of PCI
+      DSS. (Paraphrased from the PCI DSS glossary.)
+    source: PCI DSS v4.0.1
+    source_url: https://www.pcisecuritystandards.org/document_library/
+    tags: [pci, data]
+
+  - term: Primary Account Number
+    aliases: [PAN]
+    definition: >-
+      The payment card number that identifies the issuer and the cardholder
+      account. The single data element whose presence brings a system into PCI
+      DSS scope. (Paraphrased from the PCI DSS glossary.)
+    source: PCI DSS v4.0.1
+    source_url: https://www.pcisecuritystandards.org/document_library/
+    tags: [pci, data]
+
+  # ------------------------------------------------------------------ standards
+
+  - term: Information Security Management System
+    aliases: [ISMS]
+    definition: >-
+      The set of policies, processes, roles and controls through which an
+      organisation manages information security risk as a system, established,
+      operated, monitored and continually improved. What ISO/IEC 27001 certifies
+      — the management system, not any individual control. (Paraphrased.)
+    source: ISO/IEC 27001:2022
+    source_url: https://www.iso.org/standard/27001
+    tags: [iso, standards]
+
+  - term: Statement of Applicability
+    aliases: [SoA]
+    definition: >-
+      The document listing every Annex A control, whether it applies, the
+      justification for including or excluding it, and its implementation status.
+      The first artefact an ISO/IEC 27001 auditor asks for. (Paraphrased.)
+    source: ISO/IEC 27001:2022
+    source_url: https://www.iso.org/standard/27001
+    tags: [iso, standards, evidence]
+
+  - term: Annex A
+    definition: >-
+      The reference set of information security controls in ISO/IEC 27001:2022 —
+      93 controls grouped into organisational, people, physical and
+      technological themes. A catalogue to select from, not a mandatory
+      checklist. (Paraphrased.)
+    source: ISO/IEC 27001:2022
+    source_url: https://www.iso.org/standard/27001
+    tags: [iso, standards]
+
+  - term: Trust Services Criteria
+    aliases: [TSC]
+    definition: >-
+      The AICPA criteria a SOC 2 examination reports against — Security,
+      Availability, Processing Integrity, Confidentiality and Privacy. Security
+      (the common criteria) is always in scope; the other four are opted into.
+      (Paraphrased.)
+    source: AICPA Trust Services Criteria (2017, rev. 2022)
+    source_url: https://www.aicpa-cima.com/resources/landing/system-and-organization-controls-soc-suite-of-services
+    tags: [soc2, standards]
+
+  - term: SOC 2 Type II
+    definition: >-
+      A SOC 2 report covering whether controls were suitably designed and
+      operated effectively throughout a stated period, typically 3 to 12 months.
+      A Type I covers design at a single point in time only. (Paraphrased.)
+    source: AICPA SOC 2
+    source_url: https://www.aicpa-cima.com/resources/landing/system-and-organization-controls-soc-suite-of-services
+    tags: [soc2, standards, audit]
+
+  - term: Cybersecurity Framework
+    aliases: [CSF, NIST CSF]
+    definition: >-
+      NIST's voluntary framework organising cybersecurity outcomes into six
+      Functions — Govern, Identify, Protect, Detect, Respond and Recover.
+      Outcome-based rather than prescriptive, so it is commonly used as the
+      structure onto which other frameworks are mapped.
+    source: Adapted from NIST CSF 2.0
+    source_url: https://doi.org/10.6028/NIST.CSWP.29
+    tags: [nist, standards]
+
+  - term: CIS Critical Security Controls
+    aliases: [CIS Controls]
+    definition: >-
+      A prioritised set of defensive actions maintained by the Center for
+      Internet Security, grouped into Implementation Groups so a smaller
+      organisation can adopt a defensible subset rather than all of it.
+      (Paraphrased.)
+    source: CIS Controls v8
+    source_url: https://www.cisecurity.org/controls
+    tags: [cis, standards]
+
+  # ---------------------------------------------------------------------- audit
+
+  - term: Audit
+    definition: >-
+      A systematic, independent and documented examination of evidence to
+      determine whether stated criteria are met. Independence is what separates
+      an audit from a self-assessment. (Paraphrased from ISO auditing
+      terminology.)
+    source: ISO/IEC 27001:2022
+    source_url: https://www.iso.org/standard/27001
+    tags: [audit]
+
+  - term: Finding
+    definition: >-
+      An auditor's recorded conclusion that a control does not meet its criteria,
+      supported by the evidence examined. Graded by severity, and normally
+      requiring a management response with a remediation date.
+    source: PLATFORM
+    tags: [audit]
+
+  - term: Sampling
+    definition: >-
+      Testing a subset of a population rather than every item, and generalising
+      the result. Why an auditor asks for "ten of the access reviews from Q2"
+      instead of all of them — and why a single failed sample can fail the whole
+      control.
+    source: PLATFORM
+    tags: [audit]
+
+  - term: Attestation
+    definition: >-
+      A signed statement by a responsible party that something is true — that a
+      review was performed, a policy was approved, a control operated. Carries
+      weight only when the signer is identified and the date is recorded.
+    source: PLATFORM
+    tags: [audit, evidence]
+
+  - term: Remediation
+    definition: >-
+      The work of closing a gap — changing the control, the process, or the
+      documentation until the requirement is met, and producing evidence that it
+      now is. Closed by new evidence, not by asserting the problem is fixed.
+    source: PLATFORM
+    tags: [audit, evaluation]
+
+  - term: Materiality
+    definition: >-
+      Whether a shortcoming is big enough to change a reasonable reader's
+      conclusion about the report. The judgement that separates a noted
+      observation from a qualified opinion.
+    source: PLATFORM
+    tags: [audit]

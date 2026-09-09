@@ -5,8 +5,27 @@ import { useApi } from "../lib/useApi";
 import { DataTable, type Column } from "../components/DataTable";
 import { Badge } from "../components/Badge";
 import { CisoSyncBadge } from "../components/CisoSyncBadge";
+import { PageTour } from "../components/PageTour";
 
 const STATUSES = ["", "OPEN", "RESOLVED_BY_EVIDENCE"];
+
+const TOUR_STEPS = [
+  {
+    title: "A gap is specific, not generic",
+    body: "Every row names the exact attribute, what was actually found (or missing), and what the requirement needed instead — never just \"insufficient evidence\".",
+    target: ".data-table, .empty-state",
+  },
+  {
+    title: "Filter by status",
+    body: "OPEN is what still needs fixing. RESOLVED_BY_EVIDENCE stays visible as a record — a gap is closed by the evaluator confirming new evidence fixes it, never by hand.",
+    target: "select",
+  },
+  {
+    title: "Click through to fix it",
+    body: "A row opens the evidence behind it. Upload a corrected version there and this gap re-evaluates automatically — no separate 'resolve' action here.",
+    target: ".data-table",
+  },
+] as const;
 
 export function GapsListPage() {
   const navigate = useNavigate();
@@ -35,13 +54,16 @@ export function GapsListPage() {
           <h2>Gaps</h2>
           <p>Every unmet requirement, with the exact value observed and the exact value needed.</p>
         </div>
-        <select value={status} onChange={(e) => setStatus(e.target.value)}>
-          {STATUSES.map((s) => (
-            <option key={s} value={s}>
-              {s || "All statuses"}
-            </option>
-          ))}
-        </select>
+        <div style={{ display: "flex", gap: 8 }}>
+          <select value={status} onChange={(e) => setStatus(e.target.value)}>
+            {STATUSES.map((s) => (
+              <option key={s} value={s}>
+                {s || "All statuses"}
+              </option>
+            ))}
+          </select>
+          <PageTour id="gaps" steps={TOUR_STEPS} />
+        </div>
       </div>
       {gaps.error && <div className="alert alert-error">{gaps.error}</div>}
       <DataTable
