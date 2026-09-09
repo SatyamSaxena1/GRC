@@ -162,6 +162,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
    and colored to sit inline among a page's other header actions rather than
    the sidebar's full-width dark pill. */
 .page-tour-btn { color: var(--primary); }
+.page-tour-btn.is-active { color: #fff; background: var(--primary); border-color: var(--primary); }
 .page-tour-btn .tour-icon {
   display: grid; place-items: center; width: 18px; height: 18px; flex-shrink: 0;
   border: 1.5px solid currentColor; border-radius: 50%; font-size: 11px; font-weight: 800;
@@ -178,13 +179,23 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .tour-list button:hover { border-color: var(--primary); transform: translateY(-1px); }
 .tour-list span { color: var(--text-muted); font-size: 13px; }
 .tour-list small { color: var(--primary); font-weight: 700; }
-.tour-clickthrough-layer { position: fixed; inset: 0; z-index: 100; pointer-events: none; background: rgba(12, 16, 31, .18); }
-.tour-coachmark { position: fixed; right: 24px; bottom: 24px; pointer-events: auto; border: 1px solid var(--primary); }
+/* The veil itself does no dimming (transparent) — dimming comes entirely from
+   the huge box-shadow on .tour-target below, which is the actual spotlight
+   (a "hole" cut around the highlighted element). Two separate darkened layers
+   here would double up and look muddier than either alone. */
+.tour-clickthrough-layer { position: fixed; inset: 0; z-index: 100; pointer-events: none; }
+/* Above .tour-target (110) so the highlighted element's spotlight shadow —
+   which surrounds it on all sides — can never paint over the dialog. */
+.tour-coachmark { position: fixed; right: 24px; bottom: 24px; z-index: 120; pointer-events: auto; border: 1px solid var(--primary); }
+.tour-coachmark.tour-coachmark--top { bottom: auto; top: 24px; }
 .tour-instruction { margin-top: 14px !important; color: var(--primary) !important; font-weight: 800; }
-.tour-target { z-index: 101; background-color: var(--panel); box-shadow: 0 0 0 9999px rgba(12, 16, 31, .18); cursor: pointer; }
+/* No opaque fill: the element keeps its own background, just lifted above the
+   veil so the spotlight shadow doesn't dim it too. */
+.tour-target { z-index: 110; box-shadow: 0 0 0 9999px rgba(12, 16, 31, .45); }
 
 @media (max-width: 700px) {
   .tour-coachmark { right: 12px; bottom: 12px; left: 12px; width: auto; }
+  .tour-coachmark.tour-coachmark--top { top: 12px; }
 }
 
 .stat-card .stat-label {

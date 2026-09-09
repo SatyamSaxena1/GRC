@@ -24,6 +24,7 @@ export function PageTour({
 }) {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(0);
+  const [coachmarkOnTop, setCoachmarkOnTop] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
   const current = open ? steps[step] : null;
   const completeKey = `grc:page-tour:${id}:complete`;
@@ -42,14 +43,27 @@ export function PageTour({
   useEffect(() => {
     if (!current) return;
     let target: Element | null = null;
+    let settleTimer = 0;
     const timer = window.setTimeout(() => {
       target = document.querySelector(current.target);
       target?.classList.add("tour-target");
       target?.scrollIntoView({ behavior: "smooth", block: "center" });
       dialogRef.current?.focus();
+      // Give the smooth scroll time to land, then see whether the target ended
+      // up under the coachmark's default bottom-right corner (roughly its
+      // footprint — see .tour-coachmark in index.css) and flip to the top
+      // corner if so, rather than let the dialog cover what it's pointing at.
+      settleTimer = window.setTimeout(() => {
+        const rect = target?.getBoundingClientRect();
+        if (!rect) return;
+        const nearBottomRightCorner =
+          rect.bottom > window.innerHeight - 340 && rect.right > window.innerWidth - 520;
+        setCoachmarkOnTop(nearBottomRightCorner);
+      }, 350);
     }, 50);
     return () => {
       window.clearTimeout(timer);
+      window.clearTimeout(settleTimer);
       target?.classList.remove("tour-target");
     };
   }, [current]);
@@ -59,7 +73,7 @@ export function PageTour({
   return (
     <>
       <button
-        className="btn page-tour-btn"
+        className={`btn page-tour-btn${open ? " is-active" : ""}`}
         onClick={() => { setStep(0); setOpen(true); }}
         aria-label={`${label} — guided tour`}
         title={label}
@@ -72,7 +86,7 @@ export function PageTour({
       {current && (
         <div className="tour-clickthrough-layer" role="presentation">
           <div
-            className="tour-dialog tour-coachmark"
+            className={`tour-dialog tour-coachmark${coachmarkOnTop ? " tour-coachmark--top" : ""}`}
             role="dialog"
             aria-modal="true"
             aria-labelledby="page-tour-title"
