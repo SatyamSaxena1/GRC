@@ -190,8 +190,12 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .tour-coachmark.tour-coachmark--top { bottom: auto; top: 24px; }
 .tour-instruction { margin-top: 14px !important; color: var(--primary) !important; font-weight: 800; }
 /* No opaque fill: the element keeps its own background, just lifted above the
-   veil so the spotlight shadow doesn't dim it too. */
-.tour-target { z-index: 110; box-shadow: 0 0 0 9999px rgba(12, 16, 31, .45); }
+   veil so the spotlight shadow doesn't dim it too. .18 matches what the old
+   two-layer version worked out to combined (veil .18 + shadow .18 stacked) —
+   .45 here earlier was a regression: a single layer at that alpha reads as
+   heavier than the old double-dim did, painting the rest of the page over
+   rather than just de-emphasizing it. */
+.tour-target { z-index: 110; box-shadow: 0 0 0 9999px rgba(12, 16, 31, .18); }
 
 @media (max-width: 700px) {
   .tour-coachmark { right: 12px; bottom: 12px; left: 12px; width: auto; }
