@@ -65,7 +65,8 @@ def reuse_stats(
     rows = (
         db.query(EvidenceControlLink.evidence_id)
         .join(Evidence, Evidence.id == EvidenceControlLink.evidence_id)
-        .filter(Evidence.org_id == org_id, Evidence.lifecycle_status == "CURRENT")
+        .filter(Evidence.org_id == org_id, Evidence.lifecycle_status == "CURRENT",
+                Evidence.deleted_at.is_(None))
         .all()
     )
     total = len(rows)
@@ -126,7 +127,7 @@ def framework_readiness(
 
     evidence_pool = (
         db.query(Evidence)
-        .filter_by(org_id=org_id, lifecycle_status="CURRENT")
+        .filter_by(org_id=org_id, lifecycle_status="CURRENT", deleted_at=None)
         .all()
     )
 

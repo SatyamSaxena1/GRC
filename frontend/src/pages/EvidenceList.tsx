@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ApiError, listEvidence, reprocessEvidence, uploadEvidence, type EvidenceSummary } from "../api/client";
+import {
+  ApiError, listEvidence, reprocessEvidence, uploadEvidence, type EvidenceSummary,
+} from "../api/client";
 import { useSession } from "../lib/session";
 import { useApi } from "../lib/useApi";
 import { DataTable, type Column } from "../components/DataTable";
@@ -26,18 +28,40 @@ const TOUR_STEPS = [
   },
 ] as const;
 
-// Must match the artefact_type values the content packs match on — see
-// app/content/*.yaml. AI_POLICY and AI_INVENTORY are what NIST-AI-RMF evidences
-// against; an AI governance policy is deliberately not a POLICY, so uploading
-// the security policy cannot accidentally satisfy an AI clause.
-const ARTEFACT_TYPES = ["POLICY", "SCAN_REPORT", "REVIEW_RECORD", "AI_POLICY", "AI_INVENTORY"];
+// Must match app/routers/evidence.py::ARTEFACT_TYPES and the artefact_type
+// values the content packs match on — see app/content/*.yaml. AI_POLICY and
+// AI_INVENTORY are what NIST-AI-RMF evidences against; an AI governance policy
+// is deliberately not a POLICY, so uploading the security policy cannot
+// accidentally satisfy an AI clause. CERTIFICATE and SCREENSHOT have no
+// evidence_requirements mapped yet — they upload and classify but won't
+// produce any framework links until a content pack maps them to one.
+const ARTEFACT_TYPES = [
+  "POLICY", "SCAN_REPORT", "REVIEW_RECORD", "REPORT", "CERTIFICATE", "SCREENSHOT",
+  "AI_POLICY", "AI_INVENTORY",
+];
 
 const ARTEFACT_LABELS: Record<string, string> = {
   POLICY: "Policies & procedures",
   SCAN_REPORT: "Scan reports",
   REVIEW_RECORD: "Review records",
+  REPORT: "Reports",
+  CERTIFICATE: "Certificates",
+  SCREENSHOT: "Screenshots",
   AI_POLICY: "AI governance policies",
   AI_INVENTORY: "AI system inventories",
+};
+
+// What the type controls: which framework requirements this artefact can
+// evaluate against (app/evaluate.py matches on artefact_type exactly).
+const ARTEFACT_HELP: Record<string, string> = {
+  POLICY: "A written policy or procedure document — access control, encryption, retention, and similar.",
+  SCAN_REPORT: "Output from a vulnerability or penetration test scan (e.g. an ASV report).",
+  REVIEW_RECORD: "A record that a periodic review happened — access reviews, log reviews.",
+  REPORT: "A narrative finding or audit report, distinct from an automated scan.",
+  CERTIFICATE: "A third-party attestation or certification (ISO, SOC 2, PCI AOC). Not yet evaluated against any framework requirement — upload to keep it on file.",
+  SCREENSHOT: "A screen capture as supporting proof. Not yet evaluated against any framework requirement — upload to keep it on file.",
+  AI_POLICY: "An AI governance policy — separate from a general security policy so it only satisfies AI-specific clauses.",
+  AI_INVENTORY: "A system/model inventory for NIST AI RMF evidence.",
 };
 const TERMINAL = new Set(["READY", "FAILED", "NEEDS_REVIEW"]);
 // Mirrors app/monitor.py's STUCK_AFTER_MINUTES — a display threshold only; the
@@ -49,6 +73,9 @@ export function EvidenceListPage() {
   const navigate = useNavigate();
   const [file, setFile] = useState<File | null>(null);
   const [artefactType, setArtefactType] = useState(ARTEFACT_TYPES[0]);
+  const [description, setDescription] = useState("");
+  const [validUntil, setValidUntil] = useState("");
+  const [isEncrypted, setIsEncrypted] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState<string | null>(null);
@@ -103,7 +130,11 @@ export function EvidenceListPage() {
     setBusy(true);
     setError(null);
     try {
-      const result = await uploadEvidence(file, artefactType);
+      const result = await uploadEvidence(file, artefactType, {
+        description: description.trim() || undefined,
+        validUntil: validUntil || undefined,
+        isEncrypted,
+      });
       navigate(`/evidence/${result.evidence_id}`);
     } catch (err) {
       setError(err instanceof ApiError && err.status === 409 ? "This exact file has already been uploaded." : (err as Error).message);
@@ -191,15 +222,31 @@ export function EvidenceListPage() {
               <select value={artefactType} onChange={(e) => setArtefactType(e.target.value)}>
                 {ARTEFACT_TYPES.map((t) => (
                   <option key={t} value={t}>
-                    {t}
+                    {ARTEFACT_LABELS[t] ?? t}
                   </option>
                 ))}
               </select>
+              <p className="muted" style={{ fontSize: 12, margin: "4px 0 0" }}>{ARTEFACT_HELP[artefactType]}</p>
             </div>
             <div>
               <label>File</label>
               <input type="file" accept=".pdf,.docx,.xlsx,.png,.jpg,.jpeg,.txt,.csv" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
             </div>
+            <div>
+              <label>Description (optional)</label>
+              <input
+                type="text" placeholder="e.g. Q3 access review, signed"
+                value={description} onChange={(e) => setDescription(e.target.value)}
+              />
+            </div>
+            <div>
+              <label>Valid until (optional)</label>
+              <input type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} />
+            </div>
+            <label style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 400 }}>
+              <input type="checkbox" checked={isEncrypted} onChange={(e) => setIsEncrypted(e.target.checked)} />
+              This file is password-protected
+            </label>
             <button className="btn btn-primary" disabled={!file || busy} onClick={submit}>
               {busy ? "Uploading…" : "Upload"}
             </button>

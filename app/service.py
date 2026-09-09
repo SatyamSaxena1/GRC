@@ -17,6 +17,7 @@ from app import audit_log, ciso_sync
 from app import events
 from app.ai.prompts import NUTSHELL_PROMPT_VERSION
 from app.content.load import Content
+from app.documents import is_encrypted_pdf
 from app.evaluate import evaluate, org_defined_attributes
 from app.ingest import (
     PROMPT_VERSION, extract_attributes, extract_attributes_streaming, generate_nutshell,
@@ -313,6 +314,11 @@ def _run_pipeline(db: Session, content: Content, evidence: Evidence, actor_label
 
     set_status(db, evidence, "EXTRACTING")
     data = storage.get(evidence.storage_key)
+    # Checked once, upfront: a password-protected file failing to extract
+    # anything is a different problem than a scan needing OCR or the model
+    # being down, and the status set below says so plainly instead of guessing.
+    if is_encrypted_pdf(evidence.filename, data):
+        evidence.is_encrypted = True
     text, method = read_document(evidence.filename, data)
 
     set_status(db, evidence, "ANALYZING")
@@ -436,12 +442,20 @@ def _run_pipeline(db: Session, content: Content, evidence: Evidence, actor_label
                 "quality_score": quality.score},
         request_id=request_id,
     )
-    # An unusable extraction is flagged for a human, never quietly accepted. All
-    # three non-OK statuses mean the verdicts above were computed from no facts:
-    # the model returned junk (INVALID_OUTPUT), errored mid-call (ERROR), or was
-    # unreachable (UNAVAILABLE). NEEDS_REVIEW says so plainly, and /reprocess can
-    # re-run once the model is back (see app/routers/evidence.py, app/monitor.py).
-    if run.status in {"INVALID_OUTPUT", "ERROR", "UNAVAILABLE"}:
+    # An unusable extraction is flagged for a human, never quietly accepted.
+    # Encryption takes priority in the message even if the model also happened
+    # to be down: a locked file would have extracted nothing regardless, and
+    # "the model was unavailable" would be the wrong thing to tell the user to
+    # wait out — the fix is a new, unlocked version, not a re-run.
+    if evidence.is_encrypted:
+        set_status(db, evidence, "NEEDS_REVIEW",
+                  "password-protected — its text could not be read")
+    elif run.status in {"INVALID_OUTPUT", "ERROR", "UNAVAILABLE"}:
+        # All three mean the verdicts above were computed from no facts: the
+        # model returned junk (INVALID_OUTPUT), errored mid-call (ERROR), or
+        # was unreachable (UNAVAILABLE). NEEDS_REVIEW says so plainly, and
+        # /reprocess can re-run once the model is back (see
+        # app/routers/evidence.py, app/monitor.py).
         set_status(db, evidence, "NEEDS_REVIEW", f"extraction {run.status.lower().replace('_', ' ')}")
     else:
         set_status(db, evidence, "READY")

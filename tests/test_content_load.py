@@ -84,3 +84,14 @@ def test_ai_rmf_carries_playbook_guidance():
     assert all(r.guidance.strip() for r in pack.requirements)
     # Guidance must be advice, not a restatement of the outcome text.
     assert not any(r.guidance.strip() == r.text.strip() for r in pack.requirements)
+
+
+def test_report_artefact_type_is_mapped_in_cis_controls():
+    """Phase 2: REPORT is a real artefact type in the upload form now — this
+    pins that at least one requirement actually accepts it as evidence,
+    matching what app/routers/evidence.py::ARTEFACT_TYPES allows to upload."""
+    pack = load().framework("CIS-CONTROLS")
+    req = next(r for r in pack.requirements if r.clause == "7.5-7.6")
+    types = {e.artefact_type for e in req.evidence_requirements}
+    assert "REPORT" in types
+    assert "SCAN_REPORT" in types  # the original requirement still holds too

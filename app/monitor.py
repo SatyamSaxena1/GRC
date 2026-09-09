@@ -144,7 +144,7 @@ def attention_report(db: Session, org_id: str, content: Content, *,
 
     if frameworks:
         pool = db.query(Evidence).filter_by(
-            org_id=org_id, lifecycle_status="CURRENT", status="READY"
+            org_id=org_id, lifecycle_status="CURRENT", status="READY", deleted_at=None,
         ).all()
         horizon = as_of + timedelta(days=horizon_days)
 
@@ -170,7 +170,7 @@ def attention_report(db: Session, org_id: str, content: Content, *,
 
     stuck: list[StalledEvidence] = []
     failed: list[StalledEvidence] = []
-    for evidence in db.query(Evidence).filter_by(org_id=org_id).all():
+    for evidence in db.query(Evidence).filter_by(org_id=org_id, deleted_at=None).all():
         if evidence.status in TERMINAL_EVIDENCE_STATUSES and evidence.status != "FAILED":
             continue
         created = evidence.created_at
@@ -204,7 +204,7 @@ def retryable_extractions(db: Session, *, now: datetime | None = None,
     cutoff = now - timedelta(minutes=older_than_minutes)
     out: list[Evidence] = []
     rows = db.query(Evidence).filter_by(
-        lifecycle_status="CURRENT", status="NEEDS_REVIEW"
+        lifecycle_status="CURRENT", status="NEEDS_REVIEW", deleted_at=None,
     ).all()
     for evidence in rows:
         created = evidence.created_at

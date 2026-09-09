@@ -7,7 +7,7 @@ rules and alembic/versions/*_rls.py for the Postgres row-level enforcement.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from sqlalchemy import ForeignKey, Integer, JSON, String, Text, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -222,6 +222,21 @@ class Evidence(Base):
     quality_detail: Mapped[dict] = mapped_column(JSON, default=dict)       # per-dimension reasons
     lifecycle_status: Mapped[str] = mapped_column(String, default="CURRENT")  # CURRENT|SUPERSEDED
     created_at: Mapped[datetime] = mapped_column(default=_now)
+
+    # Human-entered metadata — never inferred, never required. A blank
+    # description/valid_until is not a data-quality problem the pipeline should
+    # flag; it just means nobody filled it in.
+    description: Mapped[str | None] = mapped_column(Text, default=None)
+    valid_until: Mapped[date | None] = mapped_column(default=None)
+    # Detected at parse time (app/documents.py), not asked at upload — a user
+    # can't know a PDF is password-protected until something tries to read it.
+    is_encrypted: Mapped[bool] = mapped_column(default=False)
+    # Soft delete only: evidence already reads as an append-only ledger
+    # everywhere else (superseded, never overwritten), and a hard DELETE would
+    # break FK-linked gaps/tasks/audit rows that still need to explain
+    # themselves. Excluded from every read path below by deleted_at IS NULL.
+    deleted_at: Mapped[datetime | None] = mapped_column(default=None)
+    deleted_by: Mapped[str | None] = mapped_column(default=None)
 
     links: Mapped[list["EvidenceControlLink"]] = relationship(back_populates="evidence")
     attributes: Mapped[list["EvidenceAttribute"]] = relationship(back_populates="evidence")

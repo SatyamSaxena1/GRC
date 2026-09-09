@@ -203,17 +203,41 @@ export type EvidenceUploadResult = { evidence_id: string; id: string; status: st
 export const reprocessEvidence = (evidenceId: string) =>
   request<EvidenceUploadResult>("POST", `/evidence/${evidenceId}/reprocess`);
 
-export function uploadEvidence(file: File, artefactType: string): Promise<EvidenceUploadResult> {
+export type EvidenceUploadMetadata = {
+  description?: string;
+  validUntil?: string;     // yyyy-mm-dd
+  isEncrypted?: boolean;
+};
+export function uploadEvidence(
+  file: File, artefactType: string, meta: EvidenceUploadMetadata = {},
+): Promise<EvidenceUploadResult> {
   const form = new FormData();
   form.append("file", file);
+  if (meta.description) form.append("description", meta.description);
+  if (meta.validUntil) form.append("valid_until", meta.validUntil);
+  if (meta.isEncrypted) form.append("is_encrypted", "true");
   return request("POST", `/evidence?artefact_type=${encodeURIComponent(artefactType)}`, { form });
 }
 
-export function uploadEvidenceVersion(evidenceId: string, file: File): Promise<EvidenceUploadResult> {
+export function uploadEvidenceVersion(
+  evidenceId: string, file: File, artefactType?: string,
+): Promise<EvidenceUploadResult> {
   const form = new FormData();
   form.append("file", file);
-  return request("POST", `/evidence/${evidenceId}/versions`, { form });
+  const path = artefactType
+    ? `/evidence/${evidenceId}/versions?artefact_type=${encodeURIComponent(artefactType)}`
+    : `/evidence/${evidenceId}/versions`;
+  return request("POST", path, { form });
 }
+
+export const updateEvidenceMetadata = (
+  evidenceId: string, body: { description?: string | null; valid_until?: string | null },
+) => request<{ id: string; description: string | null; valid_until: string | null }>(
+  "PATCH", `/evidence/${evidenceId}`, { json: body },
+);
+
+export const deleteEvidence = (evidenceId: string) =>
+  request<void>("DELETE", `/evidence/${evidenceId}`);
 
 export type EvidenceStatus = {
   evidence_id: string;
@@ -374,6 +398,7 @@ export const draftRemediation = (gapId: string) =>
 export type EvidenceDetail = {
   id: string;
   version: number;
+  artefact_type: string;
   lifecycle_status: string;
   status: string;
   sha256: string;
@@ -385,6 +410,9 @@ export type EvidenceDetail = {
   download_url: string;
   extracted_attributes: Record<string, unknown>;
   links: EvidenceLink[];
+  description: string | null;
+  valid_until: string | null;
+  is_encrypted: boolean;
 };
 export const getEvidence = (id: string) => request<EvidenceDetail>("GET", `/evidence/${id}`);
 
