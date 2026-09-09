@@ -280,3 +280,121 @@ def test_list_evidence_is_tenant_scoped(client, bootstrap, upload):
 
     theirs = client.get("/evidence", headers={"authorization": f"org:{other}"}).json()
     assert theirs == []
+
+
+# --------------------------------------------------------------- Phase 2: metadata, delete
+
+
+def test_upload_rejects_unknown_artefact_type(client, bootstrap):
+    org_id, _ = bootstrap(client)
+    resp = client.post("/evidence", headers={"authorization": f"org:{org_id}"},
+                       params={"artefact_type": "NOT_A_REAL_TYPE"},
+                       files={"file": ("f.txt", b"content", "text/plain")})
+    assert resp.status_code == 400
+
+
+def test_upload_metadata_round_trips(client, bootstrap):
+    org_id, _ = bootstrap(client)
+    resp = client.post("/evidence", headers={"authorization": f"org:{org_id}"},
+                       params={"artefact_type": "CERTIFICATE"},
+                       data={"description": "ISO 27001 certificate 2026",
+                             "valid_until": "2027-01-01", "is_encrypted": "true"},
+                       files={"file": ("cert.txt", b"a certificate", "text/plain")})
+    assert resp.status_code == 202
+    evidence_id = resp.json()["evidence_id"]
+
+    detail = client.get(f"/evidence/{evidence_id}",
+                        headers={"authorization": f"org:{org_id}"}).json()
+    assert detail["artefact_type"] == "CERTIFICATE"
+    assert detail["description"] == "ISO 27001 certificate 2026"
+    assert detail["valid_until"] == "2027-01-01"
+    assert detail["is_encrypted"] is True
+
+    summary = client.get("/evidence", headers={"authorization": f"org:{org_id}"}).json()
+    assert summary[0]["artefact_type"] == "CERTIFICATE"
+
+
+def test_patch_updates_description_and_validity(client, bootstrap, upload):
+    org_id, _ = bootstrap(client)
+    headers = {"authorization": f"org:{org_id}"}
+    evidence_id = upload(client, org_id).json()["evidence_id"]
+
+    resp = client.patch(f"/evidence/{evidence_id}", headers=headers,
+                        json={"description": "updated", "valid_until": "2027-06-01"})
+    assert resp.status_code == 200
+    assert resp.json() == {"id": evidence_id, "description": "updated", "valid_until": "2027-06-01"}
+
+    detail = client.get(f"/evidence/{evidence_id}", headers=headers).json()
+    assert detail["description"] == "updated"
+    assert detail["valid_until"] == "2027-06-01"
+
+    events = client.get(f"/evidence/{evidence_id}/history", headers=headers).json()
+    assert any(e["action"] == "EVIDENCE_METADATA_UPDATED" for e in events)
+
+
+def test_auditor_cannot_patch_or_delete_evidence(client, bootstrap, upload):
+    org_id, engagement_id = bootstrap(client)
+    evidence_id = upload(client, org_id).json()["evidence_id"]
+    headers = {"authorization": f"auditor:{engagement_id}"}
+
+    assert client.patch(f"/evidence/{evidence_id}", headers=headers,
+                        json={"description": "x"}).status_code == 403
+    assert client.delete(f"/evidence/{evidence_id}", headers=headers).status_code == 403
+
+
+def test_delete_soft_deletes_and_frees_the_dedup_hash(client, bootstrap, upload):
+    org_id, _ = bootstrap(client)
+    headers = {"authorization": f"org:{org_id}"}
+    evidence_id = upload(client, org_id, content=b"unique content").json()["evidence_id"]
+
+    resp = client.delete(f"/evidence/{evidence_id}", headers=headers)
+    assert resp.status_code == 204
+
+    # Gone from every read path
+    assert client.get(f"/evidence/{evidence_id}", headers=headers).status_code == 404
+    assert evidence_id not in {r["id"] for r in client.get("/evidence", headers=headers).json()}
+
+    # The identical file can be uploaded again — deletion frees the dedup guard
+    again = upload(client, org_id, content=b"unique content")
+    assert again.status_code == 202
+
+
+def test_delete_is_refused_once_an_auditor_has_locked_a_verdict(client, bootstrap, upload):
+    from app.models import EvidenceControlLink
+    org_id, engagement_id = bootstrap(client)
+    headers = {"authorization": f"org:{org_id}"}
+    evidence_id = upload(client, org_id).json()["evidence_id"]
+
+    with session() as s:
+        link_id = s.query(EvidenceControlLink).filter_by(evidence_id=evidence_id).first().id
+    locked = client.post(f"/audit/links/{link_id}/lock",
+                         headers={"authorization": f"auditor:{engagement_id}"},
+                         json={"verdict": "PASS"})
+    assert locked.status_code == 200
+
+    resp = client.delete(f"/evidence/{evidence_id}", headers=headers)
+    assert resp.status_code == 409
+
+
+def test_deleted_evidence_is_invisible_cross_tenant_and_direct(client, bootstrap, upload):
+    org_id, _ = bootstrap(client)
+    headers = {"authorization": f"org:{org_id}"}
+    evidence_id = upload(client, org_id).json()["evidence_id"]
+    client.delete(f"/evidence/{evidence_id}", headers=headers)
+
+    # every sub-resource route goes through the same _scoped_evidence guard
+    assert client.get(f"/evidence/{evidence_id}/status", headers=headers).status_code == 404
+    assert client.get(f"/evidence/{evidence_id}/attributes", headers=headers).status_code == 404
+
+
+def test_new_version_can_change_artefact_type(client, bootstrap, upload):
+    org_id, _ = bootstrap(client)
+    headers = {"authorization": f"org:{org_id}"}
+    evidence_id = upload(client, org_id, artefact_type="POLICY").json()["evidence_id"]
+
+    resp = client.post(f"/evidence/{evidence_id}/versions", headers=headers,
+                       params={"artefact_type": "CERTIFICATE"},
+                       files={"file": ("v2.txt", b"revised", "text/plain")})
+    assert resp.status_code == 202
+    new_id = resp.json()["evidence_id"]
+    assert client.get(f"/evidence/{new_id}", headers=headers).json()["artefact_type"] == "CERTIFICATE"

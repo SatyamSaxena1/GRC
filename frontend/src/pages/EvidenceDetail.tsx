@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   ApiError,
+  deleteEvidence,
   getEvidence,
   getEvidenceAttributes,
   getEvidenceHistory,
@@ -10,6 +11,7 @@ import {
   draftRemediation,
   reprocessEvidence,
   streamEvidenceEvents,
+  updateEvidenceMetadata,
   type EvidenceAttribute,
   type EvidenceVersion,
   type Gap,
@@ -17,6 +19,7 @@ import {
   type StreamedGap,
   uploadEvidenceVersion,
 } from "../api/client";
+import { useSession } from "../lib/session";
 import { useApi } from "../lib/useApi";
 import { Badge } from "../components/Badge";
 import { PageTour } from "../components/PageTour";
@@ -63,6 +66,8 @@ const STAGE_COPY: Record<string, string> = {
 
 export function EvidenceDetailPage() {
   const { id = "" } = useParams();
+  const navigate = useNavigate();
+  const { identity } = useSession();
   const detail = useApi(() => getEvidence(id), [id]);
   const attributes = useApi(() => getEvidenceAttributes(id), [id]);
   const versions = useApi(() => getEvidenceVersions(id), [id]);
@@ -133,6 +138,11 @@ export function EvidenceDetailPage() {
   // run isn't. Offer to re-run rather than leaving a misleading all-FAIL result.
   const extractionIncomplete =
     evidence.status === "NEEDS_REVIEW" && (status.data?.detail ?? "").startsWith("extraction ");
+  // A locked password can't be fixed by re-running the same file — the fix is a
+  // new, unlocked version, so this gets its own banner instead of a Re-run button.
+  const passwordProtected = evidence.status === "NEEDS_REVIEW" && evidence.is_encrypted;
+  const hasLockedLink = shownLinks.some((l) => l.locked);
+  const canManage = identity?.kind !== "auditor";
 
   const rerun = async () => {
     setRerunning(true);
@@ -160,10 +170,26 @@ export function EvidenceDetailPage() {
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <Badge value={evidence.status} />
           <Badge value={evidence.lifecycle_status} />
+          {evidence.is_encrypted && <Badge value="ENCRYPTED" />}
           <PageTour id="evidence-detail" steps={TOUR_STEPS} />
+          {canManage && (
+            <RemoveEvidence
+              evidenceId={id} disabled={hasLockedLink}
+              onDeleted={() => navigate("/evidence")}
+            />
+          )}
         </div>
       </div>
 
+      {passwordProtected && (
+        <div className="alert alert-warning">
+          <strong>This file is password-protected — its contents could not be read.</strong>
+          <span className="muted" style={{ display: "block", fontSize: 12, marginTop: 2 }}>
+            Re-running won't help; the file itself needs to open without a password.
+            Upload a new version below without password protection.
+          </span>
+        </div>
+      )}
       {!TERMINAL.has(evidence.status) && (
         <div className="alert alert-info" style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <Spinner size={16} />
@@ -212,6 +238,11 @@ export function EvidenceDetailPage() {
           <div className="stat-value" style={{ fontSize: 18 }}>{(evidence.size_bytes / 1024).toFixed(1)} KB</div>
         </div>
       </div>
+
+      <MetadataEditor
+        evidenceId={id} description={evidence.description} validUntil={evidence.valid_until}
+        editable={canManage} onSaved={detail.reload}
+      />
 
       {evidence.quality?.dimensions && evidence.quality.dimensions.length > 0 && (
         <>
@@ -304,6 +335,127 @@ export function EvidenceDetailPage() {
         {history.data?.length === 0 && <li className="muted">No events yet.</li>}
       </ul>
     </div>
+  );
+}
+
+/** Description and validity date — the only two fields on an evidence row a
+ * person can hand-edit; everything else is derived by the pipeline. Starts
+ * read-only so the common case (nothing to say) doesn't show an empty form. */
+function MetadataEditor({
+  evidenceId, description, validUntil, editable, onSaved,
+}: {
+  evidenceId: string;
+  description: string | null;
+  validUntil: string | null;
+  editable: boolean;
+  onSaved: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [descDraft, setDescDraft] = useState(description ?? "");
+  const [validDraft, setValidDraft] = useState(validUntil ?? "");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const startEdit = () => {
+    setDescDraft(description ?? "");
+    setValidDraft(validUntil ?? "");
+    setError(null);
+    setEditing(true);
+  };
+
+  const save = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await updateEvidenceMetadata(evidenceId, {
+        description: descDraft.trim() || null,
+        valid_until: validDraft || null,
+      });
+      setEditing(false);
+      onSaved();
+    } catch (err) {
+      setError(err instanceof ApiError ? String(err.detail) : (err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!editing && !description && !validUntil && !editable) return null;
+
+  return (
+    <div className="card" style={{ marginBottom: 16 }}>
+      {!editing ? (
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <div>
+            <div className="stat-label">Description</div>
+            <div>{description || <span className="muted">No description</span>}</div>
+            <div className="stat-label" style={{ marginTop: 10 }}>Valid until</div>
+            <div>{validUntil || <span className="muted">Not set</span>}</div>
+          </div>
+          {editable && <button className="btn" onClick={startEdit}>Edit</button>}
+        </div>
+      ) : (
+        <div className="form-grid">
+          {error && <div className="alert alert-error">{error}</div>}
+          <div>
+            <label>Description</label>
+            <input type="text" value={descDraft} onChange={(e) => setDescDraft(e.target.value)} />
+          </div>
+          <div>
+            <label>Valid until</label>
+            <input type="date" value={validDraft} onChange={(e) => setValidDraft(e.target.value)} />
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button className="btn btn-primary" disabled={busy} onClick={save}>
+              {busy ? "Saving…" : "Save"}
+            </button>
+            <button className="btn" disabled={busy} onClick={() => setEditing(false)}>Cancel</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Soft-delete behind a confirm — the row is hidden everywhere, not gone (see
+ * DELETE /evidence/{id}). Disabled once an auditor has locked a verdict, same
+ * rule as reprocess: nobody quietly makes a reviewed result disappear. */
+function RemoveEvidence({
+  evidenceId, disabled, onDeleted,
+}: {
+  evidenceId: string;
+  disabled: boolean;
+  onDeleted: () => void;
+}) {
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const remove = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await deleteEvidence(evidenceId);
+      onDeleted();
+    } catch (err) {
+      setError(err instanceof ApiError ? String(err.detail) : (err as Error).message);
+      setBusy(false);
+    }
+  };
+
+  if (disabled) {
+    return <span className="muted" style={{ fontSize: 12 }} title="An auditor has locked a verdict on this evidence">Remove (locked)</span>;
+  }
+  if (!confirming) {
+    return <button className="btn" onClick={() => setConfirming(true)}>Remove</button>;
+  }
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+      <span className="muted" style={{ fontSize: 12 }}>Remove this evidence?</span>
+      <button className="btn" disabled={busy} onClick={remove}>{busy ? "Removing…" : "Confirm"}</button>
+      <button className="btn" disabled={busy} onClick={() => setConfirming(false)}>Cancel</button>
+      {error && <span className="alert alert-error" style={{ marginLeft: 6 }}>{error}</span>}
+    </span>
   );
 }
 

@@ -128,6 +128,15 @@ requirements:
           expiry_attribute: scan_expiry_date
           issued_attribute: scan_completed_date
           max_age_days: 90
+      # A narrative pen-test / findings report is acceptable proof of the same
+      # requirement — not every scan is delivered as an ASV-style scan report.
+      - artefact_type: REPORT
+        required_attributes:
+          [scan_completed_date, scan_expiry_date, compliance_status, asv_company]
+        evidence_validity:
+          expiry_attribute: scan_expiry_date
+          issued_attribute: scan_completed_date
+          max_age_days: 90
     mappings:
       - uco: UCO-VULN-001
         coverage: FULL

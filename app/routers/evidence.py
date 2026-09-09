@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import json
+from datetime import date, datetime, timezone
 from typing import Iterator
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app import audit_log, authorization, events
@@ -21,10 +23,23 @@ from app.upload_security import UploadRejected, get_scanner, validate_upload
 router = APIRouter(prefix="/evidence", tags=["evidence"])
 CONTENT = load_content()
 
+# The upload form's de-facto allowlist (frontend/src/pages/EvidenceList.tsx)
+# enforced again here — a client-side-only check is not a check. CERTIFICATE
+# and SCREENSHOT have no evidence_requirements mapped to them yet in
+# app/content/*.yaml, so they upload and classify but evaluate against
+# nothing (the existing "nothing in scope for this artefact type" empty
+# state) until a framework pack maps them to a requirement.
+ARTEFACT_TYPES = {
+    "POLICY", "SCAN_REPORT", "REVIEW_RECORD", "AI_POLICY", "AI_INVENTORY",
+    "CERTIFICATE", "SCREENSHOT", "REPORT",
+}
+
 
 def _scoped_evidence(db: Session, actor: Actor, evidence_id: str) -> Evidence:
     evidence = db.get(Evidence, evidence_id)
-    if evidence is None:
+    # A soft-deleted row 404s exactly like a nonexistent one — deletion is not
+    # a status a caller who didn't do it needs to be able to observe.
+    if evidence is None or evidence.deleted_at is not None:
         raise HTTPException(404)
     if evidence.org_id != actor.org_id:
         # Cross-tenant access answers 404 — identical to "doesn't exist" — but is
@@ -35,7 +50,8 @@ def _scoped_evidence(db: Session, actor: Actor, evidence_id: str) -> Evidence:
 
 
 def _ingest(db: Session, actor: Actor, file: UploadFile, artefact_type: str,
-            *, version: int = 1, supersedes: Evidence | None = None) -> Evidence:
+            *, version: int = 1, supersedes: Evidence | None = None,
+            description: str | None = None, valid_until: date | None = None) -> Evidence:
     """Validate at the trust boundary, store immutably, register the row."""
     if not actor.org_id:
         # A firm-side actor with no client open has audit_firm_id but no
@@ -45,14 +61,18 @@ def _ingest(db: Session, actor: Actor, file: UploadFile, artefact_type: str,
         # instant it tried org.frameworks (see app/service.py::_run_pipeline).
         raise HTTPException(400, "no organisation selected — sign in as an organisation, "
                                  "or open a client first, before uploading evidence")
+    if artefact_type not in ARTEFACT_TYPES:
+        raise HTTPException(400, f"unknown artefact_type {artefact_type!r}; "
+                                 f"expected one of {sorted(ARTEFACT_TYPES)}")
     try:
         upload = validate_upload(file.file, file.filename or "")
         get_scanner().scan(upload.data)
     except UploadRejected as exc:
         raise HTTPException(400, str(exc)) from exc
 
-    duplicate = db.query(Evidence).filter_by(
-        org_id=actor.org_id, sha256=upload.sha256, lifecycle_status="CURRENT"
+    duplicate = db.query(Evidence).filter(
+        Evidence.org_id == actor.org_id, Evidence.sha256 == upload.sha256,
+        Evidence.lifecycle_status == "CURRENT", Evidence.deleted_at.is_(None),
     ).first()
     if duplicate is not None and supersedes is None:
         raise HTTPException(409, {
@@ -66,6 +86,7 @@ def _ingest(db: Session, actor: Actor, file: UploadFile, artefact_type: str,
         mime_type=upload.mime_type, size_bytes=upload.size_bytes, sha256=upload.sha256,
         uploaded_by=actor.label(), version=version,
         supersedes_id=supersedes.id if supersedes else None, status="SCANNING",
+        description=description or None, valid_until=valid_until,
     )
     db.add(evidence)
     db.flush()
@@ -112,7 +133,9 @@ def list_evidence(
     control assignment, only which evaluation links are shown on it (see
     _visible_links); a list endpoint following a different rule here would be
     a surprise, not a feature."""
-    query = db.query(Evidence).filter_by(org_id=actor.org_id)
+    query = db.query(Evidence).filter(
+        Evidence.org_id == actor.org_id, Evidence.deleted_at.is_(None)
+    )
     if artefact_type:
         query = query.filter_by(artefact_type=artefact_type)
     if lifecycle_status:
@@ -135,12 +158,22 @@ def upload_evidence(
     background: BackgroundTasks,
     file: UploadFile,
     artefact_type: str = "POLICY",
+    description: str | None = Form(default=None),
+    valid_until: date | None = Form(default=None),
+    is_encrypted: bool = Form(default=False),
     actor: Actor = Depends(current_actor),
     db: Session = Depends(get_session),
 ):
     if actor.is_auditor:
         raise HTTPException(403, "auditors review evidence, they do not upload it")
-    evidence = _ingest(db, actor, file, artefact_type)
+    evidence = _ingest(db, actor, file, artefact_type,
+                       description=description, valid_until=valid_until)
+    # The uploader's own guess, honoured immediately; app/documents.py corrects
+    # it (and explains status_detail) once the file is actually opened during
+    # processing — that check is authoritative, this is just an early signal.
+    if is_encrypted and not evidence.is_encrypted:
+        evidence.is_encrypted = True
+        db.commit()
     background.add_task(_process_in_background, evidence.id, actor.org_id,
                         actor.label(), actor.request_id)
     return {"evidence_id": evidence.id, "id": evidence.id, "status": evidence.status}
@@ -151,6 +184,7 @@ def upload_new_version(
     evidence_id: str,
     background: BackgroundTasks,
     file: UploadFile,
+    artefact_type: str | None = None,
     actor: Actor = Depends(current_actor),
     db: Session = Depends(get_session),
 ):
@@ -162,8 +196,9 @@ def upload_new_version(
     prior = _scoped_evidence(db, actor, evidence_id)
     before = {"lifecycle_status": prior.lifecycle_status, "version": prior.version}
 
-    new = _ingest(db, actor, file, prior.artefact_type,
-                  version=prior.version + 1, supersedes=prior)
+    new = _ingest(db, actor, file, artefact_type or prior.artefact_type,
+                  version=prior.version + 1, supersedes=prior,
+                  description=prior.description, valid_until=prior.valid_until)
     prior.lifecycle_status = "SUPERSEDED"
 
     for link in db.query(EvidenceControlLink).filter_by(evidence_id=prior.id):
@@ -368,6 +403,7 @@ def get_evidence(evidence_id: str, actor: Actor = Depends(current_actor),
     return {
         "id": evidence.id,
         "version": evidence.version,
+        "artefact_type": evidence.artefact_type,
         "lifecycle_status": evidence.lifecycle_status,
         "status": evidence.status,
         "sha256": evidence.sha256,
@@ -383,4 +419,71 @@ def get_evidence(evidence_id: str, actor: Actor = Depends(current_actor),
         "download_url": get_storage().url(evidence.storage_key) if evidence.storage_key else "",
         "extracted_attributes": evidence.extracted_attributes,
         "links": [_link_payload(db, l, actor) for l in _visible_links(db, actor, evidence.id)],
+        "description": evidence.description,
+        "valid_until": evidence.valid_until.isoformat() if evidence.valid_until else None,
+        "is_encrypted": evidence.is_encrypted,
     }
+
+
+class EvidenceMetadataUpdate(BaseModel):
+    description: str | None = None
+    valid_until: date | None = None
+
+
+@router.patch("/{evidence_id}")
+def update_evidence_metadata(
+    evidence_id: str, body: EvidenceMetadataUpdate,
+    actor: Actor = Depends(current_actor), db: Session = Depends(get_session),
+):
+    """Human-entered metadata only — description and validity date. Everything
+    else about an evidence row (its file, its verdicts, its status) is derived
+    by the pipeline and never hand-edited; conflating the two would make it
+    unclear which parts of a record a person can quietly rewrite."""
+    if actor.is_auditor:
+        raise HTTPException(403, "auditors review evidence, they do not edit it")
+    evidence = _scoped_evidence(db, actor, evidence_id)
+    before = {"description": evidence.description,
+              "valid_until": evidence.valid_until.isoformat() if evidence.valid_until else None}
+
+    evidence.description = body.description or None
+    evidence.valid_until = body.valid_until
+
+    audit_log.record(
+        db, actor=actor.label(), request_id=actor.request_id,
+        action="EVIDENCE_METADATA_UPDATED", entity_type="evidence",
+        entity=evidence.id, org_id=actor.org_id, before=before,
+        after={"description": evidence.description,
+               "valid_until": evidence.valid_until.isoformat() if evidence.valid_until else None},
+    )
+    db.commit()
+    return {"id": evidence.id, "description": evidence.description,
+            "valid_until": evidence.valid_until.isoformat() if evidence.valid_until else None}
+
+
+@router.delete("/{evidence_id}", status_code=204)
+def delete_evidence(
+    evidence_id: str, actor: Actor = Depends(current_actor), db: Session = Depends(get_session),
+):
+    """Soft delete: the row stays (audit history, gaps and tasks that reference
+    it still resolve their story), it just stops showing up anywhere and stops
+    counting toward the sha256 dedup guard. Refused once an auditor has locked
+    a verdict against this evidence — same rule as reprocess, for the same
+    reason: nobody quietly makes a reviewed result disappear."""
+    if actor.is_auditor:
+        raise HTTPException(403, "auditors review evidence, they do not delete it")
+    evidence = _scoped_evidence(db, actor, evidence_id)
+
+    links = db.query(EvidenceControlLink).filter_by(evidence_id=evidence.id).all()
+    if any(link.locked for link in links):
+        raise HTTPException(409, "an auditor has locked a verdict on this evidence; "
+                                 "it cannot be removed")
+
+    evidence.deleted_at = datetime.now(timezone.utc)
+    evidence.deleted_by = actor.label()
+
+    audit_log.record(
+        db, actor=actor.label(), request_id=actor.request_id,
+        action="EVIDENCE_DELETED", entity_type="evidence", entity=evidence.id, org_id=actor.org_id,
+        before={"deleted_at": None}, after={"deleted_at": evidence.deleted_at.isoformat()},
+    )
+    db.commit()

@@ -49,6 +49,27 @@ def _pdf_pages(data: bytes) -> list[DocumentPage]:
     ]
 
 
+def is_encrypted_pdf(filename: str, data: bytes) -> bool:
+    """True when a PDF requires a password to open at all.
+
+    Checked once, upfront (app/service.py), independent of parse()/read_document
+    — a locked file's extraction result is empty for a completely different
+    reason than a scan needing OCR or a model being unavailable, and deserves an
+    honest "this file is password-protected" rather than masquerading as either
+    of those. Never raises: an unreadable/corrupt file is `parse()`'s problem,
+    not this check's — a false `False` here just means the ordinary path runs
+    and reports its own failure.
+    """
+    if not filename.lower().endswith(".pdf"):
+        return False
+    try:
+        from pypdf import PdfReader
+
+        return bool(PdfReader(io.BytesIO(data)).is_encrypted)
+    except Exception:  # noqa: BLE001 - answer "not encrypted" rather than crash the pipeline
+        return False
+
+
 def _docx_pages(data: bytes) -> list[DocumentPage]:
     """DOCX has no page concept until rendered; paragraphs and tables become one
     logical page, with table cells kept as pipe-joined rows."""
