@@ -18,3 +18,4 @@
 | [014](014-live-pipeline-events.md) | Stream pipeline progress to the browser, without becoming the deferred event bus | Accepted |
 | [015](015-glossary-layers.md) | Layered glossary: curated entries win, reference corpora are imported not scraped | Accepted |
 | [016](016-ai-rmf-starter-pack.md) | AI RMF as a content pack: a new UCO domain, and only the subcategories evidence can settle | Accepted |
+| [017](017-compliance-officer-persona.md) | The compliance officer is `ORG_ADMIN`; add only a read-only `COMPLIANCE_VIEWER` role, deferred | Accepted (deferred build) |
