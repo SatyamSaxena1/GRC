@@ -17,7 +17,7 @@ type Step = {
 // comes from: nothing auditee-shaped exists until a firm approves it.
 const STEPS: readonly Step[] = [
   {
-    title: "One backend, five roles",
+    title: "One backend, six roles",
     body: "Everything below signs in as one of the real participants in an audit: the firm selling the audit and its individual auditors, the organisation being audited, and that organisation's employees. Each sees a different slice of the same data — enforced server-side, so switching identity here is the actual test, not a costume change.",
     tab: null,
     target: '[data-tour="login-tabs"]',

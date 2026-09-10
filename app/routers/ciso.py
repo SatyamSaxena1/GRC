@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app import ciso_sync
-from app.auth import Actor, current_actor
+from app.auth import Actor, current_actor, deny_read_only
 from app.db import get_session
 from app.models import CisoSyncState, EvidenceControlLink, GapRow
 
@@ -31,6 +31,8 @@ def sync_status(actor: Actor = Depends(current_actor), db: Session = Depends(get
 @router.post("/{entity_type}/{entity_id}/retry")
 def retry_sync(entity_type: str, entity_id: str, actor: Actor = Depends(current_actor),
                db: Session = Depends(get_session)):
+    if not actor.can_write:
+        raise deny_read_only(actor, "retry a CISO Assistant sync")
     state = db.query(CisoSyncState).filter_by(
         org_id=actor.org_id, local_entity_type=entity_type, local_entity_id=entity_id,
     ).one_or_none()
