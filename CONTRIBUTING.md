@@ -19,6 +19,11 @@ The default `.env` runs everything on SQLite and local disk. Postgres, S3, OIDC,
 Ollama, and CISO Assistant are all opt-in via env vars — the app degrades to a
 documented fallback when each is absent (see `.env.example` for every switch).
 
+For a full containerised stack (Postgres + MinIO + Ollama + API/SPA, model pulled
+and migrations applied automatically) use `docker compose up` — see the README.
+`Dockerfile` builds the SPA then the API; `docker/entrypoint.sh` runs
+`alembic upgrade head` before uvicorn.
+
 ## The model in one paragraph
 
 Five parties on **two tenancy axes**: an **audit firm** (`audit_firm_id`) staffs

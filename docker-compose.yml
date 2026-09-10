@@ -1,6 +1,17 @@
-# Local development infrastructure only. Ollama stays on the host: it already
-# runs there, and containerizing it would mean either losing GPU access or
-# pinning a CUDA image for no benefit at this stage.
+# Full stack, one command:  docker compose up
+#
+#   - postgres        schema applied automatically by the app container's entrypoint
+#   - minio           S3-compatible evidence storage (bucket auto-created)
+#   - ollama          local inference; the VLM is pulled on first `up` into a volume
+#   - app             FastAPI + the built React SPA on http://localhost:8000
+#
+# Optional identity provider (Authentik) is behind a profile so it is not started
+# by default:  docker compose --profile oidc up
+#
+# GPU: the ollama container runs CPU-only unless the host has the NVIDIA Container
+# Toolkit — see the commented `deploy:` block on the ollama service. On CPU the
+# 7B VLM works but extraction is slow (minutes per document); the app degrades to
+# null-field extraction if the model is unreachable, it never fails hard.
 services:
   postgres:
     image: postgres:16
@@ -14,15 +25,6 @@ services:
       - "./scripts/db-init:/docker-entrypoint-initdb.d"  # creates the authentik database
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U grc"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-
-  redis:
-    image: redis:7-alpine
-    ports: ["6379:6379"]
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -41,34 +43,6 @@ services:
       timeout: 3s
       retries: 10
 
-  # Real identity provider (see docs/adr/011-oidc-auth.md). Optional for local
-  # dev — the app's stub auth path works with neither this nor OIDC_* env vars
-  # set. Bring up with: docker compose up -d postgres authentik-server authentik-worker
-  # then complete first-run setup at http://localhost:9002/if/flow/initial-setup/
-  # and create an OAuth2/OIDC provider + application for this app's frontend.
-  authentik-server:
-    image: ghcr.io/goauthentik/server:2025.10
-    command: server
-    environment:
-      AUTHENTIK_SECRET_KEY: "change-me-before-any-shared-or-production-use"
-      AUTHENTIK_POSTGRESQL__HOST: postgres
-      AUTHENTIK_POSTGRESQL__USER: grc
-      AUTHENTIK_POSTGRESQL__PASSWORD: grc
-      AUTHENTIK_POSTGRESQL__NAME: authentik
-    ports: ["9002:9000"]
-    depends_on: {postgres: {condition: service_healthy}}
-
-  authentik-worker:
-    image: ghcr.io/goauthentik/server:2025.10
-    command: worker
-    environment:
-      AUTHENTIK_SECRET_KEY: "change-me-before-any-shared-or-production-use"
-      AUTHENTIK_POSTGRESQL__HOST: postgres
-      AUTHENTIK_POSTGRESQL__USER: grc
-      AUTHENTIK_POSTGRESQL__PASSWORD: grc
-      AUTHENTIK_POSTGRESQL__NAME: authentik
-    depends_on: {postgres: {condition: service_healthy}}
-
   createbuckets:
     image: minio/mc:latest
     depends_on: {minio: {condition: service_healthy}}
@@ -79,6 +53,96 @@ services:
       mc version enable local/grc-evidence
       "
 
+  ollama:
+    image: ollama/ollama:latest
+    ports: ["11434:11434"]
+    volumes: ["ollama-models:/root/.ollama"]
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    # --- uncomment on a host with an NVIDIA GPU + nvidia-container-toolkit ---
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - {driver: nvidia, count: all, capabilities: [gpu]}
+
+  # One-shot: pull the VLM into the ollama-models volume, then exit. The app
+  # waits for this to finish so the first document does not race the download.
+  ollama-pull:
+    image: ollama/ollama:latest
+    depends_on: {ollama: {condition: service_healthy}}
+    environment:
+      OLLAMA_HOST: "http://ollama:11434"
+    entrypoint: ["/bin/sh", "-c", "ollama pull qwen2.5vl:7b"]
+    restart: "no"
+
+  app:
+    build: .
+    ports: ["8000:8000"]
+    environment:
+      DATABASE_URL: "postgresql+psycopg://grc:grc@postgres:5432/grc"
+      STORAGE_BACKEND: "s3"
+      S3_BUCKET: "grc-evidence"
+      S3_ENDPOINT_URL: "http://minio:9000"
+      AWS_ACCESS_KEY_ID: "minioadmin"
+      AWS_SECRET_ACCESS_KEY: "minioadmin"
+      AWS_REGION: "us-east-1"
+      OLLAMA_BASE_URL: "http://ollama:11434"
+      OLLAMA_MODEL: "qwen2.5vl:7b"
+      OLLAMA_VISION_MODEL: "qwen2.5vl:7b"
+      OLLAMA_TIMEOUT_S: "180"
+      CORS_ORIGINS: ""          # SPA is same-origin, served by this container
+    depends_on:
+      postgres: {condition: service_healthy}
+      createbuckets: {condition: service_completed_successfully}
+      ollama-pull: {condition: service_completed_successfully}
+
+  # --- optional: real identity provider, `docker compose --profile oidc up` ---
+  redis:
+    image: redis:7-alpine
+    profiles: ["oidc"]
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  authentik-server:
+    image: ghcr.io/goauthentik/server:2025.10
+    profiles: ["oidc"]
+    command: server
+    environment:
+      AUTHENTIK_SECRET_KEY: "change-me-before-any-shared-or-production-use"
+      AUTHENTIK_POSTGRESQL__HOST: postgres
+      AUTHENTIK_POSTGRESQL__USER: grc
+      AUTHENTIK_POSTGRESQL__PASSWORD: grc
+      AUTHENTIK_POSTGRESQL__NAME: authentik
+      AUTHENTIK_REDIS__HOST: redis
+    ports: ["9002:9000"]
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+
+  authentik-worker:
+    image: ghcr.io/goauthentik/server:2025.10
+    profiles: ["oidc"]
+    command: worker
+    environment:
+      AUTHENTIK_SECRET_KEY: "change-me-before-any-shared-or-production-use"
+      AUTHENTIK_POSTGRESQL__HOST: postgres
+      AUTHENTIK_POSTGRESQL__USER: grc
+      AUTHENTIK_POSTGRESQL__PASSWORD: grc
+      AUTHENTIK_POSTGRESQL__NAME: authentik
+      AUTHENTIK_REDIS__HOST: redis
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+
 volumes:
   pgdata:
   miniodata:
+  ollama-models:

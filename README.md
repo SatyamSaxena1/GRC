@@ -31,6 +31,22 @@ after the fact. See [ADR-004](docs/adr/004-deterministic-rules-before-llm.md).
 
 ## Quick start
 
+### Whole stack, one command
+
+```bash
+git clone https://github.com/SatyamSaxena1/GRC && cd GRC
+docker compose up            # add --build after pulling changes
+```
+
+Brings up Postgres, MinIO (S3 storage), Ollama, and the API with the built React
+SPA on **http://localhost:8000**. On the first run the `qwen2.5vl:7b` VLM
+(~6 GB) is pulled into a named volume and the app container applies migrations
+before it starts serving — subsequent runs are fast. CPU-only by default;
+uncomment the `deploy:` block on the `ollama` service if the host has an NVIDIA
+GPU. `docker compose --profile oidc up` also starts Authentik for real OIDC.
+
+### Local Python (no containers)
+
 ```bash
 python -m venv .venv && .venv/Scripts/activate     # Windows
 pip install -e ".[dev]"
@@ -47,10 +63,10 @@ Without Ollama running, everything still works: extraction returns null fields a
 evaluator correctly reports every requirement as failed for missing evidence. It never
 invents a pass.
 
-### With infrastructure
+### App on the host, infra in containers
 
 ```bash
-docker compose up -d postgres redis minio
+docker compose up -d postgres minio createbuckets ollama
 export DATABASE_URL=postgresql+psycopg://grc:grc@localhost:5432/grc
 export STORAGE_BACKEND=s3 S3_BUCKET=grc-evidence S3_ENDPOINT_URL=http://localhost:9000
 alembic upgrade head        # also applies the row-level security policies
