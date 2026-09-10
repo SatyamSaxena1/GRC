@@ -1,12 +1,12 @@
-import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useEffect, useState } from "react";
 import type { Tab } from "../pages/Login";
+import { TourPopover } from "./TourPopover";
 
 type Step = {
   title: string;
   body: string;
   tab: Tab | null;      // switch the login page to this tab when the step opens
-  target: string;       // CSS selector to highlight — a real element on this page
+  target: string;       // CSS selector to point at — a real element on this page
 };
 
 // A GRC engagement is five separate parties who never see the same thing —
@@ -77,82 +77,38 @@ const COMPLETE_KEY = "grc:guided-tour:login:complete";
 export function LoginTour({ onSelectTab }: { onSelectTab: (tab: Tab) => void }) {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(0);
-  const dialogRef = useRef<HTMLDivElement>(null);
   const current = open ? STEPS[step] : null;
 
-  const close = (complete = false) => {
-    if (complete) localStorage.setItem(COMPLETE_KEY, "true");
-    document.querySelector(".tour-target")?.classList.remove("tour-target");
-    setOpen(false);
-  };
-
-  const advance = () => {
-    if (step === STEPS.length - 1) close(true);
-    else setStep((value) => value + 1);
-  };
-
+  // Switch the login page to the step's tab before the popover anchors to it.
   useEffect(() => {
-    if (!current) return;
-    if (current.tab) onSelectTab(current.tab);
-    let target: Element | null = null;
-    const timer = window.setTimeout(() => {
-      target = document.querySelector(current.target);
-      target?.classList.add("tour-target");
-      target?.scrollIntoView({ behavior: "smooth", block: "center" });
-      dialogRef.current?.focus();
-    }, 50);
-    return () => {
-      window.clearTimeout(timer);
-      target?.classList.remove("tour-target");
-    };
-    // onSelectTab is the setState setter from the parent — stable identity.
+    if (current?.tab) onSelectTab(current.tab);
+    // onSelectTab is the parent's setState setter — stable identity.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current]);
 
-  const start = () => {
-    setStep(0);
-    setOpen(true);
+  const close = (complete = false) => {
+    if (complete) localStorage.setItem(COMPLETE_KEY, "true");
+    setOpen(false);
   };
 
   return (
     <>
-      <button className="tour-launcher" onClick={start} aria-label="Open the testing walkthrough">
+      <button className="tour-launcher" onClick={() => { setStep(0); setOpen(true); }} aria-label="Open the testing walkthrough">
         <span aria-hidden="true">?</span> How to test this workspace
         {localStorage.getItem(COMPLETE_KEY) && <span className="muted" style={{ marginLeft: "auto", fontWeight: 400 }}>Completed</span>}
       </button>
 
-      {/* Portaled to <body> — see PageTour.tsx for why a fixed dialog nested in
-          the ordinary page tree can't be trusted to out-rank an unrelated
-          highlighted element by z-index alone. */}
-      {current && createPortal(
-        <div className="tour-clickthrough-layer" role="presentation">
-          <div
-            className="tour-dialog tour-coachmark"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="login-tour-title"
-            ref={dialogRef}
-            tabIndex={-1}
-            onKeyDown={(event) => event.key === "Escape" && close()}
-          >
-            <div className="tour-progress" aria-label={`Step ${step + 1} of ${STEPS.length}`}>
-              {STEPS.map((item, index) => (
-                <span key={item.title} className={index <= step ? "complete" : ""} />
-              ))}
-            </div>
-            <button className="tour-close" onClick={() => close()} aria-label="Close walkthrough">×</button>
-            <span className="eyebrow">Testing walkthrough · {step + 1} of {STEPS.length}</span>
-            <h3 id="login-tour-title">{current.title}</h3>
-            <p>{current.body}</p>
-            <div className="tour-actions">
-              <button className="btn" disabled={step === 0} onClick={() => setStep((value) => value - 1)}>Back</button>
-              <button className="btn btn-primary" onClick={advance}>
-                {step === STEPS.length - 1 ? "Finish" : "Next"}
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body,
+      {current && (
+        <TourPopover
+          targetSelector={current.target}
+          step={step}
+          total={STEPS.length}
+          title={current.title}
+          body={current.body}
+          onClose={() => close()}
+          onBack={() => setStep((v) => v - 1)}
+          onNext={() => (step === STEPS.length - 1 ? close(true) : setStep((v) => v + 1))}
+        />
       )}
     </>
   );

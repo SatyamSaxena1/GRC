@@ -64,6 +64,10 @@ const ORG_NAV = [
     to: "/ai-compliance", label: "AI compliance",
     hint: "Turn NIST AI RMF outcomes into evidence, accountable ownership, and a practical AI governance work queue.",
   },
+  {
+    to: "/dpdp", label: "DPDP readiness",
+    hint: "Run an evidence-backed DPDP readiness assessment and see whether AWS, Microsoft 365, Google Workspace and HRMS are actually connected.",
+  },
 ];
 
 const OWNER_NAV = [
@@ -73,6 +77,7 @@ const OWNER_NAV = [
   ORG_NAV[6],
   ORG_NAV[7],
   ORG_NAV[8],
+  ORG_NAV[9],
 ];
 
 const FIRM_NAV = [
@@ -90,6 +95,7 @@ const AUDITOR_NAV = [
   ORG_NAV[6],
   ORG_NAV[7],
   ORG_NAV[8],
+  ORG_NAV[9],
 ];
 
 export function AppShell() {

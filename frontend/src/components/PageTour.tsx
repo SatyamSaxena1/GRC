@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useState } from "react";
+import { TourPopover } from "./TourPopover";
 
 type PageTourStep = {
   title: string;
   body: string;
-  target: string; // CSS selector to highlight — a real element already on this page
+  target: string; // CSS selector to point at — a real element already on this page
 };
 
 // A tour scoped to the elements of ONE page — how to read this table, what
@@ -25,51 +25,15 @@ export function PageTour({
 }) {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(0);
-  const [coachmarkOnTop, setCoachmarkOnTop] = useState(false);
-  const dialogRef = useRef<HTMLDivElement>(null);
-  const current = open ? steps[step] : null;
   const completeKey = `grc:page-tour:${id}:complete`;
 
   const close = (complete = false) => {
     if (complete) localStorage.setItem(completeKey, "true");
-    document.querySelector(".tour-target")?.classList.remove("tour-target");
     setOpen(false);
   };
 
-  const advance = () => {
-    if (step === steps.length - 1) close(true);
-    else setStep((value) => value + 1);
-  };
-
-  useEffect(() => {
-    if (!current) return;
-    let target: Element | null = null;
-    let settleTimer = 0;
-    const timer = window.setTimeout(() => {
-      target = document.querySelector(current.target);
-      target?.classList.add("tour-target");
-      target?.scrollIntoView({ behavior: "smooth", block: "center" });
-      dialogRef.current?.focus();
-      // Give the smooth scroll time to land, then see whether the target ended
-      // up under the coachmark's default bottom-right corner (roughly its
-      // footprint — see .tour-coachmark in index.css) and flip to the top
-      // corner if so, rather than let the dialog cover what it's pointing at.
-      settleTimer = window.setTimeout(() => {
-        const rect = target?.getBoundingClientRect();
-        if (!rect) return;
-        const nearBottomRightCorner =
-          rect.bottom > window.innerHeight - 340 && rect.right > window.innerWidth - 520;
-        setCoachmarkOnTop(nearBottomRightCorner);
-      }, 350);
-    }, 50);
-    return () => {
-      window.clearTimeout(timer);
-      window.clearTimeout(settleTimer);
-      target?.classList.remove("tour-target");
-    };
-  }, [current]);
-
   if (steps.length === 0) return null;
+  const current = open ? steps[step] : null;
 
   return (
     <>
@@ -84,43 +48,17 @@ export function PageTour({
         {!localStorage.getItem(completeKey) && <span className="tour-unseen-dot" aria-hidden="true" />}
       </button>
 
-      {current && createPortal(
-        // A direct child of <body>, not of wherever <PageTour> happens to sit
-        // in the page tree. Fixed positioning + z-index only ranks correctly
-        // against elements in the SAME stacking context; nested inside the
-        // ordinary page DOM, a wide/tall highlighted target elsewhere on the
-        // page could sit in a stacking context this dialog's z-index never
-        // actually competes in, and end up painted over anyway (see the
-        // Evidence page's evaluation-links grid, which spans nearly the full
-        // width and height). A portal sidesteps the question entirely.
-        <div className="tour-clickthrough-layer" role="presentation">
-          <div
-            className={`tour-dialog tour-coachmark${coachmarkOnTop ? " tour-coachmark--top" : ""}`}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="page-tour-title"
-            ref={dialogRef}
-            tabIndex={-1}
-            onKeyDown={(event) => event.key === "Escape" && close()}
-          >
-            <div className="tour-progress" aria-label={`Step ${step + 1} of ${steps.length}`}>
-              {steps.map((s, index) => (
-                <span key={s.title} className={index <= step ? "complete" : ""} />
-              ))}
-            </div>
-            <button className="tour-close" onClick={() => close()} aria-label="Close tour">×</button>
-            <span className="eyebrow">{label} · {step + 1} of {steps.length}</span>
-            <h3 id="page-tour-title">{current.title}</h3>
-            <p>{current.body}</p>
-            <div className="tour-actions">
-              <button className="btn" disabled={step === 0} onClick={() => setStep((value) => value - 1)}>Back</button>
-              <button className="btn btn-primary" onClick={advance}>
-                {step === steps.length - 1 ? "Finish" : "Next"}
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body,
+      {current && (
+        <TourPopover
+          targetSelector={current.target}
+          step={step}
+          total={steps.length}
+          title={current.title}
+          body={current.body}
+          onClose={() => close()}
+          onBack={() => setStep((v) => v - 1)}
+          onNext={() => (step === steps.length - 1 ? close(true) : setStep((v) => v + 1))}
+        />
       )}
     </>
   );

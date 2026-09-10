@@ -46,7 +46,7 @@ def test_framework_library_is_present():
     content = load()
     codes = {pack.framework.code for pack in content.packs}
     assert codes == {"ISO-27001", "PCI-DSS", "SOC-2", "NIST-CSF", "HIPAA", "CIS-CONTROLS",
-                     "GDPR", "NIST-AI-RMF"}
+                     "GDPR", "NIST-AI-RMF", "DPDP"}
 
 
 def test_new_frameworks_reuse_existing_iam_and_vuln_ucos():

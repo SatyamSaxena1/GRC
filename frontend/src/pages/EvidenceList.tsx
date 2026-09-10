@@ -37,7 +37,7 @@ const TOUR_STEPS = [
 // produce any framework links until a content pack maps them to one.
 const ARTEFACT_TYPES = [
   "POLICY", "SCAN_REPORT", "REVIEW_RECORD", "REPORT", "CERTIFICATE", "SCREENSHOT",
-  "AI_POLICY", "AI_INVENTORY",
+  "AI_POLICY", "AI_INVENTORY", "PRIVACY_NOTICE",
 ];
 
 const ARTEFACT_LABELS: Record<string, string> = {
@@ -49,6 +49,7 @@ const ARTEFACT_LABELS: Record<string, string> = {
   SCREENSHOT: "Screenshots",
   AI_POLICY: "AI governance policies",
   AI_INVENTORY: "AI system inventories",
+  PRIVACY_NOTICE: "Privacy notices",
 };
 
 // What the type controls: which framework requirements this artefact can
@@ -62,6 +63,7 @@ const ARTEFACT_HELP: Record<string, string> = {
   SCREENSHOT: "A screen capture as supporting proof. Not yet evaluated against any framework requirement — upload to keep it on file.",
   AI_POLICY: "An AI governance policy — separate from a general security policy so it only satisfies AI-specific clauses.",
   AI_INVENTORY: "A system/model inventory for NIST AI RMF evidence.",
+  PRIVACY_NOTICE: "A public-facing notice describing personal data, purposes, rights, withdrawal, complaints, and the privacy contact.",
 };
 const TERMINAL = new Set(["READY", "FAILED", "NEEDS_REVIEW"]);
 // Mirrors app/monitor.py's STUCK_AFTER_MINUTES — a display threshold only; the

@@ -12,7 +12,7 @@ from fastapi.responses import JSONResponse
 from app.ai.ollama import OllamaGateway
 from app.db import engine, init_db
 from app.routers import (
-    activity, admin, analytics, audit, ciso, controls, evidence, export, firm, glossary,
+    activity, admin, analytics, audit, ciso, connectors, controls, evidence, export, firm, glossary,
     notifications,
 )
 
@@ -98,6 +98,7 @@ app.include_router(export.router)
 app.include_router(activity.router)
 app.include_router(glossary.router)
 app.include_router(ciso.router)
+app.include_router(connectors.router)
 
 
 @app.get("/health/live")

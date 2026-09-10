@@ -18,7 +18,8 @@ from pathlib import Path
 sys.stdout.reconfigure(encoding="utf-8")
 
 WORKDIR = Path(tempfile.mkdtemp(prefix="grc-demo-"))
-os.environ["DATABASE_URL"] = f"sqlite:///{WORKDIR / 'demo.db'}"
+# Throwaway SQLite by default; set DATABASE_URL to run against a real database.
+os.environ.setdefault("DATABASE_URL", f"sqlite:///{WORKDIR / 'demo.db'}")
 os.environ["EVIDENCE_STORAGE_DIR"] = str(WORKDIR / "storage")
 
 from fastapi.testclient import TestClient  # noqa: E402

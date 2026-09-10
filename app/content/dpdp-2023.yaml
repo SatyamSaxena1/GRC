@@ -1,0 +1,156 @@
+framework:
+  code: DPDP
+  version: "Act 2023 / Rules 2025"
+
+# Readiness subset, not a legal opinion or certification. Rules 3 and 5-16 take
+# effect 18 months after the 14 November 2025 Gazette notification. The four
+# source-specific checks below are our implementation tests for Rule 6, not four
+# separate statutory obligations.
+requirements:
+  - clause: "Act s.5-6 / Rule 3"
+    title: Clear privacy notice and consent choices
+    text: >
+      The notice clearly identifies personal data and purposes, and provides
+      practical routes to withdraw consent, exercise rights and complain.
+    evidence_requirements:
+      - artefact_type: PRIVACY_NOTICE
+        required_attributes: [personal_data_items, processing_purposes, consent_withdrawal_link, rights_request_link, complaint_link]
+    mappings:
+      - uco: UCO-PRIV-001
+        coverage: FULL
+        confidence: 1.0
+        source: EXPERT
+        delta_conditions: []
+
+  - clause: "Rule 6 - AWS baseline"
+    title: AWS personal-data safeguards are evidenced
+    text: >
+      Implementation check for encryption, access control, logging and recovery
+      safeguards in AWS environments that process personal data.
+    evidence_requirements:
+      - artefact_type: AWS_SNAPSHOT
+        required_attributes: [encryption_at_rest, privileged_access_mfa, access_logging_enabled, backup_enabled]
+    mappings:
+      - uco: UCO-DATA-001
+        coverage: FULL
+        confidence: 0.7
+        source: EXPERT
+        delta_conditions:
+          - {attribute: encryption_at_rest, operator: "==", value: true}
+          - {attribute: privileged_access_mfa, operator: "==", value: true}
+          - {attribute: access_logging_enabled, operator: "==", value: true}
+          - {attribute: backup_enabled, operator: "==", value: true}
+
+  - clause: "Rule 6 - M365 baseline"
+    title: Microsoft 365 access and audit safeguards are evidenced
+    text: >
+      Implementation check for strong access control and audit visibility in
+      Microsoft 365 tenants that process personal data.
+    evidence_requirements:
+      - artefact_type: M365_SNAPSHOT
+        required_attributes: [privileged_access_mfa, access_logging_enabled]
+    mappings:
+      - uco: UCO-IAM-012
+        coverage: FULL
+        confidence: 0.7
+        source: EXPERT
+        delta_conditions:
+          - {attribute: privileged_access_mfa, operator: "==", value: true}
+          - {attribute: access_logging_enabled, operator: "==", value: true}
+
+  - clause: "Rule 6 - Google Workspace baseline"
+    title: Google Workspace access and audit safeguards are evidenced
+    text: >
+      Implementation check for strong access control and audit visibility in
+      Google Workspace tenants that process personal data.
+    evidence_requirements:
+      - artefact_type: GOOGLE_WORKSPACE_SNAPSHOT
+        required_attributes: [privileged_access_mfa, access_logging_enabled]
+    mappings:
+      - uco: UCO-IAM-012
+        coverage: FULL
+        confidence: 0.7
+        source: EXPERT
+        delta_conditions:
+          - {attribute: privileged_access_mfa, operator: "==", value: true}
+          - {attribute: access_logging_enabled, operator: "==", value: true}
+
+  - clause: "Rule 6 - HRMS baseline"
+    title: Leaver access is reconciled against HRMS
+    text: >
+      Implementation check that workforce access is revoked when employment ends,
+      reducing unauthorised access to personal data.
+    evidence_requirements:
+      - artefact_type: HRMS_SNAPSHOT
+        required_attributes: [terminated_users_with_active_accounts]
+    mappings:
+      - uco: UCO-PRIV-004
+        coverage: FULL
+        confidence: 0.7
+        source: EXPERT
+        delta_conditions:
+          - {attribute: terminated_users_with_active_accounts, operator: "==", value: 0}
+
+  - clause: "Rule 6(1)(e)"
+    title: Security logs are retained for at least one year
+    text: >
+      Logs and related personal data needed for detection, investigation,
+      remediation and continuity are retained for at least one year unless law
+      requires another period.
+    evidence_requirements:
+      - artefact_type: POLICY
+        required_attributes: [log_retention_days]
+    mappings:
+      - uco: UCO-LOG-001
+        coverage: FULL
+        confidence: 1.0
+        source: EXPERT
+        delta_conditions:
+          - {attribute: log_retention_days, operator: ">=", value: 365}
+
+  - clause: "Rule 7"
+    title: Personal-data breach notification is operational
+    text: >
+      The breach process covers affected-person notification without delay and
+      detailed notification to the Board within seventy-two hours.
+    evidence_requirements:
+      - artefact_type: POLICY
+        required_attributes: [data_breach_response_process, board_notification_hours, affected_person_notification]
+    mappings:
+      - uco: UCO-PRIV-003
+        coverage: FULL
+        confidence: 1.0
+        source: EXPERT
+        delta_conditions:
+          - {attribute: board_notification_hours, operator: "<=", value: 72}
+          - {attribute: affected_person_notification, operator: "==", value: true}
+
+  - clause: "Act s.8(7-8) / Rule 8"
+    title: Retention and erasure are governed
+    text: >
+      Personal data is erased when consent is withdrawn or its purpose is no
+      longer served, subject to applicable legal retention duties.
+    evidence_requirements:
+      - artefact_type: POLICY
+        required_attributes: [data_retention_schedule, erasure_process]
+    mappings:
+      - uco: UCO-PRIV-002
+        coverage: FULL
+        confidence: 1.0
+        source: EXPERT
+        delta_conditions: []
+
+  - clause: "Act s.11-13 / Rules 9 & 14"
+    title: Rights, grievance and privacy contact routes are published
+    text: >
+      People can find the privacy contact and the means to request access,
+      correction, erasure, grievance redressal and nomination.
+    evidence_requirements:
+      - artefact_type: PRIVACY_NOTICE
+        required_attributes: [privacy_contact, rights_request_link, grievance_process, nomination_process]
+    mappings:
+      - uco: UCO-PRIV-001
+        coverage: FULL
+        confidence: 1.0
+        source: EXPERT
+        delta_conditions: []
