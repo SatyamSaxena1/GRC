@@ -4,10 +4,12 @@ import logging
 import os
 import uuid
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.ai.ollama import OllamaGateway
 from app.db import engine, init_db
@@ -125,3 +127,20 @@ def ready():
     ready_ = checks["database"] == "ok"
     return JSONResponse(status_code=200 if ready_ else 503,
                         content={"ready": ready_, "checks": checks})
+
+
+# Serve the built SPA when it is present (the Docker image copies it to
+# frontend/dist). Registered last, so every API route and /health/* above wins;
+# this only catches what's left. In dev the frontend runs on :5173 and this
+# directory does not exist, so the whole block is a no-op.
+_SPA_DIR = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+if (_SPA_DIR / "index.html").is_file():
+    if (_SPA_DIR / "assets").is_dir():
+        app.mount("/assets", StaticFiles(directory=_SPA_DIR / "assets"), name="assets")
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    def spa(full_path: str):
+        candidate = _SPA_DIR / full_path
+        if full_path and candidate.is_file():
+            return FileResponse(candidate)
+        return FileResponse(_SPA_DIR / "index.html")

@@ -1,0 +1,6 @@
+# Shell scripts and Docker files must stay LF even on Windows checkouts —
+# CRLF breaks the `#!/bin/sh` interpreter line inside a Linux container.
+*.sh            text eol=lf
+docker/*        text eol=lf
+Dockerfile      text eol=lf
+entrypoint.sh   text eol=lf
