@@ -42,3 +42,29 @@ def test_dashboard_is_org_isolated(client, bootstrap, upload):
 def test_dashboard_requires_an_identity(client):
     resp = client.get("/analytics/dashboard")
     assert resp.status_code == 422  # missing Authorization header, same as every other route
+
+
+def test_dashboard_survives_a_locked_auditor_verdict(client, bootstrap, upload):
+    """Locking overwrites link.verdict with the auditor's vocabulary
+    (COMPLIANT/...). The dashboard's by_verdict rollup must fold that back to the
+    deterministic scale, not 500 on an unknown key."""
+    from sqlalchemy.orm import Session
+    from app import db as db_module
+    from app.models import EvidenceControlLink
+
+    org_id, engagement_id = bootstrap(client)
+    evidence_id = upload(client, org_id).json()["evidence_id"]
+
+    with Session(db_module.engine) as s:
+        link_id = s.query(EvidenceControlLink).filter_by(evidence_id=evidence_id).first().id
+    locked = client.post(f"/audit/links/{link_id}/verdict",
+                         headers={"authorization": f"auditor:{engagement_id}"},
+                         json={"verdict": "COMPLIANT", "reason": "reviewed"})
+    assert locked.status_code == 200 and locked.json()["locked"]
+
+    body = client.get("/analytics/dashboard", headers={"authorization": f"org:{org_id}"})
+    assert body.status_code == 200
+    by_verdict = body.json()["controls"]["by_verdict"]
+    assert set(by_verdict) == {"PASS", "PARTIAL", "FAIL", "NO_EVIDENCE"}
+    assert sum(by_verdict.values()) == body.json()["controls"]["total"]
+    assert by_verdict["PASS"] >= 1  # the locked COMPLIANT link counts as a PASS
