@@ -70,6 +70,9 @@ const ORG_NAV = [
   },
 ];
 
+// Org-wide read, no setup surface — see docs/adr/017-compliance-officer-persona.md.
+const VIEWER_NAV = ORG_NAV.filter((item) => item.to !== "/admin");
+
 const OWNER_NAV = [
   { ...ORG_NAV[4], label: "My tasks" },
   { ...ORG_NAV[2], label: "My controls" },
@@ -105,8 +108,10 @@ export function AppShell() {
   // A firm identity keeps the console in reach at all times, and gains the
   // auditee-shaped review screens only once it has opened a client.
   const isFirm = identity?.kind === "firm" || (identity?.kind === "user" && Boolean(identity.engagementId));
+  const isViewer = identity?.kind === "user" && identity.role === "COMPLIANCE_VIEWER";
   const nav = isFirm
     ? [...FIRM_NAV, ...(identity && "engagementId" in identity && identity.engagementId ? AUDITOR_NAV : [])]
+    : isViewer ? VIEWER_NAV
     : identity?.kind === "user" ? OWNER_NAV : isAuditor ? AUDITOR_NAV : ORG_NAV;
 
   const switchIdentity = () => {

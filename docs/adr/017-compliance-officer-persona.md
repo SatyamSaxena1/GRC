@@ -1,5 +1,11 @@
 # ADR-017: The compliance officer is `ORG_ADMIN`; the only gap worth filling is a read-only org-wide role
 
+> **Status:** Accepted, and `COMPLIANCE_VIEWER` is now implemented — `Actor.can_write`
+> (`app/auth.py`) plus `deny_read_only` guards on the auditee-side write paths in
+> `app/routers/{evidence,controls,connectors,ciso}.py`, a read-only `VIEWER_NAV` in the
+> frontend, and `tests/test_compliance_viewer.py`. The "deferred build" framing below is
+> kept as the original record.
+
 ## Context
 The auditee side of this app has two roles (`app/models.py::User.role`): `ORG_ADMIN` and
 `CONTROL_OWNER`. Neither is named "compliance officer", and the question came up of whether that
