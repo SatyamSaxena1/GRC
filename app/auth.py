@@ -57,6 +57,22 @@ class Actor:
     def is_firm(self) -> bool:
         return self.audit_firm_id is not None
 
+    @property
+    def can_write(self) -> bool:
+        """May this caller mutate auditee-owned data? Two roles see an org's
+        rows in full but never change them: an auditor (reviews, does not edit)
+        and a COMPLIANCE_VIEWER (oversight, read-only). Everything else on the
+        auditee side may write, subject to the per-resource rules in
+        app/authorization.py. See docs/adr/017-compliance-officer-persona.md."""
+        return not self.is_auditor and self.role != "COMPLIANCE_VIEWER"
+
+
+def deny_read_only(actor: Actor, action: str) -> HTTPException:
+    """The 403 for a read-only caller reaching a write path, phrased for
+    whichever read-only role it is."""
+    who = "auditors" if actor.is_auditor else "the compliance-viewer role"
+    return HTTPException(403, f"{who} cannot {action} — access is read-only")
+
 
 def current_actor(
     request: Request,

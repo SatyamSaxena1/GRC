@@ -17,7 +17,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app import audit_log
-from app.auth import Actor, current_actor
+from app.auth import Actor, current_actor, deny_read_only
 from app.content.load import load as load_content
 from app.db import get_session, session_scope, set_tenant
 from app.models import Evidence
@@ -124,8 +124,10 @@ def sync_connector(
 ):
     if source not in SOURCES:
         raise HTTPException(404, "unknown connector")
-    if actor.is_auditor or not actor.org_id:
+    if not actor.org_id:
         raise HTTPException(403, "only the organisation can collect evidence")
+    if not actor.can_write:
+        raise deny_read_only(actor, "collect evidence")
 
     data = _pull(source)
     digest = hashlib.sha256(data).hexdigest()

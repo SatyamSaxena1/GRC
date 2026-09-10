@@ -8,7 +8,10 @@ export type Identity =
   // `engagementId` is the client a firm-side user is currently working in. It
   // travels as x-engagement-id, exactly as it does for OIDC, so the ordinary
   // auditee-shaped screens work unchanged once an auditor picks a client.
-  | { kind: "org" | "user" | "auditor" | "firm"; id: string; label: string; engagementId?: string }
+  // `role` is a UI hint only (which nav to show) — the backend re-derives it
+  // from the user row on every call. Set for a COMPLIANCE_VIEWER so it gets the
+  // org-wide read-only nav instead of the control-owner one.
+  | { kind: "org" | "user" | "auditor" | "firm"; id: string; label: string; engagementId?: string; role?: string }
   | { kind: "oidc"; token: string; label: string; engagementId?: string };
 
 const STORAGE_KEY = "grc.identity";
