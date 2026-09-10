@@ -17,6 +17,7 @@ import { NotificationsPage } from "./pages/Notifications";
 import { ActivityPage } from "./pages/Activity";
 import { GlossaryPage } from "./pages/Glossary";
 import { AiCompliancePage } from "./pages/AiCompliance";
+import { DpdpPage } from "./pages/Dpdp";
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   const { identity } = useSession();
@@ -62,6 +63,7 @@ export function App() {
         <Route path="/activity" element={<ActivityPage />} />
         <Route path="/glossary" element={<GlossaryPage />} />
         <Route path="/ai-compliance" element={<AiCompliancePage />} />
+        <Route path="/dpdp" element={<DpdpPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

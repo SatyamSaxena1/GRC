@@ -31,7 +31,7 @@ CONTENT = load_content()
 # state) until a framework pack maps them to a requirement.
 ARTEFACT_TYPES = {
     "POLICY", "SCAN_REPORT", "REVIEW_RECORD", "AI_POLICY", "AI_INVENTORY",
-    "CERTIFICATE", "SCREENSHOT", "REPORT",
+    "CERTIFICATE", "SCREENSHOT", "REPORT", "PRIVACY_NOTICE",
 }
 
 

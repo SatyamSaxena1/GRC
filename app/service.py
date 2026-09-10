@@ -8,6 +8,7 @@ and no route clones a locked link onto a newer version.
 
 from __future__ import annotations
 
+import json
 import logging
 from datetime import date, datetime, timezone
 
@@ -16,6 +17,7 @@ from sqlalchemy.orm import Session
 from app import audit_log, ciso_sync
 from app import events
 from app.ai.prompts import NUTSHELL_PROMPT_VERSION
+from app.ai.schemas import ExtractedField, ExtractionRun, Source
 from app.content.load import Content
 from app.documents import is_encrypted_pdf
 from app.evaluate import evaluate, org_defined_attributes
@@ -317,27 +319,47 @@ def _run_pipeline(db: Session, content: Content, evidence: Evidence, actor_label
     # Checked once, upfront: a password-protected file failing to extract
     # anything is a different problem than a scan needing OCR or the model
     # being down, and the status set below says so plainly instead of guessing.
-    if is_encrypted_pdf(evidence.filename, data):
-        evidence.is_encrypted = True
-    text, method = read_document(evidence.filename, data)
-
-    set_status(db, evidence, "ANALYZING")
     attr_names = required_attribute_names(content, org.frameworks, evidence.artefact_type)
-    # Stream only while a browser is actually watching this upload: the
-    # streamed values are a live preview, the persisted rows below are the
-    # truth (app/events.py). Nobody watching -> the ordinary blocking call.
-    if events.has_subscribers(evidence.id):
-        run = extract_attributes_streaming(
-            text, attr_names, method,
-            on_attribute=lambda name, field: events.publish(
-                evidence.id, "attribute",
-                {"name": name, "value": field.value, "confidence": field.confidence,
-                 "extraction_method": field.extraction_method,
-                 "sources": [s.model_dump() for s in field.sources]},
-            ),
+    if evidence.mime_type == "application/vnd.grc.connector+json":
+        payload = json.loads(data)
+        source = str(payload["source"])
+        supplied = payload["attributes"]
+        text, method = data.decode("utf-8"), "connector"
+        run = ExtractionRun(
+            fields={
+                name: ExtractedField(
+                    value=supplied.get(name),
+                    confidence=1.0 if name in supplied else None,
+                    extraction_method="connector" if name in supplied else "none",
+                    sources=[Source(quote=f"{source} API: {name}")] if name in supplied else [],
+                )
+                for name in attr_names
+            },
+            model="api", provider=source, prompt_template_version="connector:v1",
         )
     else:
-        run = extract_attributes(text, attr_names, method)
+        if is_encrypted_pdf(evidence.filename, data):
+            evidence.is_encrypted = True
+        text, method = read_document(evidence.filename, data)
+
+        set_status(db, evidence, "ANALYZING")
+        # Stream only while a browser is actually watching this upload: the
+        # streamed values are a live preview, the persisted rows below are the
+        # truth (app/events.py). Nobody watching -> the ordinary blocking call.
+        if events.has_subscribers(evidence.id):
+            run = extract_attributes_streaming(
+                text, attr_names, method,
+                on_attribute=lambda name, field: events.publish(
+                    evidence.id, "attribute",
+                    {"name": name, "value": field.value, "confidence": field.confidence,
+                     "extraction_method": field.extraction_method,
+                     "sources": [s.model_dump() for s in field.sources]},
+                ),
+            )
+        else:
+            run = extract_attributes(text, attr_names, method)
+
+    set_status(db, evidence, "ANALYZING")
 
     confidences = [f.confidence for f in run.fields.values() if f.confidence is not None]
     db.add(AiRun(
@@ -403,7 +425,7 @@ def _run_pipeline(db: Session, content: Content, evidence: Evidence, actor_label
         # narration step rather than repeat a doomed health check per link when
         # the model was already unavailable this run.
         requirement = content.requirement(link.framework, link.clause)
-        if run.status != "UNAVAILABLE":
+        if run.status != "UNAVAILABLE" and method != "connector":
             title = requirement.title if requirement else ""
             row.nutshell = generate_nutshell(
                 link.framework, link.clause, title, link.verdict,

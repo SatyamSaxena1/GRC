@@ -56,6 +56,17 @@ export STORAGE_BACKEND=s3 S3_BUCKET=grc-evidence S3_ENDPOINT_URL=http://localhos
 alembic upgrade head        # also applies the row-level security policies
 ```
 
+### Against Supabase (hosted Postgres)
+
+Use the **session pooler** connection string (port 5432), not the transaction
+pooler (6543) — Alembic DDL and the per-transaction tenant GUCs need session
+mode. Grab it from Supabase → Project Settings → Database → Connection string.
+
+```bash
+export DATABASE_URL='postgresql+psycopg://postgres.<ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres'
+alembic upgrade head        # creates the schema, RLS policies, and revokes the PostgREST anon grants
+```
+
 ## Tests
 
 ```bash
@@ -180,6 +191,18 @@ python -m scripts.import_ai_glossary "path/to/Glossary.csv"
 ## Known limitations
 
 Honest list, kept current:
+
+- **DPDP is a readiness subset, not certification.** It covers nine document-verifiable and
+  technical implementation checks. Applicability, exemptions, lawful purpose and consent validity
+  still need qualified legal review. Most substantive provisions represented by the pack commence
+  on 14 May 2027 under the 13 November 2025 notification.
+- **DPDP connectors use a normalized collector contract, not turnkey vendor OAuth.** AWS, M365,
+  Google Workspace and HRMS can be pulled into immutable evidence through configured server-side
+  endpoints, but the deployment still needs least-privilege API grants and a source-specific adapter.
+  There is no recurring scheduler yet; sync is on demand. HRMS has no universal API.
+- **Connector applicability is not modelled.** An organisation that does not use one of the four
+  named systems cannot yet mark its source-specific readiness check not applicable, so the preview
+  score will understate its posture. Add a scope/assets domain before treating the score as complete.
 
 - **Model non-determinism.** A local 7B model returned different values across runs on
   the same document during development. The evaluator is deterministic; extraction is

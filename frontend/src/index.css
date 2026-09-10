@@ -139,23 +139,53 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .getting-started .btn { white-space: nowrap; background: #fff; color: var(--primary-dark); border-color: #fff; }
 .eyebrow { display: block; color: inherit; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; opacity: .8; }
 
+/* The "pick a tour" modal (GettingStartedTour chooser). This one IS a deliberate
+   centered dialog — you're choosing, not being walked. The per-step guidance is
+   the anchored .tour-pop below, which never dims or traps the page. */
 .tour-backdrop { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 20px; background: rgba(12, 16, 31, .62); }
 .tour-dialog { position: relative; width: min(480px, 100%); padding: 26px; background: var(--panel); border-radius: 14px; box-shadow: 0 20px 55px rgba(10, 15, 36, .28); outline: none; }
 .tour-dialog .eyebrow { color: var(--primary); }
 .tour-dialog h3 { margin: 8px 32px 8px 0; font-size: 21px; }
 .tour-dialog > p { margin: 0; color: var(--text-muted); font-size: 14px; line-height: 1.65; }
 .tour-close { position: absolute; top: 16px; right: 18px; padding: 0; border: 0; background: none; color: var(--text-muted); font-size: 26px; cursor: pointer; }
-.tour-progress { display: flex; gap: 5px; margin: -26px -26px 22px; }
-.tour-progress span { flex: 1; height: 4px; background: var(--neutral-bg); }
-.tour-progress span:first-child { border-radius: 14px 0 0; }
-.tour-progress span:last-child { border-radius: 0 14px 0 0; }
-.tour-progress span.complete { background: var(--primary); }
-.tour-actions { display: flex; justify-content: space-between; margin-top: 24px; }
-.tour-link { margin-top: 12px; padding: 0; border: 0; background: none; color: var(--primary); font-weight: 700; cursor: pointer; }
-.tour-target { position: relative; outline: 4px solid #8fa3ff; outline-offset: 3px; }
 .tour-launcher { display: flex; align-items: center; gap: 8px; width: 100%; margin-top: 14px; padding: 10px 12px; color: #fff; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.2); border-radius: 8px; cursor: pointer; font-weight: 700; }
 .tour-launcher:hover { background: rgba(255,255,255,.17); }
 .tour-launcher span { display: grid; place-items: center; width: 20px; height: 20px; border: 1px solid currentColor; border-radius: 50%; }
+
+/* Anchored step popover — no overlay, no dim, page stays live behind it.
+   Positioned in JS (TourPopover.tsx); data-placement says which side of the
+   target it landed on, and the arrow follows. */
+.tour-pop {
+  position: fixed; z-index: 200; width: 320px; max-width: calc(100vw - 24px);
+  padding: 18px; background: var(--panel); color: var(--text);
+  border: 1px solid var(--border); border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(10, 15, 36, .22); outline: none;
+  animation: tour-pop-in .12s ease-out;
+}
+@keyframes tour-pop-in { from { opacity: 0; transform: translateY(4px); } }
+.tour-pop::after {
+  content: ""; position: absolute; width: 12px; height: 12px;
+  background: var(--panel); border: 1px solid var(--border);
+  transform: rotate(45deg);
+}
+.tour-pop[data-placement="bottom"]::after { top: -7px; left: calc(50% - 6px); border-right: 0; border-bottom: 0; }
+.tour-pop[data-placement="top"]::after    { bottom: -7px; left: calc(50% - 6px); border-left: 0; border-top: 0; }
+.tour-pop[data-placement="right"]::after   { left: -7px; top: calc(50% - 6px); border-right: 0; border-top: 0; }
+.tour-pop[data-placement="left"]::after    { right: -7px; top: calc(50% - 6px); border-left: 0; border-bottom: 0; }
+.tour-pop__bar { display: flex; gap: 4px; margin: -18px -18px 14px; }
+.tour-pop__bar span { flex: 1; height: 3px; background: var(--neutral-bg); }
+.tour-pop__bar span:first-child { border-radius: 12px 0 0; }
+.tour-pop__bar span:last-child { border-radius: 0 12px 0 0; }
+.tour-pop__bar span.on { background: var(--primary); }
+.tour-pop__x { position: absolute; top: 10px; right: 12px; padding: 0; border: 0; background: none; color: var(--text-muted); font-size: 22px; line-height: 1; cursor: pointer; }
+.tour-pop__eyebrow { margin: 0 0 4px; color: var(--primary); font-size: 11px; font-weight: 800; letter-spacing: .06em; }
+.tour-pop h3 { margin: 0 20px 6px 0; font-size: 16px; }
+.tour-pop__body { margin: 0; color: var(--text-muted); font-size: 13px; line-height: 1.6; }
+.tour-pop__hint { margin: 10px 0 0; color: var(--primary); font-weight: 700; font-size: 13px; }
+.tour-pop__nav { display: flex; justify-content: space-between; gap: 8px; margin-top: 16px; }
+
+/* The only mark on the pointed-at element: a thin ring, no dimming of anything else. */
+.tour-ring { outline: 2px solid var(--primary); outline-offset: 3px; border-radius: 6px; }
 
 /* Page-scoped tour launcher — same "?" affordance as the sidebar tour buttons
    above, so the shape reads as "start a tour" everywhere it appears, but sized
@@ -179,28 +209,6 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .tour-list button:hover { border-color: var(--primary); transform: translateY(-1px); }
 .tour-list span { color: var(--text-muted); font-size: 13px; }
 .tour-list small { color: var(--primary); font-weight: 700; }
-/* The veil itself does no dimming (transparent) — dimming comes entirely from
-   the huge box-shadow on .tour-target below, which is the actual spotlight
-   (a "hole" cut around the highlighted element). Two separate darkened layers
-   here would double up and look muddier than either alone. */
-.tour-clickthrough-layer { position: fixed; inset: 0; z-index: 100; pointer-events: none; }
-/* Above .tour-target (110) so the highlighted element's spotlight shadow —
-   which surrounds it on all sides — can never paint over the dialog. */
-.tour-coachmark { position: fixed; right: 24px; bottom: 24px; z-index: 120; pointer-events: auto; border: 1px solid var(--primary); }
-.tour-coachmark.tour-coachmark--top { bottom: auto; top: 24px; }
-.tour-instruction { margin-top: 14px !important; color: var(--primary) !important; font-weight: 800; }
-/* No opaque fill: the element keeps its own background, just lifted above the
-   veil so the spotlight shadow doesn't dim it too. .18 matches what the old
-   two-layer version worked out to combined (veil .18 + shadow .18 stacked) —
-   .45 here earlier was a regression: a single layer at that alpha reads as
-   heavier than the old double-dim did, painting the rest of the page over
-   rather than just de-emphasizing it. */
-.tour-target { z-index: 110; box-shadow: 0 0 0 9999px rgba(12, 16, 31, .18); }
-
-@media (max-width: 700px) {
-  .tour-coachmark { right: 12px; bottom: 12px; left: 12px; width: auto; }
-  .tour-coachmark.tour-coachmark--top { top: 12px; }
-}
 
 .stat-card .stat-label {
   font-size: 12px;

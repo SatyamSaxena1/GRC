@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useSession } from "../lib/session";
+import { TourPopover } from "./TourPopover";
 
 type TourStep = {
   title: string;
@@ -46,8 +47,8 @@ const TOURS: readonly Tour[] = [
     description: "Onboard a client, then decide who on your staff may work it.",
     steps: [
       { title: "Start at your book of clients", body: "The firm console is the other side of the table from everything else in this app: many clients rather than one organisation. It opens with whoever is waiting on a decision from you.", path: "/firm", target: '[data-tour="nav-firm"]', action: "Click Firm console" },
-      { title: "Approve, and the client comes into existence", body: "A prospect's request owns nothing yet \u2014 no organisation, no engagement, no login. Approving is what creates all three, and you can narrow the frameworks they asked for before you do.", path: "/firm", target: '[data-tour="firm-onboarding"]', action: "Review the onboarding queue" },
-      { title: "Staff the people who may see it", body: "Belonging to your firm grants nobody access to a client. Assigning an auditor here is the grant \u2014 remove the row and their access to that client is gone on the next request, enforced server-side.", path: "/firm", target: '[data-tour="firm-clients"]', action: "Assign an auditor to a client" },
+      { title: "Approve, and the client comes into existence", body: "A prospect's request owns nothing yet — no organisation, no engagement, no login. Approving is what creates all three, and you can narrow the frameworks they asked for before you do.", path: "/firm", target: '[data-tour="firm-onboarding"]', action: "Review the onboarding queue" },
+      { title: "Staff the people who may see it", body: "Belonging to your firm grants nobody access to a client. Assigning an auditor here is the grant — remove the row and their access to that client is gone on the next request, enforced server-side.", path: "/firm", target: '[data-tour="firm-clients"]', action: "Assign an auditor to a client" },
     ],
   },
   {
@@ -72,7 +73,6 @@ export function GettingStartedTour() {
   const [chooserOpen, setChooserOpen] = useState(false);
   const [activeTour, setActiveTour] = useState<Tour | null>(null);
   const [step, setStep] = useState(0);
-  const dialogRef = useRef<HTMLDivElement>(null);
   const current = activeTour?.steps[step];
   const isAuditor = identity?.kind === "auditor" || (identity?.kind === "oidc" && Boolean(identity.engagementId));
   // A firm user has not opened a client yet, so the auditee-shaped tours would
@@ -90,7 +90,6 @@ export function GettingStartedTour() {
 
   const close = (complete = false) => {
     if (complete && activeTour) localStorage.setItem(completeKey(activeTour.id), "true");
-    document.querySelector(".tour-target")?.classList.remove("tour-target");
     setActiveTour(null);
     setChooserOpen(false);
   };
@@ -101,6 +100,8 @@ export function GettingStartedTour() {
     else setStep((value) => value + 1);
   };
 
+  // Cross-route walk: get to the step's page, then let clicking its target
+  // advance the tour (the popover only points, it doesn't own the element).
   useEffect(() => {
     if (!current) return;
     if (location.pathname !== current.path) {
@@ -110,18 +111,14 @@ export function GettingStartedTour() {
     let target: Element | null = null;
     const timer = window.setTimeout(() => {
       target = document.querySelector(current.target);
-      target?.classList.add("tour-target");
-      target?.scrollIntoView({ behavior: "smooth", block: "center" });
       target?.addEventListener("click", advance);
-      dialogRef.current?.focus();
-    }, 50);
+    }, 60);
     return () => {
       window.clearTimeout(timer);
-      target?.classList.remove("tour-target");
       target?.removeEventListener("click", advance);
     };
-  // advance intentionally reflects the currently rendered step.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // advance intentionally reflects the currently rendered step.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current, location.pathname, navigate]);
 
   const start = (tour: Tour) => {
@@ -157,28 +154,19 @@ export function GettingStartedTour() {
         document.body,
       )}
 
-      {/* A direct child of <body>, not of the sidebar this launcher sits in —
-          fixed positioning + z-index only ranks reliably against elements in
-          the SAME stacking context, and a highlighted target elsewhere on the
-          page can end up outside this one. See PageTour.tsx for the full story. */}
-      {activeTour && current && createPortal(
-        <div className="tour-clickthrough-layer" role="presentation">
-          <div className="tour-dialog tour-coachmark" role="dialog" aria-labelledby="tour-title" ref={dialogRef} tabIndex={-1} onKeyDown={(event) => event.key === "Escape" && close()}>
-            <div className="tour-progress" aria-label={`Step ${step + 1} of ${activeTour.steps.length}`}>
-              {activeTour.steps.map((item, index) => <span key={item.title} className={index <= step ? "complete" : ""} />)}
-            </div>
-            <button className="tour-close" onClick={() => close()} aria-label="Close guided tour">×</button>
-            <span className="eyebrow">{activeTour.title} · {step + 1} of {activeTour.steps.length}</span>
-            <h3 id="tour-title">{current.title}</h3>
-            <p>{current.body}</p>
-            <p className="tour-instruction">↖ {current.action}</p>
-            <div className="tour-actions">
-              <button className="btn" disabled={step === 0} onClick={() => setStep((value) => value - 1)}>Back</button>
-              <button className="btn btn-primary" onClick={advance}>{step === activeTour.steps.length - 1 ? "Finish" : "Next instead"}</button>
-            </div>
-          </div>
-        </div>,
-        document.body,
+      {activeTour && current && location.pathname === current.path && (
+        <TourPopover
+          targetSelector={current.target}
+          step={step}
+          total={activeTour.steps.length}
+          title={current.title}
+          body={current.body}
+          hint={`→ ${current.action}`}
+          nextLabel="Skip ahead"
+          onClose={() => close()}
+          onBack={() => setStep((v) => v - 1)}
+          onNext={advance}
+        />
       )}
     </>
   );

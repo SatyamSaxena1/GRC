@@ -575,6 +575,20 @@ export const getReadinessAll = () => request<FrameworkReadiness[]>("GET", "/anal
 export const getReadiness = (framework: string) =>
   request<FrameworkReadiness>("GET", `/analytics/readiness/${encodeURIComponent(framework)}`);
 
+export type ConnectorStatus = {
+  source: "aws" | "m365" | "google-workspace" | "hrms";
+  label: string;
+  configured: boolean;
+  evidence_id: string | null;
+  last_synced_at: string | null;
+  status: string;
+};
+export const listConnectors = () => request<ConnectorStatus[]>("GET", "/connectors");
+export const syncConnector = (source: ConnectorStatus["source"]) =>
+  request<{ source: string; evidence_id: string; status: string }>(
+    "POST", `/connectors/${encodeURIComponent(source)}/sync`,
+  );
+
 export type ExpiringEvidence = {
   evidence_id: string;
   original_filename: string;

@@ -26,6 +26,18 @@ ucos:
   - code: UCO-LOG-001
     title: Security-relevant events are logged and retained for a defined period
     domain: LOGGING
+  - code: UCO-PRIV-001
+    title: People receive clear notice of personal-data processing and can exercise their rights
+    domain: PRIVACY
+  - code: UCO-PRIV-002
+    title: Personal data is retained only as long as its purpose or applicable law requires
+    domain: PRIVACY
+  - code: UCO-PRIV-003
+    title: Personal-data breaches are detected, contained and notified through a documented process
+    domain: PRIVACY
+  - code: UCO-PRIV-004
+    title: Workforce access is revoked promptly when employment or responsibilities end
+    domain: PRIVACY
 
   # AI governance. Deliberately framework-neutral rather than phrased in AI RMF's
   # own words, because the point of a UCO is that a second framework maps onto it
