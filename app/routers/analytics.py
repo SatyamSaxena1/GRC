@@ -18,12 +18,19 @@ CONTENT = load_content()
 
 VERDICT_KEYS = ("PASS", "PARTIAL", "FAIL", "NO_EVIDENCE")
 
+# Once an auditor locks a link, app/routers/audit.py::_lock overwrites
+# link.verdict with the auditor's own vocabulary. Fold it back to the
+# deterministic scale this rollup counts in — otherwise a locked COMPLIANT
+# control 500s the dashboard on an unknown key.
+_AUDITOR_VERDICT = {"COMPLIANT": "PASS", "PARTIALLY_COMPLIANT": "PARTIAL", "NON_COMPLIANT": "FAIL"}
+
 
 def best_verdict(links: list[dict]) -> str:
     rank = {"PASS": 3, "PARTIAL": 2, "FAIL": 1}
     if not links:
         return "NO_EVIDENCE"
-    return max(links, key=lambda l: rank.get(l["verdict"], 0))["verdict"]
+    verdicts = (_AUDITOR_VERDICT.get(l["verdict"], l["verdict"]) for l in links)
+    return max(verdicts, key=lambda v: rank.get(v, 0))
 
 
 def control_details(actor: Actor, db: Session) -> list[dict]:
@@ -88,7 +95,8 @@ def dashboard(actor: Actor = Depends(current_actor), db: Session = Depends(get_s
     details = control_details(actor, db)
     by_verdict = {k: 0 for k in VERDICT_KEYS}
     for c in details:
-        by_verdict[best_verdict(c["links"])] += 1
+        v = best_verdict(c["links"])
+        by_verdict[v] = by_verdict.get(v, 0) + 1  # never let an unforeseen verdict 500 the landing page
 
     evidence_rows = evidence_router.list_evidence(lifecycle_status="CURRENT", actor=actor, db=db)
 
