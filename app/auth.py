@@ -157,9 +157,9 @@ def _resolve_oidc(token: str, db: Session, engagement_header: str | None) -> Act
     must already be provisioned via /admin/users and matched by email; no new
     column, no JIT provisioning (see docs/adr/011-oidc-auth.md)."""
     claims = oidc.decode(token)
-    email = claims.get("email")
+    email = claims.get(oidc.EMAIL_CLAIM)
     if not email:
-        raise HTTPException(401, "token has no email claim")
+        raise HTTPException(401, f"token has no {oidc.EMAIL_CLAIM} claim")
 
     user = db.query(User).filter_by(email=email).one_or_none()
     if user is None:

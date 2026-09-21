@@ -8,6 +8,12 @@ WORKDIR /frontend
 COPY frontend/package.json frontend/package-lock.json* ./
 RUN npm ci
 COPY frontend/ ./
+# Vite inlines VITE_* at build time (see frontend/src/lib/pkce.ts). Unset means
+# the SSO button is hidden. These are public values, not secrets.
+ARG VITE_OIDC_AUTHORIZE_URL
+ARG VITE_OIDC_TOKEN_URL
+ARG VITE_OIDC_CLIENT_ID
+ARG VITE_OIDC_REDIRECT_URI
 RUN npm run build            # -> /frontend/dist
 
 # --- stage 2: api ----------------------------------------------------------

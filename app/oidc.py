@@ -13,6 +13,9 @@ from fastapi import HTTPException
 JWKS_URL = os.environ.get("OIDC_JWKS_URL", "")
 ISSUER = os.environ.get("OIDC_ISSUER", "")
 AUDIENCE = os.environ.get("OIDC_AUDIENCE", "")
+# Auth0 keeps custom claims out of access tokens unless they are namespaced
+# (e.g. "https://grc-api/email"); Authentik and most IdPs use plain "email".
+EMAIL_CLAIM = os.environ.get("OIDC_EMAIL_CLAIM", "email")
 
 _jwk_client: "jwt.PyJWKClient | None" = None
 

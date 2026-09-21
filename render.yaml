@@ -10,6 +10,7 @@
 #   ADMIN_API_KEY        operator key for the /admin/* bootstrap routes
 #   S3_BUCKET, S3_ENDPOINT_URL, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
 #   OIDC_ISSUER, OIDC_AUDIENCE, OIDC_JWKS_URL
+#   OIDC_EMAIL_CLAIM     only if the IdP namespaces it (Auth0: https://grc-api/email)
 #   OLLAMA_BASE_URL, OLLAMA_API_KEY   (the GPU host from deploy/llm/)
 #   optional: CISO_ASSISTANT_*, DPDP_*_COLLECTOR_URL / _TOKEN
 #
@@ -66,6 +67,14 @@ services:
         fromDatabase:
           name: grc-db
           property: connectionString
+      # Public SPA login settings, inlined into the frontend at Docker build time
+      # (Dockerfile ARGs). Auth0: https://<tenant>/authorize, /oauth/token, SPA client id.
+      - key: VITE_OIDC_AUTHORIZE_URL
+        sync: false
+      - key: VITE_OIDC_TOKEN_URL
+        sync: false
+      - key: VITE_OIDC_CLIENT_ID
+        sync: false
       - fromGroup: grc-config
       - fromGroup: grc-secrets
 
