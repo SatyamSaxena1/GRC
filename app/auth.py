@@ -10,6 +10,8 @@ change for either path.
 
 from __future__ import annotations
 
+import hmac
+import os
 from dataclasses import dataclass, replace
 
 from fastapi import Depends, Header, HTTPException, Request
@@ -18,6 +20,12 @@ from sqlalchemy.orm import Session
 from app import oidc
 from app.db import get_session, set_firm, set_tenant
 from app.models import AuditFirm, Engagement, EngagementAuditor, User
+
+# The stub tokens carry no signature: anyone who knows an org/user id can be
+# that org/user. Fine for dev, tests and the demo; a production deploy sets
+# AUTH_STUB_ENABLED=false so only verified OIDC JWTs are accepted (app/main.py
+# refuses to start in that mode without OIDC configured).
+STUB_ENABLED = os.environ.get("AUTH_STUB_ENABLED", "true").lower() not in {"0", "false", "no"}
 
 
 @dataclass(frozen=True)
@@ -67,6 +75,19 @@ class Actor:
         return not self.is_auditor and self.role != "COMPLIANCE_VIEWER"
 
 
+def require_admin(x_admin_key: str | None = Header(None)) -> None:
+    """Gate for the /admin bootstrap routes (create orgs, firms, users...), which
+    have no caller identity to check. With ADMIN_API_KEY set, the header must
+    match. Without it, dev/test (stub auth on) stays open as before, while a
+    production deploy (stub off) fails closed rather than exposing them."""
+    expected = os.environ.get("ADMIN_API_KEY", "")
+    if expected:
+        if not x_admin_key or not hmac.compare_digest(x_admin_key, expected):
+            raise HTTPException(401, "admin key required")
+    elif not STUB_ENABLED:
+        raise HTTPException(403, "admin API is disabled: set ADMIN_API_KEY")
+
+
 def deny_read_only(actor: Actor, action: str) -> HTTPException:
     """The 403 for a read-only caller reaching a write path, phrased for
     whichever read-only role it is."""
@@ -94,6 +115,9 @@ def _resolve(authorization: str, db: Session, engagement_header: str | None = No
     token = authorization.removeprefix("Bearer ").strip()
     if oidc.looks_like_jwt(token):
         return _resolve_oidc(token, db, engagement_header)
+
+    if not STUB_ENABLED:
+        raise HTTPException(401)
 
     if authorization.startswith("org:"):
         return Actor(org_id=authorization.removeprefix("org:"))

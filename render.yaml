@@ -1,0 +1,94 @@
+# Render Blueprint: web service + Postgres + two monitor cron jobs.
+# The LLM does NOT run on Render (no GPUs) — see deploy/llm/.
+#
+# Before the first apply, create an environment group named `grc-secrets` in the
+# Render dashboard (Environment Groups) holding the values that must never be
+# committed:
+#   DATABASE_URL         grc_app runtime URL (create the role after the first
+#                        migration — see DEPLOYMENT.md). For the very first
+#                        deploy, paste the owner URL, then swap it.
+#   ADMIN_API_KEY        operator key for the /admin/* bootstrap routes
+#   S3_BUCKET, S3_ENDPOINT_URL, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
+#   OIDC_ISSUER, OIDC_AUDIENCE, OIDC_JWKS_URL
+#   OLLAMA_BASE_URL, OLLAMA_API_KEY   (the GPU host from deploy/llm/)
+#   optional: CISO_ASSISTANT_*, DPDP_*_COLLECTOR_URL / _TOKEN
+#
+# One web instance only: SSE and upload background tasks are in-process
+# (app/events.py), so do not raise numInstances or enable autoscaling.
+
+databases:
+  - name: grc-db
+    databaseName: grc
+    user: grc_owner
+    plan: basic-1gb
+    postgresMajorVersion: "16"
+    region: singapore
+    # After creating grc_app, restrict external access: set ipAllowList to your
+    # own address(es), or [] to allow only Render-internal connections.
+
+envVarGroups:
+  - name: grc-config
+    envVars:
+      - key: AUTH_STUB_ENABLED
+        value: "false"
+      - key: RUN_MIGRATIONS          # migrations run in preDeployCommand as the owner
+        value: "0"
+      - key: STORAGE_BACKEND
+        value: s3
+      - key: AWS_REGION
+        value: auto                  # Cloudflare R2; use a real region for AWS S3
+      - key: OLLAMA_MODEL
+        value: qwen2.5vl:7b
+      - key: OLLAMA_VISION_MODEL
+        value: qwen2.5vl:7b
+      - key: OLLAMA_TIMEOUT_S
+        value: "180"
+      - key: VLM_RENDER_DPI
+        value: "200"
+      - key: MALWARE_SCANNER
+        value: noop                  # clamav needs its own clamd service
+
+services:
+  - type: web
+    name: grc
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: standard
+    region: singapore
+    numInstances: 1
+    healthCheckPath: /health/ready
+    # Owner role (can alter schema); the running app uses grc_app so RLS applies.
+    preDeployCommand: sh -c 'DATABASE_URL="$MIGRATION_DATABASE_URL" alembic upgrade head'
+    envVars:
+      - key: PORT
+        value: "8000"
+      - key: MIGRATION_DATABASE_URL
+        fromDatabase:
+          name: grc-db
+          property: connectionString
+      - fromGroup: grc-config
+      - fromGroup: grc-secrets
+
+  - type: cron
+    name: grc-monitor-sync
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: starter
+    region: singapore
+    schedule: "0 */6 * * *"          # every 6 hours (UTC)
+    dockerCommand: python -m app.monitor --sync-connectors
+    envVars:
+      - fromGroup: grc-config
+      - fromGroup: grc-secrets
+
+  - type: cron
+    name: grc-monitor-daily
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: starter
+    region: singapore
+    schedule: "30 1 * * *"           # daily 07:00 IST; exits non-zero if attention is needed
+    dockerCommand: python -m app.monitor
+    envVars:
+      - fromGroup: grc-config
+      - fromGroup: grc-secrets

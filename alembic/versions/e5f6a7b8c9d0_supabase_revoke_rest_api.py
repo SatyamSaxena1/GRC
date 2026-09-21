@@ -7,7 +7,9 @@ Supabase runs PostgREST, which serves every table in `public` to the `anon` and
 be reachable through the auto API. Cut the grants entirely.
 
 Postgres only — on SQLite these roles don't exist, so it's a no-op, matching
-the RLS migrations' convention (see a1b2c3d4e5f6).
+the RLS migrations' convention (see a1b2c3d4e5f6). Also a no-op on plain
+Postgres (Render, RDS, docker-compose) where anon/authenticated were never
+created — REVOKE ... FROM a missing role is an error, not a no-op.
 
 Revision ID: e5f6a7b8c9d0
 Revises: d3e4f5a6b7c8
@@ -23,8 +25,18 @@ branch_labels = None
 depends_on = None
 
 
+def _has_supabase_roles() -> bool:
+    bind = op.get_bind()
+    if bind.dialect.name != "postgresql":
+        return False
+    found = bind.exec_driver_sql(
+        "SELECT count(*) FROM pg_roles WHERE rolname IN ('anon', 'authenticated')"
+    ).scalar()
+    return found == 2
+
+
 def upgrade() -> None:
-    if op.get_bind().dialect.name != "postgresql":
+    if not _has_supabase_roles():
         return
     op.execute("REVOKE ALL ON ALL TABLES IN SCHEMA public FROM anon, authenticated")
     op.execute("REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM anon, authenticated")
@@ -40,7 +52,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    if op.get_bind().dialect.name != "postgresql":
+    if not _has_supabase_roles():
         return
     op.execute("GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated")
     op.execute("GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated")

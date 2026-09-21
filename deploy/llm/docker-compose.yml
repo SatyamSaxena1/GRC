@@ -1,0 +1,63 @@
+# Self-hosted LLM for the GRC app. Runs on a GPU machine you control, NOT on Render.
+# Ollama is never published directly: Caddy terminates TLS and rejects any
+# request without the bearer token, then proxies to Ollama on the internal network.
+#
+#   cp .env.example .env   # fill in, then:
+#   docker compose up -d
+#
+# Needs the NVIDIA Container Toolkit on the host.
+
+services:
+  ollama:
+    image: "ollama/ollama:${OLLAMA_VERSION:?pin an image tag in .env}"
+    restart: unless-stopped
+    environment:
+      OLLAMA_MAX_LOADED_MODELS: "2"   # vision model + security text model resident together
+      OLLAMA_KEEP_ALIVE: 24h          # avoid a cold load on the first upload of the day
+      OLLAMA_NUM_PARALLEL: "2"
+    volumes:
+      - ollama-models:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  # One-shot: pull every model in MODELS (space-separated), then exit. Re-run with
+  # `docker compose up model-pull` after changing MODELS.
+  model-pull:
+    image: ollama/ollama:${OLLAMA_VERSION}
+    restart: "no"
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      MODELS: "${MODELS:?list the models to pull in .env}"
+    entrypoint: ["/bin/sh", "-c", "for m in $$MODELS; do echo pulling $$m; ollama pull \"$$m\"; done"]
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - ollama
+    ports:
+      - "80:80"     # ACME HTTP challenge / redirect
+      - "443:443"
+    environment:
+      LLM_DOMAIN: "${LLM_DOMAIN:?public hostname pointing at this machine}"
+      OLLAMA_API_KEY: "${OLLAMA_API_KEY:?generate one with openssl rand -hex 32}"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+
+volumes:
+  ollama-models:
+  caddy-data:

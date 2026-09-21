@@ -1,0 +1,65 @@
+# Home / office PC variant of docker-compose.yml: no open ports, no public TLS.
+# A Cloudflare Tunnel makes an OUTBOUND connection to Cloudflare, which serves
+# https://<your hostname> and forwards to Caddy. Caddy still rejects any request
+# without the bearer token before it reaches Ollama.
+#
+#   cp .env.example .env    # fill in, incl. TUNNEL_TOKEN
+#   docker compose -f docker-compose.pc.yml up -d
+#
+# Windows: Docker Desktop (WSL2 backend) + current NVIDIA driver gives containers the GPU.
+
+services:
+  ollama:
+    image: "ollama/ollama:${OLLAMA_VERSION:?pin an image tag in .env}"
+    restart: unless-stopped
+    environment:
+      OLLAMA_MAX_LOADED_MODELS: "${OLLAMA_MAX_LOADED_MODELS:-1}"   # 1 for a 12-16 GB card, 2 for 24 GB
+      OLLAMA_KEEP_ALIVE: 24h
+      OLLAMA_NUM_PARALLEL: "1"
+    volumes:
+      - ollama-models:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  model-pull:
+    image: "ollama/ollama:${OLLAMA_VERSION}"
+    restart: "no"
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      MODELS: "${MODELS:?list the models to pull in .env}"
+    entrypoint: ["/bin/sh", "-c", "for m in $$MODELS; do echo pulling $$m; ollama pull \"$$m\"; done"]
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - ollama
+    environment:
+      OLLAMA_API_KEY: "${OLLAMA_API_KEY:?generate one with openssl rand -hex 32}"
+    volumes:
+      - ./Caddyfile.pc:/etc/caddy/Caddyfile:ro
+
+  cloudflared:
+    image: "cloudflare/cloudflared:${CLOUDFLARED_VERSION:-latest}"
+    restart: unless-stopped
+    depends_on:
+      - caddy
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: "${TUNNEL_TOKEN:?create a tunnel in Cloudflare Zero Trust and paste its token}"
+
+volumes:
+  ollama-models:
