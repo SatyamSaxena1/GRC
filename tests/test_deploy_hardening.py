@@ -21,6 +21,21 @@ def test_stub_token_rejected_when_stub_disabled(client, bootstrap, monkeypatch):
     assert client.get("/controls", headers={"authorization": f"org:{org_id}"}).status_code == 401
 
 
+def test_oidc_email_read_from_configured_claim(client, bootstrap, monkeypatch):
+    """Auth0 puts the email under a namespaced claim; plain `email` must not be
+    consulted once OIDC_EMAIL_CLAIM points elsewhere."""
+    org_id, _ = bootstrap(client)
+    client.post("/admin/users", json={"email": "a@acme.test", "org_id": org_id, "role": "ORG_ADMIN"})
+    monkeypatch.setattr(oidc, "EMAIL_CLAIM", "https://grc-api/email")
+    hdr = {"authorization": "Bearer header.payload.signature"}
+
+    monkeypatch.setattr(oidc, "decode", lambda t: {"https://grc-api/email": "a@acme.test"})
+    assert client.get("/controls", headers=hdr).status_code == 200
+
+    monkeypatch.setattr(oidc, "decode", lambda t: {"email": "a@acme.test"})
+    assert client.get("/controls", headers=hdr).status_code == 401
+
+
 def test_startup_refuses_stub_off_without_oidc(monkeypatch):
     monkeypatch.setattr(auth, "STUB_ENABLED", False)
     monkeypatch.setattr(oidc, "JWKS_URL", "")
