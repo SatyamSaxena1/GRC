@@ -1,14 +1,14 @@
-import os
 from contextlib import contextmanager
 
 from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import Session
 
+from app.dburl import database_url
 from app.models import Base
 
 # ponytail: create_all is the dev path; Alembic owns the schema for anything real
 # (see alembic/ and ADR-001). DATABASE_URL switches SQLite <-> PostgreSQL.
-DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./grc.db")
+DATABASE_URL = database_url()
 engine = create_engine(DATABASE_URL)
 
 

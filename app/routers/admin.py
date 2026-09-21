@@ -10,13 +10,14 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app import audit_log
+from app.auth import require_admin
 from app.db import get_session
 from app.models import (
     AuditFirm, ControlAssignment, Engagement, EngagementAllocation, OrgControl,
     Organization, User,
 )
 
-router = APIRouter(prefix="/admin", tags=["admin"])
+router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(require_admin)])
 
 
 class OrgIn(BaseModel):

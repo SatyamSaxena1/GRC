@@ -1,0 +1,17 @@
+{
+	auto_https off          # TLS is terminated by Cloudflare, not here
+}
+
+:80 {
+	# Ollama has no auth of its own — only the GRC app (app/ai/ollama.py sends
+	# OLLAMA_API_KEY as a bearer token) gets through.
+	@unauth not header Authorization "Bearer {$OLLAMA_API_KEY}"
+	respond @unauth 401
+
+	reverse_proxy ollama:11434 {
+		flush_interval -1
+		transport http {
+			response_header_timeout 300s
+		}
+	}
+}

@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from app import auth, oidc
 from app.ai.ollama import OllamaGateway
 from app.db import engine, init_db
 from app.routers import (
@@ -29,6 +30,16 @@ DEBUG = os.environ.get("DEBUG", "").lower() in {"1", "true", "yes"}
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    if not auth.STUB_ENABLED and not oidc.configured():
+        # Stub tokens off and no OIDC would lock everyone out — fail loudly at
+        # boot rather than serve 401s to every request.
+        raise RuntimeError(
+            "AUTH_STUB_ENABLED=false requires OIDC_ISSUER, OIDC_AUDIENCE and OIDC_JWKS_URL"
+        )
+    if not auth.STUB_ENABLED and engine.dialect.name != "postgresql":
+        # DATABASE_URL unset silently means SQLite; on an ephemeral PaaS disk
+        # that would look healthy while losing every row on the next deploy.
+        raise RuntimeError("production mode (AUTH_STUB_ENABLED=false) requires a PostgreSQL DATABASE_URL")
     init_db()
     yield
 

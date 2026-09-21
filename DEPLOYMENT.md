@@ -107,6 +107,27 @@ is required for Path B. `app/storage.py` already speaks the S3 API.
 
 ---
 
+## Path C: Render + self-hosted GPU LLM (public deploy)
+
+`render.yaml` is a Blueprint for the web service, Postgres 16 and the two monitor
+crons (Singapore region). The LLM cannot run on Render (no GPUs): stand it up
+first from `deploy/llm/` (Ollama behind a bearer-token proxy), then:
+
+1. Create a Render environment group `grc-secrets` with the values listed at the
+   top of `render.yaml` (never commit them).
+2. Apply the Blueprint. The pre-deploy step runs `alembic upgrade head` with the
+   owner URL (`MIGRATION_DATABASE_URL`); the running app uses `DATABASE_URL`.
+3. Create the `grc_app` role (SQL in Path B, step 1), put its URL in
+   `grc-secrets` as `DATABASE_URL`, redeploy, then restrict the database's
+   `ipAllowList`.
+4. The service runs with `AUTH_STUB_ENABLED=false`: sign-in is OIDC only, and the
+   `/admin/*` bootstrap routes need an `X-Admin-Key` header (`ADMIN_API_KEY`).
+   Provision orgs, firms and users with `curl`/a script — the SPA's in-app Admin
+   page sends no key, so it does not work against a production deploy.
+5. Keep `numInstances: 1`: SSE and upload background tasks are in-process.
+
+---
+
 ## Troubleshooting
 
 | Symptom | Cause / fix |
