@@ -10,14 +10,14 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app import audit_log
-from app.auth import require_admin
+from app.auth import Actor, admin_or_actor, require_admin
 from app.db import get_session
 from app.models import (
     AuditFirm, ControlAssignment, Engagement, EngagementAllocation, OrgControl,
     Organization, User,
 )
 
-router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(require_admin)])
+router = APIRouter(prefix="/admin", tags=["admin"])
 
 
 class OrgIn(BaseModel):
@@ -25,7 +25,7 @@ class OrgIn(BaseModel):
     frameworks: list[str]
 
 
-@router.post("/organizations")
+@router.post("/organizations", dependencies=[Depends(require_admin)])
 def create_org(body: OrgIn, db: Session = Depends(get_session)):
     org = Organization(name=body.name, frameworks=body.frameworks)
     db.add(org)
@@ -37,7 +37,7 @@ class FirmIn(BaseModel):
     name: str
 
 
-@router.post("/audit-firms")
+@router.post("/audit-firms", dependencies=[Depends(require_admin)])
 def create_firm(body: FirmIn, db: Session = Depends(get_session)):
     firm = AuditFirm(name=body.name)
     db.add(firm)
@@ -53,7 +53,18 @@ class UserIn(BaseModel):
 
 
 @router.post("/users")
-def create_user(body: UserIn, db: Session = Depends(get_session)):
+def create_user(body: UserIn, actor: Actor | None = Depends(admin_or_actor),
+                db: Session = Depends(get_session)):
+    """The operator key (actor=None) may create any user, org- or firm-side —
+    that's how a brand-new org/firm gets its first admin. A signed-in caller
+    may only invite into their own org (as its ORG_ADMIN) or their own firm
+    (as its FIRM_ADMIN); everything else is someone else's tenant."""
+    if actor is not None:
+        into_own_org = body.org_id and actor.org_id == body.org_id and actor.role == "ORG_ADMIN"
+        into_own_firm = (body.audit_firm_id and actor.audit_firm_id == body.audit_firm_id
+                         and actor.role == "FIRM_ADMIN")
+        if not (into_own_org or into_own_firm):
+            raise HTTPException(403, "you may only invite users into your own organisation or firm")
     user = User(**body.model_dump())
     db.add(user)
     db.commit()
@@ -66,7 +77,7 @@ class EngagementIn(BaseModel):
     frameworks: list[str] = []
 
 
-@router.post("/engagements")
+@router.post("/engagements", dependencies=[Depends(require_admin)])
 def create_engagement(body: EngagementIn, db: Session = Depends(get_session)):
     engagement = Engagement(audit_firm_id=body.audit_firm_id, org_id=body.org_id)
     db.add(engagement)
@@ -81,11 +92,17 @@ def create_engagement(body: EngagementIn, db: Session = Depends(get_session)):
 
 
 @router.post("/engagements/{engagement_id}/close")
-def close_engagement(engagement_id: str, db: Session = Depends(get_session)):
+def close_engagement(engagement_id: str, actor: Actor | None = Depends(admin_or_actor),
+                     db: Session = Depends(get_session)):
     """Closing revokes auditor access immediately; the records stay for defensibility."""
     engagement = db.get(Engagement, engagement_id)
     if engagement is None:
         raise HTTPException(404)
+    if actor is not None:
+        is_own_org = actor.role == "ORG_ADMIN" and actor.org_id == engagement.org_id
+        is_own_firm = actor.role == "FIRM_ADMIN" and actor.audit_firm_id == engagement.audit_firm_id
+        if not (is_own_org or is_own_firm):
+            raise HTTPException(403, "you may only close your own engagements")
     engagement.status = "CLOSED"
     engagement.closed_at = datetime.now(timezone.utc)
     audit_log.record(db, actor="admin", action="ENGAGEMENT_CLOSED", entity_type="engagement",
@@ -101,7 +118,10 @@ class ControlIn(BaseModel):
 
 
 @router.post("/controls")
-def create_control(body: ControlIn, db: Session = Depends(get_session)):
+def create_control(body: ControlIn, actor: Actor | None = Depends(admin_or_actor),
+                   db: Session = Depends(get_session)):
+    if actor is not None and not (actor.role == "ORG_ADMIN" and actor.org_id == body.org_id):
+        raise HTTPException(403, "you may only register controls for your own organisation")
     control = db.query(OrgControl).filter_by(**body.model_dump()).one_or_none()
     if control is None:
         control = OrgControl(**body.model_dump())
@@ -116,7 +136,12 @@ class AssignmentIn(BaseModel):
 
 
 @router.post("/control-assignments")
-def assign_control(body: AssignmentIn, db: Session = Depends(get_session)):
+def assign_control(body: AssignmentIn, actor: Actor | None = Depends(admin_or_actor),
+                   db: Session = Depends(get_session)):
+    if actor is not None:
+        control = db.get(OrgControl, body.org_control_id)
+        if control is None or not (actor.role == "ORG_ADMIN" and actor.org_id == control.org_id):
+            raise HTTPException(403, "you may only assign controls within your own organisation")
     existing = db.query(ControlAssignment).filter_by(**body.model_dump()).one_or_none()
     if existing:
         return {"id": existing.id}

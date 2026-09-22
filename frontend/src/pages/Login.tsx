@@ -13,63 +13,83 @@ export type Tab = "org" | "user" | "viewer" | "auditor" | "firm" | "request" | "
 export function LoginPage() {
   const { setIdentity } = useSession();
   const navigate = useNavigate();
-  const [tab, setTab] = useState<Tab>("quickstart");
+  // Whenever an identity provider is configured — every real deployment,
+  // self-hosted or SaaS — the raw org:<id>/user:<id> stub tabs and the
+  // /admin-calling demo flows (Quick start, Audit firm "create new") have
+  // nothing to do: the backend rejects stub tokens once AUTH_STUB_ENABLED=false
+  // (app/auth.py), and /admin/organizations|audit-firms now needs an operator
+  // key the browser never has (app/routers/admin.py). A self-hosted org that
+  // hasn't set up an IdP still gets the full stub UI below, unchanged — useful
+  // for something that never leaves their own network. Real onboarding, once
+  // OIDC is on, is Sign in (already-provisioned) or Request an audit
+  // (self-service — see RequestAudit and firm.py::approve_onboarding_request).
+  const production = oidcConfigured();
+  const [tab, setTab] = useState<Tab>(production ? "sso" : "quickstart");
 
   return (
     <div className="login-shell">
       <div className="card login-card">
         <h1>GRC Workspace</h1>
-        <p className="muted">
-          There is no account system yet — the backend identifies a caller by a plain
-          <code> org:&lt;id&gt;</code> / <code>user:&lt;id&gt;</code> / <code>auditor:&lt;engagement_id&gt;</code>{" "}
-          token. Start a demo organisation below, or sign in with an id you already have.
-        </p>
+        {production ? (
+          <p className="muted">Sign in with your organisation's identity provider, or ask an audit firm to onboard you.</p>
+        ) : (
+          <>
+            <p className="muted">
+              There is no account system yet — the backend identifies a caller by a plain
+              <code> org:&lt;id&gt;</code> / <code>user:&lt;id&gt;</code> / <code>auditor:&lt;engagement_id&gt;</code>{" "}
+              token. Start a demo organisation below, or sign in with an id you already have.
+            </p>
+            <p className="muted">
+              New here? <Link to="/pitch">See what this is, with a live demo</Link>.
+            </p>
+          </>
+        )}
 
-        <p className="muted">
-          New here? <Link to="/pitch">See what this is, with a live demo</Link>.
-        </p>
-
-        <LoginTour onSelectTab={setTab} />
+        {!production && <LoginTour onSelectTab={setTab} />}
 
         <div className="pill-select" data-tour="login-tabs">
-          <button data-tour="tab-quickstart" className={tab === "quickstart" ? "active" : ""} onClick={() => setTab("quickstart")}>
-            Quick start
-            <Hint>Spins up a demo organisation, audit firm and engagement in one click — the fastest way to see it working.</Hint>
-          </button>
-          <button data-tour="tab-org" className={tab === "org" ? "active" : ""} onClick={() => setTab("org")}>
-            Organisation
-            <Hint>Sign in as the auditee — upload evidence, track gaps, and submit controls for review.</Hint>
-          </button>
-          <button data-tour="tab-user" className={tab === "user" ? "active" : ""} onClick={() => setTab("user")}>
-            Control owner
-            <Hint>Sign in as a team member who can see only the specific controls assigned to them, nothing else.</Hint>
-          </button>
-          <button data-tour="tab-viewer" className={tab === "viewer" ? "active" : ""} onClick={() => setTab("viewer")}>
-            Compliance viewer
-            <Hint>Sign in with org-wide visibility — readiness, controls, gaps, tasks, evidence and the audit trail — and no ability to change anything.</Hint>
-          </button>
-          <button data-tour="tab-auditor" className={tab === "auditor" ? "active" : ""} onClick={() => setTab("auditor")}>
-            Auditor
-            <Hint>Sign in as the reviewer — record verdicts, lock controls, and see only the frameworks this engagement covers.</Hint>
-          </button>
-          <button data-tour="tab-firm" className={tab === "firm" ? "active" : ""} onClick={() => setTab("firm")}>
-            Audit firm
-            <Hint>Sign in on the firm's side of the table — approve who gets onboarded, and staff your auditors onto the clients they are allowed to work.</Hint>
-          </button>
+          {!production && (
+            <>
+              <button data-tour="tab-quickstart" className={tab === "quickstart" ? "active" : ""} onClick={() => setTab("quickstart")}>
+                Quick start
+                <Hint>Spins up a demo organisation, audit firm and engagement in one click — the fastest way to see it working.</Hint>
+              </button>
+              <button data-tour="tab-org" className={tab === "org" ? "active" : ""} onClick={() => setTab("org")}>
+                Organisation
+                <Hint>Sign in as the auditee — upload evidence, track gaps, and submit controls for review.</Hint>
+              </button>
+              <button data-tour="tab-user" className={tab === "user" ? "active" : ""} onClick={() => setTab("user")}>
+                Control owner
+                <Hint>Sign in as a team member who can see only the specific controls assigned to them, nothing else.</Hint>
+              </button>
+              <button data-tour="tab-viewer" className={tab === "viewer" ? "active" : ""} onClick={() => setTab("viewer")}>
+                Compliance viewer
+                <Hint>Sign in with org-wide visibility — readiness, controls, gaps, tasks, evidence and the audit trail — and no ability to change anything.</Hint>
+              </button>
+              <button data-tour="tab-auditor" className={tab === "auditor" ? "active" : ""} onClick={() => setTab("auditor")}>
+                Auditor
+                <Hint>Sign in as the reviewer — record verdicts, lock controls, and see only the frameworks this engagement covers.</Hint>
+              </button>
+              <button data-tour="tab-firm" className={tab === "firm" ? "active" : ""} onClick={() => setTab("firm")}>
+                Audit firm
+                <Hint>Sign in on the firm's side of the table — approve who gets onboarded, and staff your auditors onto the clients they are allowed to work.</Hint>
+              </button>
+            </>
+          )}
           <button data-tour="tab-request" className={tab === "request" ? "active" : ""} onClick={() => setTab("request")}>
             Request an audit
             <Hint>The prospect's entry point: ask a firm to audit you. It creates no account — approval by the firm is what does that.</Hint>
           </button>
           {oidcConfigured() && (
             <button className={tab === "sso" ? "active" : ""} onClick={() => setTab("sso")}>
-              Single sign-on
-              <Hint>Sign in via the organisation's identity provider instead of a raw id (see docs/adr/011-oidc-auth.md).</Hint>
+              Sign in
+              <Hint>Sign in via your organisation's identity provider (see docs/adr/011-oidc-auth.md).</Hint>
             </button>
           )}
         </div>
 
-        {tab === "quickstart" && <QuickStart onDone={() => navigate("/overview")} />}
-        {tab === "firm" && <FirmStart onDone={() => navigate("/firm")} />}
+        {!production && tab === "quickstart" && <QuickStart onDone={() => navigate("/overview")} />}
+        {!production && tab === "firm" && <FirmStart onDone={() => navigate("/firm")} />}
         {tab === "request" && <RequestAudit />}
         {tab === "sso" && (
           <div className="form-grid">
@@ -77,7 +97,7 @@ export function LoginPage() {
             <button className="btn btn-primary" onClick={() => void startLogin()}>Continue with SSO</button>
           </div>
         )}
-        {tab === "org" && (
+        {!production && tab === "org" && (
           <IdForm
             label="Organisation id"
             placeholder="paste an organisation id"
@@ -87,7 +107,7 @@ export function LoginPage() {
             }}
           />
         )}
-        {tab === "user" && (
+        {!production && tab === "user" && (
           <IdForm
             label="User id"
             placeholder="paste a control-owner user id"
@@ -97,7 +117,7 @@ export function LoginPage() {
             }}
           />
         )}
-        {tab === "viewer" && (
+        {!production && tab === "viewer" && (
           <IdForm
             label="User id"
             placeholder="paste a compliance-viewer user id"
@@ -107,7 +127,7 @@ export function LoginPage() {
             }}
           />
         )}
-        {tab === "auditor" && (
+        {!production && tab === "auditor" && (
           <IdForm
             label="Engagement id"
             placeholder="paste an active engagement id"
@@ -338,8 +358,8 @@ function RequestAudit() {
   if (sent) {
     return (
       <div className="alert alert-info">
-        Request sent. Nothing exists for you yet — when the firm approves it, your organisation and
-        its engagement are created, and you will be given the id to sign in with.
+        Request sent. Nothing exists for you yet — once the firm approves it, your organisation and
+        engagement are created and you can sign in with the email you gave us.
       </div>
     );
   }

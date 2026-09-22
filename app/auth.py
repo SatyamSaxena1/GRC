@@ -88,6 +88,30 @@ def require_admin(x_admin_key: str | None = Header(None)) -> None:
         raise HTTPException(403, "admin API is disabled: set ADMIN_API_KEY")
 
 
+def admin_or_actor(
+    request: Request,
+    x_admin_key: str | None = Header(None),
+    authorization: str | None = Header(None),
+    x_engagement_id: str | None = Header(None),
+    db: Session = Depends(get_session),
+) -> Actor | None:
+    """For an /admin route that is also a legitimate day-2 self-service action
+    (invite a teammate, register a control, close an engagement): the shared
+    operator key still works (bootstrap, support), returning None since there
+    is no tenant to scope by. A caller's own Authorization header is accepted
+    too, returning the resolved Actor — the route itself then checks that
+    Actor is that resource's own org/firm admin. Two doors into one endpoint,
+    not two endpoints, so the tenant check lives next to the write it guards."""
+    if authorization:
+        actor = _resolve(authorization, db, x_engagement_id)
+        actor = replace(actor, request_id=getattr(request.state, "request_id", ""))
+        set_tenant(db, actor.org_id)
+        set_firm(db, actor.audit_firm_id)
+        return actor
+    require_admin(x_admin_key)
+    return None
+
+
 def deny_read_only(actor: Actor, action: str) -> HTTPException:
     """The 403 for a read-only caller reaching a write path, phrased for
     whichever read-only role it is."""

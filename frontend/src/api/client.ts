@@ -114,17 +114,21 @@ export type EngagementOut = { id: string; frameworks: string[] };
 export const createEngagement = (audit_firm_id: string, org_id: string, frameworks: string[]) =>
   anon<EngagementOut>("POST", "/admin/engagements", { audit_firm_id, org_id, frameworks });
 
+// The four below are day-2 actions a signed-in org/firm admin takes on their
+// own tenant (see app/routers/admin.py::admin_or_actor) — authenticated, not
+// anonymous, so the backend can check "your own org" rather than trusting a
+// shared operator key the browser never has.
 export const closeEngagement = (engagementId: string) =>
-  anon<{ id: string; status: string }>("POST", `/admin/engagements/${engagementId}/close`);
+  request<{ id: string; status: string }>("POST", `/admin/engagements/${engagementId}/close`);
 
 export const createUser = (email: string, org_id: string, role: string) =>
-  anon<{ id: string; role: string }>("POST", "/admin/users", { email, org_id, role });
+  request<{ id: string; role: string }>("POST", "/admin/users", { json: { email, org_id, role } });
 
 export const createControl = (org_id: string, framework: string, clause: string) =>
-  anon<{ id: string }>("POST", "/admin/controls", { org_id, framework, clause });
+  request<{ id: string }>("POST", "/admin/controls", { json: { org_id, framework, clause } });
 
 export const assignControl = (org_control_id: string, user_id: string) =>
-  anon<{ id: string }>("POST", "/admin/control-assignments", { org_control_id, user_id });
+  request<{ id: string }>("POST", "/admin/control-assignments", { json: { org_control_id, user_id } });
 
 // ---------------------------------------------------------------- audit firm
 
