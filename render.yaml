@@ -1,43 +1,57 @@
-# Render Blueprint: web service + Postgres + two monitor cron jobs.
+# Render Blueprint — FREE-TIER PILOT (no card on file). See "Free-tier limits"
+# below for what this gives up versus the paid Path C in DEPLOYMENT.md.
 # The LLM does NOT run on Render (no GPUs) — see deploy/llm/.
 #
 # Before the first apply, create an environment group named `grc-secrets` in the
 # Render dashboard (Environment Groups) holding the values that must never be
 # committed:
-#   DATABASE_URL         grc_app runtime URL (create the role after the first
-#                        migration — see DEPLOYMENT.md). For the very first
-#                        deploy, paste the owner URL, then swap it.
 #   ADMIN_API_KEY        operator key for the /admin/* bootstrap routes
 #   S3_BUCKET, S3_ENDPOINT_URL, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
 #   OIDC_ISSUER, OIDC_AUDIENCE, OIDC_JWKS_URL
 #   OIDC_EMAIL_CLAIM     only if the IdP namespaces it (Auth0: https://grc-api/email)
 #   OLLAMA_BASE_URL, OLLAMA_API_KEY   (the GPU host from deploy/llm/)
 #   optional: CISO_ASSISTANT_*, DPDP_*_COLLECTOR_URL / _TOKEN
+#   DATABASE_URL is NOT set here — the web service below gets it directly from
+#   grc-db (fromDatabase), which overrides any placeholder in the group.
 #
 # One web instance only: SSE and upload background tasks are in-process
 # (app/events.py), so do not raise numInstances or enable autoscaling.
+#
+# --- Free-tier limits (read before relying on this for real customers) -----
+# - Web service sleeps after 15 min idle; the next request wakes it (~30-60s).
+# - Free Postgres is deleted 30 days after creation unless upgraded — put a
+#   calendar reminder, or take a manual pg_dump backup before then.
+# - No preDeployCommand on the free plan, so migrations run at container start
+#   (RUN_MIGRATIONS defaults to 1 — see docker/entrypoint.sh) using the same
+#   DATABASE_URL as the app. There is no separate owner/grc_app split; the
+#   default Render database user is not a superuser and has no BYPASSRLS, so
+#   the FORCE ROW LEVEL SECURITY migrations still apply to it — verify this
+#   with the RLS check in DEPLOYMENT.md before trusting it with real tenants.
+# - No Render cron jobs on the free plan: .github/workflows/monitor.yml runs
+#   the two `python -m app.monitor` modes on a schedule instead, connecting
+#   directly to DATABASE_URL from a GitHub Actions runner.
+# - Upgrade path: raise `plan:` on the db and web service, add back
+#   preDeployCommand + MIGRATION_DATABASE_URL + the grc_app role (see
+#   DEPLOYMENT.md Path C), and delete the GitHub Actions monitor workflow in
+#   favor of Render cron jobs.
 
 databases:
   - name: grc-db
     databaseName: grc
     user: grc_owner
-    plan: basic-1gb
+    plan: free
     postgresMajorVersion: "16"
     region: singapore
-    # After creating grc_app, restrict external access: set ipAllowList to your
-    # own address(es), or [] to allow only Render-internal connections.
 
 envVarGroups:
   - name: grc-config
     envVars:
       - key: AUTH_STUB_ENABLED
         value: "false"
-      - key: RUN_MIGRATIONS          # migrations run in preDeployCommand as the owner
-        value: "0"
       - key: STORAGE_BACKEND
         value: s3
       - key: AWS_REGION
-        value: auto                  # Cloudflare R2; use a real region for AWS S3
+        value: ap-northeast-1        # Supabase Storage S3 (Tokyo); R2 would use "auto"
       - key: OLLAMA_MODEL
         value: qwen2.5vl:7b
       - key: OLLAMA_VISION_MODEL
@@ -54,16 +68,14 @@ services:
     name: grc
     runtime: docker
     dockerfilePath: ./Dockerfile
-    plan: standard
+    plan: free
     region: singapore
     numInstances: 1
     healthCheckPath: /health/ready
-    # Owner role (can alter schema); the running app uses grc_app so RLS applies.
-    preDeployCommand: sh -c 'DATABASE_URL="$MIGRATION_DATABASE_URL" alembic upgrade head'
     envVars:
       - key: PORT
         value: "8000"
-      - key: MIGRATION_DATABASE_URL
+      - key: DATABASE_URL
         fromDatabase:
           name: grc-db
           property: connectionString
@@ -75,29 +87,5 @@ services:
         sync: false
       - key: VITE_OIDC_CLIENT_ID
         sync: false
-      - fromGroup: grc-config
-      - fromGroup: grc-secrets
-
-  - type: cron
-    name: grc-monitor-sync
-    runtime: docker
-    dockerfilePath: ./Dockerfile
-    plan: starter
-    region: singapore
-    schedule: "0 */6 * * *"          # every 6 hours (UTC)
-    dockerCommand: python -m app.monitor --sync-connectors
-    envVars:
-      - fromGroup: grc-config
-      - fromGroup: grc-secrets
-
-  - type: cron
-    name: grc-monitor-daily
-    runtime: docker
-    dockerfilePath: ./Dockerfile
-    plan: starter
-    region: singapore
-    schedule: "30 1 * * *"           # daily 07:00 IST; exits non-zero if attention is needed
-    dockerCommand: python -m app.monitor
-    envVars:
       - fromGroup: grc-config
       - fromGroup: grc-secrets
