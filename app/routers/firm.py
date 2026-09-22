@@ -126,6 +126,17 @@ def approve_onboarding_request(request_id: str, body: ApprovalIn,
     for framework in frameworks:
         db.add(EngagementAllocation(engagement_id=engagement.id, framework=framework))
 
+    # Approval is also what makes the new org reachable: without this, nobody
+    # could ever sign in to it (OIDC matches by email against a provisioned
+    # User row — see app/auth.py::_resolve_oidc, ADR-011). One admin, from the
+    # email the prospect gave us; they invite the rest from the in-app Admin
+    # page once signed in.
+    first_user = db.query(User).filter_by(email=req.contact_email).one_or_none()
+    if first_user is None:
+        first_user = User(email=req.contact_email, org_id=org.id, role="ORG_ADMIN")
+        db.add(first_user)
+        db.flush()
+
     req.status = "APPROVED"
     req.decision_note = body.note
     req.org_id = org.id
@@ -141,7 +152,8 @@ def approve_onboarding_request(request_id: str, body: ApprovalIn,
                      reason=body.note, request_id=actor.request_id)
     db.commit()
     return {"id": req.id, "status": req.status, "org_id": org.id,
-            "engagement_id": engagement.id, "frameworks": frameworks}
+            "engagement_id": engagement.id, "frameworks": frameworks,
+            "org_admin_email": first_user.email}
 
 
 class RejectionIn(BaseModel):
