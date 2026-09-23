@@ -40,12 +40,21 @@ def set_firm(db: Session, audit_firm_id: str | None) -> None:
 
 
 def get_session():
-    with Session(engine) as session:
+    # expire_on_commit=False: the default expires every attribute at commit,
+    # so a route that does `db.commit(); return {"id": obj.id, ...}` re-SELECTs
+    # obj afterward — and app.tenant_id/app.firm_id are set with SET LOCAL
+    # (set_tenant/set_firm above), scoped to the transaction that just ended.
+    # Under FORCE ROW LEVEL SECURITY that re-SELECT sees no tenant GUC, matches
+    # nothing, and SQLAlchemy raises ObjectDeletedError on a row that is very
+    # much still there. The in-memory values are already correct — they were
+    # set (or postfetched) earlier in the same transaction, while the GUC was
+    # live — so there is nothing to gain by re-reading them anyway.
+    with Session(engine, expire_on_commit=False) as session:
         yield session
 
 
 @contextmanager
 def session_scope():
     """For background jobs, which have no request to hang a dependency off."""
-    with Session(engine) as session:
+    with Session(engine, expire_on_commit=False) as session:
         yield session
