@@ -13,6 +13,7 @@ from app import audit_log, authorization, events
 from app.auth import Actor, current_actor, deny_read_only
 from app.content.load import load as load_content
 from app.db import get_session, session_scope, set_tenant
+from app.ingest import available_models
 from app.models import (
     TERMINAL_EVIDENCE_STATUSES, Evidence, EvidenceAttribute, EvidenceControlLink, GapRow,
 )
@@ -51,7 +52,8 @@ def _scoped_evidence(db: Session, actor: Actor, evidence_id: str) -> Evidence:
 
 def _ingest(db: Session, actor: Actor, file: UploadFile, artefact_type: str,
             *, version: int = 1, supersedes: Evidence | None = None,
-            description: str | None = None, valid_until: date | None = None) -> Evidence:
+            description: str | None = None, valid_until: date | None = None,
+            ai_model: str | None = None, ai_vision_model: str | None = None) -> Evidence:
     """Validate at the trust boundary, store immutably, register the row."""
     if not actor.org_id:
         # A firm-side actor with no client open has audit_firm_id but no
@@ -87,6 +89,7 @@ def _ingest(db: Session, actor: Actor, file: UploadFile, artefact_type: str,
         uploaded_by=actor.label(), version=version,
         supersedes_id=supersedes.id if supersedes else None, status="SCANNING",
         description=description or None, valid_until=valid_until,
+        ai_model=ai_model or None, ai_vision_model=ai_vision_model or None,
     )
     db.add(evidence)
     db.flush()
@@ -153,6 +156,15 @@ def list_evidence(
     ]
 
 
+@router.get("/ai-models")
+def list_ai_models(actor: Actor = Depends(current_actor)):
+    """Models this server can actually offer the upload form's picker —
+    whatever is currently pulled in the local Ollama, plus the env-configured
+    defaults. Any signed-in caller may read this; it names no secrets, only
+    model identifiers."""
+    return available_models()
+
+
 @router.post("", status_code=202)
 def upload_evidence(
     background: BackgroundTasks,
@@ -161,13 +173,16 @@ def upload_evidence(
     description: str | None = Form(default=None),
     valid_until: date | None = Form(default=None),
     is_encrypted: bool = Form(default=False),
+    ai_model: str | None = Form(default=None),
+    ai_vision_model: str | None = Form(default=None),
     actor: Actor = Depends(current_actor),
     db: Session = Depends(get_session),
 ):
     if not actor.can_write:
         raise deny_read_only(actor, "upload evidence")
     evidence = _ingest(db, actor, file, artefact_type,
-                       description=description, valid_until=valid_until)
+                       description=description, valid_until=valid_until,
+                       ai_model=ai_model, ai_vision_model=ai_vision_model)
     # The uploader's own guess, honoured immediately; app/documents.py corrects
     # it (and explains status_detail) once the file is actually opened during
     # processing — that check is authoritative, this is just an early signal.
@@ -185,6 +200,8 @@ def upload_new_version(
     background: BackgroundTasks,
     file: UploadFile,
     artefact_type: str | None = None,
+    ai_model: str | None = Form(default=None),
+    ai_vision_model: str | None = Form(default=None),
     actor: Actor = Depends(current_actor),
     db: Session = Depends(get_session),
 ):
@@ -198,7 +215,11 @@ def upload_new_version(
 
     new = _ingest(db, actor, file, artefact_type or prior.artefact_type,
                   version=prior.version + 1, supersedes=prior,
-                  description=prior.description, valid_until=prior.valid_until)
+                  description=prior.description, valid_until=prior.valid_until,
+                  # Falls back to the prior version's own choice, not the
+                  # server default, so a revised upload keeps behaving the
+                  # same way the original one did unless told otherwise.
+                  ai_model=ai_model or prior.ai_model, ai_vision_model=ai_vision_model or prior.ai_vision_model)
     prior.lifecycle_status = "SUPERSEDED"
 
     for link in db.query(EvidenceControlLink).filter_by(evidence_id=prior.id):
@@ -357,6 +378,43 @@ def evidence_evaluations(evidence_id: str, actor: Actor = Depends(current_actor)
     return [_link_payload(db, l, actor) for l in _visible_links(db, actor, evidence_id)]
 
 
+def _clause_text(framework: str, clause: str) -> tuple[str, str]:
+    """(title, text) from the content pack — mirrors
+    app/routers/controls.py's _requirement_text; same lookup, kept local
+    rather than a cross-router import since both routers already hold their
+    own CONTENT handle."""
+    try:
+        pack = CONTENT.framework(framework)
+    except KeyError:
+        return "", ""
+    for req in pack.requirements:
+        if req.clause == clause:
+            return req.title, req.text
+    return "", ""
+
+
+@router.post("/{evidence_id}/explain-divergence")
+def explain_divergence(evidence_id: str, actor: Actor = Depends(current_actor),
+                       db: Session = Depends(get_session)):
+    """Plain-English explanation of why this evidence got different verdicts
+    across frameworks. Narration only — it cannot write anything, close a
+    gap, or move a verdict (ADR-004); costs a model call, hence POST rather
+    than GET, same reasoning as draft-remediation."""
+    from app.ingest import explain_cross_framework_gap
+
+    _scoped_evidence(db, actor, evidence_id)
+    links = _visible_links(db, actor, evidence_id)
+    verdicts = {l.verdict for l in links}
+    if len(links) < 2 or len(verdicts) < 2:
+        raise HTTPException(400, "needs at least two frameworks with differing verdicts to explain")
+
+    explanation = explain_cross_framework_gap(
+        [{"framework": l.framework, "clause": l.clause, "verdict": l.verdict} for l in links],
+        _clause_text,
+    )
+    return {"explanation": explanation}
+
+
 @router.get("/{evidence_id}/history")
 def evidence_history(evidence_id: str, actor: Actor = Depends(current_actor),
                      db: Session = Depends(get_session)):
@@ -422,6 +480,8 @@ def get_evidence(evidence_id: str, actor: Actor = Depends(current_actor),
         "description": evidence.description,
         "valid_until": evidence.valid_until.isoformat() if evidence.valid_until else None,
         "is_encrypted": evidence.is_encrypted,
+        "ai_model": evidence.ai_model,
+        "ai_vision_model": evidence.ai_vision_model,
     }
 
 

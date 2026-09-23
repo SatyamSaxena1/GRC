@@ -29,9 +29,13 @@ def _headers() -> dict[str, str]:
 class OllamaGateway:
     provider = "ollama"
 
-    def __init__(self, model: str = MODEL, base_url: str = BASE_URL):
+    def __init__(self, model: str = MODEL, base_url: str = BASE_URL, vision_model: str | None = None):
         self.model = model
         self.base_url = base_url
+        # None means "use the module default" (VISION_MODEL, itself falling
+        # back to `model` if OLLAMA_VISION_MODEL isn't set) — an explicit
+        # per-instance override (app/ingest.py::gateway_for) takes priority.
+        self.vision_model = vision_model
         self.last_latency_ms = 0
 
     def available(self) -> bool:
@@ -95,7 +99,7 @@ class OllamaGateway:
         import base64
 
         return self._chat({
-            "model": VISION_MODEL or self.model,
+            "model": self.vision_model or VISION_MODEL or self.model,
             "messages": [
                 {"role": "system", "content": system},
                 {"role": "user", "content": user,

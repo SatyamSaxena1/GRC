@@ -126,7 +126,44 @@ first from `deploy/llm/` (Ollama behind a bearer-token proxy), then:
    page sends no key, so it does not work against a production deploy.
 5. Keep `numInstances: 1`: SSE and upload background tasks are in-process.
 
----
+## Continuous integration / image publishing
+
+`.github/workflows/ci.yml` runs the backend test suite (`pytest`) and the
+frontend build (`tsc -b && vite build`) on every push and pull request.
+
+`.github/workflows/publish.yml` builds the same `Dockerfile` used above and
+pushes it to `ghcr.io/<owner>/<repo>` on every push to `main` (tag `latest`)
+and on version tags (`v*`, tagged with the tag name). It stops at "image is
+published" — pulling and running that image on a target host (Fly/Railway/
+Render/a bare VM, per Path B above) remains a manual step until a target host
+is chosen.
+
+## Periodic DPDP jobs (connector sync, breach/DSR deadline sweep)
+
+Nothing re-runs on its own (see `app/monitor.py`'s docstring and ADR-006) —
+connectors only sync when someone clicks "Collect evidence", and breach/DSR
+deadlines are only checked when something calls `GET /analytics/attention` or
+`/notifications`. Two `python -m app.monitor` modes cover recurring work; run
+them from cron or Task Scheduler rather than adding a scheduler dependency:
+
+```bash
+# Every 6 hours: sync every org's configured, in-scope DPDP connectors
+# (AWS/M365/Google Workspace/HRMS) and print the same attention report
+# app.monitor's default mode prints (evidence expiry/stuck jobs plus breach
+# and DSR deadlines) — exit code is non-zero if a connector failed to sync.
+0 */6 * * * cd /opt/grc && .venv/bin/python -m app.monitor --sync-connectors >> /var/log/grc-monitor.log 2>&1
+
+# Daily: the plain attention report (expiry, stuck jobs, breach/DSR deadlines),
+# non-zero exit if anything needs a human — wire into your alerting the same
+# way as any other cron job's exit code.
+0 7 * * * cd /opt/grc && .venv/bin/python -m app.monitor >> /var/log/grc-monitor.log 2>&1
+```
+
+Windows Task Scheduler equivalent:
+
+```bash
+schtasks /create /tn "GRC DPDP Sync" /tr "C:\opt\grc\.venv\Scripts\python.exe -m app.monitor --sync-connectors" /sc hourly /mo 6
+```
 
 ## Troubleshooting
 

@@ -68,6 +68,14 @@ const ORG_NAV = [
     to: "/dpdp", label: "DPDP readiness",
     hint: "Run an evidence-backed DPDP readiness assessment and see whether AWS, Microsoft 365, Google Workspace and HRMS are actually connected.",
   },
+  {
+    to: "/dpdp/operations", label: "Breach & DSR log",
+    hint: "Log an actual breach or a data-principal rights/grievance request and track it to its DPDP deadline — the operational counterpart to the readiness checklist.",
+  },
+  {
+    to: "/ciso-sync", label: "CISO sync",
+    hint: "Every locked verdict and resolved gap pushed to CISO Assistant, and whether it actually landed — retry a failed one by hand.",
+  },
 ];
 
 // Org-wide read, no setup surface — see docs/adr/017-compliance-officer-persona.md.
@@ -81,6 +89,7 @@ const OWNER_NAV = [
   ORG_NAV[7],
   ORG_NAV[8],
   ORG_NAV[9],
+  ORG_NAV[10],
 ];
 
 const FIRM_NAV = [
@@ -99,6 +108,7 @@ const AUDITOR_NAV = [
   ORG_NAV[7],
   ORG_NAV[8],
   ORG_NAV[9],
+  ORG_NAV[10],
 ];
 
 export function AppShell() {

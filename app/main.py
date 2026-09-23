@@ -15,8 +15,8 @@ from app import auth, oidc
 from app.ai.ollama import OllamaGateway
 from app.db import engine, init_db
 from app.routers import (
-    activity, admin, analytics, audit, ciso, connectors, controls, evidence, export, firm, glossary,
-    notifications,
+    activity, admin, analytics, audit, breach, ciso, connectors, controls, evidence, export, firm,
+    glossary, notifications, rights_requests,
 )
 
 logging.basicConfig(
@@ -62,8 +62,12 @@ async def request_context(request: Request, call_next):
     request_id = request.headers.get("x-request-id") or str(uuid.uuid4())
     request.state.request_id = request_id
 
-    # Enhanced access logging with auth info
-    auth_header = request.headers.get("authorization", "N/A")
+    # Enhanced access logging with auth info. Never the raw header value — it's
+    # a bearer token or dev-stub identity string (org:<id>/user:<id>/...), and
+    # this app handles personal data under DPDP; only the auth *scheme* is
+    # useful for debugging "was a caller authenticated at all".
+    raw_auth = request.headers.get("authorization", "")
+    auth_present = "present" if raw_auth else "N/A"
     ip_address = request.headers.get("x-forwarded-for", request.client.host if request.client else "unknown")
 
     response = await call_next(request)
@@ -72,7 +76,7 @@ async def request_context(request: Request, call_next):
     # Log detailed access info
     logger.info("request method=%s path=%s status=%s request_id=%s auth=%s ip=%s query=%s",
                 request.method, request.url.path, response.status_code, request_id,
-                auth_header, ip_address, request.url.query)
+                auth_present, ip_address, request.url.query)
 
     # Also log to access file for monitoring
     try:
@@ -80,7 +84,7 @@ async def request_context(request: Request, call_next):
         access_log_path = os_module.path.join(os_module.getcwd(), "access.log")
         with open(access_log_path, "a", encoding="utf-8") as f:
             timestamp = __import__("datetime").datetime.now().isoformat()
-            f.write(f"{timestamp} | {request.method:6} | {request.url.path:50} | Status: {response.status_code:3} | Auth: {auth_header[:40]:40} | IP: {ip_address}\n")
+            f.write(f"{timestamp} | {request.method:6} | {request.url.path:50} | Status: {response.status_code:3} | Auth: {auth_present:40} | IP: {ip_address}\n")
     except Exception as e:
         logger.debug("access_log_write_failed: %s", e)  # Log errors for debugging
 
@@ -112,6 +116,8 @@ app.include_router(activity.router)
 app.include_router(glossary.router)
 app.include_router(ciso.router)
 app.include_router(connectors.router)
+app.include_router(breach.router)
+app.include_router(rights_requests.router)
 
 
 @app.get("/health/live")
@@ -141,11 +147,37 @@ def ready():
 
 
 # Serve the built SPA when it is present (the Docker image copies it to
-# frontend/dist). Registered last, so every API route and /health/* above wins;
-# this only catches what's left. In dev the frontend runs on :5173 and this
-# directory does not exist, so the whole block is a no-op.
+# frontend/dist). In dev the frontend runs on :5173 and this directory does
+# not exist, so the whole block is a no-op.
 _SPA_DIR = Path(__file__).resolve().parent.parent / "frontend" / "dist"
 if (_SPA_DIR / "index.html").is_file():
+    # Several frontend routes share a path with a real API route (GET
+    # /evidence, /controls, /gaps, /tasks, /activity, /notifications,
+    # /glossary): a route match wins over any catch-all, so a plain path-based
+    # fallback registered last never runs for these. A browser navigating
+    # there directly (typed URL, bookmark, refresh) would hit the API and see
+    # raw JSON instead of the app.
+    #
+    # The SPA's own API calls go through fetch(), which never sends
+    # `Accept: text/html`; real browser navigation always does. This
+    # middleware runs before routing, so it intercepts navigation to those
+    # paths before the matching API route ever gets a chance — while leaving
+    # every fetch() call, plus /health, /docs, /redoc, /openapi.json and the
+    # static assets, untouched.
+    @app.middleware("http")
+    async def serve_spa_for_navigation(request: Request, call_next):
+        path = request.url.path
+        if (
+            request.method == "GET"
+            and "text/html" in request.headers.get("accept", "")
+            and not path.startswith(("/assets", "/health", "/docs", "/redoc", "/openapi.json"))
+        ):
+            candidate = _SPA_DIR / path.lstrip("/")
+            if path != "/" and candidate.is_file():
+                return FileResponse(candidate)
+            return FileResponse(_SPA_DIR / "index.html")
+        return await call_next(request)
+
     if (_SPA_DIR / "assets").is_dir():
         app.mount("/assets", StaticFiles(directory=_SPA_DIR / "assets"), name="assets")
 

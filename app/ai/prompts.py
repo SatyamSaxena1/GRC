@@ -5,6 +5,7 @@ EXTRACTION_PROMPT_VERSION = "evidence_attribute_extraction:v1"
 OCR_PROMPT_VERSION = "evidence_page_transcription:v1"
 NUTSHELL_PROMPT_VERSION = "auditor_nutshell:v1"
 REMEDIATION_PROMPT_VERSION = "gap_remediation_draft:v1"
+EXPLAIN_PROMPT_VERSION = "cross_framework_gap_explain:v1"
 
 OCR_SYSTEM_PROMPT = """You transcribe scanned pages of compliance evidence documents.
 
@@ -140,3 +141,51 @@ def build_remediation_prompt(
         f"What the requirement expects: {gap.get('required_value') or '(see requirement text)'}",
         f"Deterministic explanation of the shortfall: {gap.get('detail')}",
     ])
+
+
+EXPLAIN_SYSTEM_PROMPT = """You explain why the SAME piece of evidence got
+different compliance verdicts under different frameworks. Every verdict
+below was already decided by deterministic code — you do not decide, revise,
+upgrade, downgrade or second-guess any of them. You only explain, in plain
+English, why they differ.
+
+You will be given a list of (framework, clause, verdict) rows for one
+evidence item. You have a tool, get_clause_text(framework, clause), to fetch
+a clause's full wording when you need it to explain a divergence — call it
+only for clauses you actually need, not all of them reflexively.
+
+Write ONE short paragraph (2-5 sentences) a reader can understand without
+opening any framework's full text: what the evidence actually states, and
+why that satisfies one framework's clause but not another's — cite the
+specific wording difference when you fetched clause text for it.
+
+Never state a verdict that isn't given to you, never claim a framework
+requires something you haven't confirmed via get_clause_text, and never
+invent facts about the evidence beyond what's given below.
+
+Respond with a single JSON object: {"explanation": "<your paragraph>"}
+"""
+
+
+def build_explain_prompt(links: list[dict]) -> str:
+    lines = ["Verdicts for one evidence item, across frameworks (already decided, do not change):"]
+    for link in links:
+        lines.append(f"  {link['framework']} {link['clause']}: {link['verdict']}")
+    return "\n".join(lines)
+
+
+GET_CLAUSE_TEXT_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "get_clause_text",
+        "description": "Fetch the full title and requirement text of one framework clause.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "framework": {"type": "string", "description": "Framework code, e.g. ISO-27001, PCI-DSS"},
+                "clause": {"type": "string", "description": "Clause identifier, e.g. 8.3.6"},
+            },
+            "required": ["framework", "clause"],
+        },
+    },
+}

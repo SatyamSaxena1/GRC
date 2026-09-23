@@ -33,6 +33,10 @@ class Organization(Base):
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
     name: Mapped[str]
     frameworks: Mapped[list[str]] = mapped_column(JSON, default=list)  # subscribed framework codes
+    # DPDP connector sources (see app/routers/connectors.py::SOURCES keys) the
+    # org has declared out of scope — an unused source otherwise always reads
+    # as NO_EVIDENCE against DPDP readiness (app/analytics.py::framework_readiness).
+    dpdp_na_sources: Mapped[list[str]] = mapped_column(JSON, default=list)
 
 
 class AuditFirm(Base):
@@ -236,6 +240,11 @@ class Evidence(Base):
     # Detected at parse time (app/documents.py), not asked at upload — a user
     # can't know a PDF is password-protected until something tries to read it.
     is_encrypted: Mapped[bool] = mapped_column(default=False)
+    # The uploader's model choice for this evidence's extraction (app/ingest.py
+    # gateway_for), persisted so reprocessing reuses the same choice. Null means
+    # "use the server's configured default" (OLLAMA_MODEL/OLLAMA_VISION_MODEL).
+    ai_model: Mapped[str | None] = mapped_column(default=None)
+    ai_vision_model: Mapped[str | None] = mapped_column(default=None)
     # Soft delete only: evidence already reads as an append-only ledger
     # everywhere else (superseded, never overwritten), and a hard DELETE would
     # break FK-linked gaps/tasks/audit rows that still need to explain
@@ -394,6 +403,67 @@ class ControlMessage(Base):
     resolved_at: Mapped[datetime | None] = mapped_column(default=None)
     resolved_by: Mapped[str | None] = mapped_column(default=None)
     resolution_note: Mapped[str | None] = mapped_column(default=None)
+
+
+# --------------------------------------------------------------------------- dpdp operations
+
+
+class BreachEvent(Base):
+    """A personal-data breach the org has actually logged — not a policy document
+    saying a breach process exists (that's the DPDP Rule 7 evidence check), but
+    the operational record of one happening, with the two DPDP-mandated
+    deadlines tracked as real due dates. board_notify_due_at is always set
+    (detected_at + the org's own stated board_notification_hours if <=72, else
+    the statutory 72h ceiling). affected_notify_due_at stays null unless the org
+    has stated its own hour figure — DPDP sets no fixed number for affected-person
+    notice ("without delay"), so none is invented here."""
+    __tablename__ = "breach_events"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"))
+    title: Mapped[str] = mapped_column(Text, default="")
+    description: Mapped[str] = mapped_column(Text, default="")
+    detected_at: Mapped[datetime]
+    personal_data_categories: Mapped[str] = mapped_column(Text, default="")
+    affected_count_estimate: Mapped[int | None] = mapped_column(default=None)
+
+    board_notify_due_at: Mapped[datetime]
+    board_notified_at: Mapped[datetime | None] = mapped_column(default=None)
+    affected_notify_due_at: Mapped[datetime | None] = mapped_column(default=None)
+    affected_notified_at: Mapped[datetime | None] = mapped_column(default=None)
+    # The TaskRow(s) created alongside this event, so notify/close can flip them
+    # to DONE without parsing description text (TaskRow has no generic
+    # polymorphic FK — gap_id/org_control_id are the only two callers it knows
+    # about, so this event tracks its own tasks instead of adding a third).
+    board_task_id: Mapped[str | None] = mapped_column(ForeignKey("tasks.id"), default=None)
+    affected_task_id: Mapped[str | None] = mapped_column(ForeignKey("tasks.id"), default=None)
+
+    status: Mapped[str] = mapped_column(String, default="OPEN")
+    # OPEN|BOARD_NOTIFIED|AFFECTED_NOTIFIED|CLOSED
+    created_by: Mapped[str] = mapped_column(String, default="")
+    created_at: Mapped[datetime] = mapped_column(default=_now)
+
+
+class RightsRequest(Base):
+    """A data principal's rights/grievance request, actually logged and tracked
+    to an SLA — not just a privacy notice saying a rights_request_link exists.
+    due_at defaults to received_at + 30 days unless the org has stated its own
+    rights_request_sla_days commitment."""
+    __tablename__ = "rights_requests"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"))
+    kind: Mapped[str] = mapped_column(String)
+    # ACCESS|CORRECTION|ERASURE|NOMINATION|GRIEVANCE
+    requester_name: Mapped[str] = mapped_column(String, default="")
+    requester_contact: Mapped[str] = mapped_column(String, default="")
+    details: Mapped[str] = mapped_column(Text, default="")
+    received_at: Mapped[datetime]
+    due_at: Mapped[datetime | None] = mapped_column(default=None)
+    task_id: Mapped[str | None] = mapped_column(ForeignKey("tasks.id"), default=None)
+    resolved_at: Mapped[datetime | None] = mapped_column(default=None)
+    resolution_note: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(String, default="OPEN")  # OPEN|CLOSED
+    created_by: Mapped[str] = mapped_column(String, default="")
+    created_at: Mapped[datetime] = mapped_column(default=_now)
 
 
 # --------------------------------------------------------------------------- audit / AI
