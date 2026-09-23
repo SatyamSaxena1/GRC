@@ -41,6 +41,17 @@ def as_user(user_id, engagement_id=None):
 # --------------------------------------------------------------------------- onboarding
 
 
+def test_request_onboarding_rejects_an_unknown_firm(client):
+    """SQLite has no RLS to catch this, but on Postgres onboarding_requests is
+    FORCE ROW LEVEL SECURITY keyed on app.firm_id (alembic b8c9d0e1f2a3) — a
+    bogus firm id must 404 here, not fall through to an RLS-rejected insert."""
+    resp = client.post("/firm/onboarding-requests", json={
+        "audit_firm_id": "nonexistent", "org_name": "Acme Corp",
+        "contact_email": "ciso@acme.test", "frameworks": ["ISO-27001"],
+    })
+    assert resp.status_code == 404
+
+
 def test_approval_is_what_creates_the_tenant(client):
     firm_id, admin_id = firm_with_admin(client)
     request_id = request_onboarding(client, firm_id)
