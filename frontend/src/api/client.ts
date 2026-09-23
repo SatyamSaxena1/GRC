@@ -230,6 +230,16 @@ export function uploadEvidence(
   return request("POST", `/evidence?artefact_type=${encodeURIComponent(artefactType)}`, { form });
 }
 
+export type ArtefactTypeSuggestion = {
+  probabilities: Record<string, number>;
+  suggested: string | null; // null = not confident enough to pre-select
+};
+export function suggestArtefactType(file: File): Promise<ArtefactTypeSuggestion> {
+  const form = new FormData();
+  form.append("file", file);
+  return request("POST", "/evidence/suggest-type", { form });
+}
+
 export function uploadEvidenceVersion(
   evidenceId: string, file: File, artefactType?: string,
   meta: { aiModel?: string; aiVisionModel?: string } = {},

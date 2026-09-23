@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from app import audit_log, ciso_sync
 from app import events
+from app.ai import decision
 from app.ai.prompts import NUTSHELL_PROMPT_VERSION
 from app.ai.schemas import ExtractedField, ExtractionRun, Source
 from app.content.load import Content
@@ -135,7 +136,7 @@ def _ensure_org_control(db: Session, org_id: str, framework: str, clause: str) -
 
 def _reconcile_gaps(db: Session, link: EvidenceControlLink, new_gaps, evidence,
                     actor_label: str = "", request_id: str = "",
-                    guidance: str = "") -> None:
+                    guidance: str = "", gateway=None) -> None:
     """OPEN -> RESOLVED_BY_EVIDENCE when a gap stops reproducing. Never delete a row."""
     existing_open = {
         (g.kind, g.attribute): g
@@ -176,7 +177,40 @@ def _reconcile_gaps(db: Session, link: EvidenceControlLink, new_gaps, evidence,
                 org_id=evidence.org_id,
                 org_control_id=control.id,
                 title=f"{link.framework} {link.clause}: remediate {gap.attribute}",
+                priority=_suggest_priority(db, gateway, evidence, link, gap, guidance),
             ))
+
+
+PRIORITY_OPTIONS = {
+    "LOW": "cosmetic or documentation-only; no realistic exposure while it stays open",
+    "MEDIUM": "a real control weakness, but compensated or limited in reach",
+    "HIGH": "a control that is materially not operating; likely audit finding",
+    "CRITICAL": "direct exposure of systems or personal data, or a statutory obligation at risk",
+}
+
+
+def _suggest_priority(db: Session, gateway, evidence, link, gap, guidance: str) -> str:
+    """A starting priority for a newly opened gap task — Jev-style, local model.
+    Only a default: people re-prioritise via PATCH /tasks/{id} (audited), and
+    anything short of a confident answer keeps today's MEDIUM."""
+    if gateway is None:
+        return "MEDIUM"
+    probabilities = decision.choose(
+        gateway, "How urgent is remediating this compliance gap?",
+        f"Requirement: {link.framework} {link.clause}\nGap kind: {gap.kind}\n"
+        f"Attribute: {gap.attribute}\nDetail: {gap.detail}\nGuidance: {guidance[:500]}",
+        PRIORITY_OPTIONS,
+    )
+    if not probabilities:
+        return "MEDIUM"
+    choice = decision.top(probabilities)
+    db.add(AiRun(
+        org_id=evidence.org_id, evidence_id=evidence.id, operation="task_priority_suggestion",
+        provider=getattr(gateway, "provider", ""), model=getattr(gateway, "model", ""),
+        prompt_template_version="task_priority:v1", validated_output=probabilities,
+        confidence=probabilities[choice], latency_ms=getattr(gateway, "last_latency_ms", 0),
+    ))
+    return choice
 
 
 def _store_attributes(db: Session, evidence: Evidence, run) -> None:
@@ -325,6 +359,7 @@ def _run_pipeline(db: Session, content: Content, evidence: Evidence, actor_label
         source = str(payload["source"])
         supplied = payload["attributes"]
         text, method = data.decode("utf-8"), "connector"
+        gateway = gateway_for(None)  # no extraction here; only gap-task priority uses it
         run = ExtractionRun(
             fields={
                 name: ExtractedField(
@@ -442,7 +477,10 @@ def _run_pipeline(db: Session, content: Content, evidence: Evidence, actor_label
         db.flush()
 
         _reconcile_gaps(db, row, link.gaps, evidence, actor_label, request_id,
-                        guidance=requirement.guidance if requirement else "")
+                        guidance=requirement.guidance if requirement else "",
+                        # Model already known down this run: skip a doomed
+                        # health check per new gap, same as the nutshell above.
+                        gateway=gateway if run.status != "UNAVAILABLE" else None)
 
         # Each framework's result as it lands, rather than all of them at the
         # end — the same rows the client will re-read from the API when the

@@ -295,9 +295,29 @@ def list_tasks(status: str | None = None, priority: str | None = None,
         query = query.filter(or_(TaskRow.title.ilike(pattern), TaskRow.description.ilike(pattern),
                                  GapRow.detail.ilike(pattern), GapRow.required_action.ilike(pattern)))
     return [
-        _task_out(db, task) for task in query.all()
+        _task_out(db, task) for task in sorted(query.all(), key=_queue_order)
         if _task_visible(actor, allowed, _task_control(db, task), task)
     ]
+
+
+PRIORITY_RANK = {"CRITICAL": 3, "HIGH": 2, "MEDIUM": 1, "LOW": 0}
+
+
+def _queue_order(task: TaskRow) -> tuple:
+    """Work queue order: open before done, overdue first, then nearest due
+    date, then priority, then oldest. Deadlines are deterministic and always
+    win; priority (possibly model-suggested for gap tasks) only breaks ties."""
+    now = datetime.now(timezone.utc)
+    due = task.due_at
+    if due is not None and due.tzinfo is None:  # SQLite hands these back naive
+        due = due.replace(tzinfo=timezone.utc)
+    return (
+        task.status != "OPEN",
+        not (due is not None and due < now),
+        due or datetime.max.replace(tzinfo=timezone.utc),
+        -PRIORITY_RANK.get(task.priority, 1),
+        task.created_at,
+    )
 
 
 @tasks_router.get("/owners")
