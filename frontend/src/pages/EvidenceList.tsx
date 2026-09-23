@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  ApiError, listAiModels, listEvidence, reprocessEvidence, uploadEvidence, type EvidenceSummary,
+  ApiError, listAiModels, listEvidence, reprocessEvidence, suggestArtefactType, uploadEvidence,
+  type EvidenceSummary,
 } from "../api/client";
 import { useSession } from "../lib/session";
 import { useApi } from "../lib/useApi";
@@ -75,6 +76,9 @@ export function EvidenceListPage() {
   const navigate = useNavigate();
   const [file, setFile] = useState<File | null>(null);
   const [artefactType, setArtefactType] = useState(ARTEFACT_TYPES[0]);
+  // Once the user picks a type themselves, a suggestion never overrides it.
+  const [typeTouched, setTypeTouched] = useState(false);
+  const [suggestion, setSuggestion] = useState<{ type: string; p: number } | null>(null);
   const [description, setDescription] = useState("");
   const [validUntil, setValidUntil] = useState("");
   const [isEncrypted, setIsEncrypted] = useState(false);
@@ -127,6 +131,20 @@ export function EvidenceListPage() {
       setError(err instanceof ApiError ? String(err.detail) : (err as Error).message);
     } finally {
       setRetrying(null);
+    }
+  };
+
+  const pickFile = async (picked: File | null) => {
+    setFile(picked);
+    setSuggestion(null);
+    if (!picked) return;
+    try {
+      const result = await suggestArtefactType(picked);
+      if (!result.suggested) return;
+      setSuggestion({ type: result.suggested, p: result.probabilities[result.suggested] });
+      if (!typeTouched) setArtefactType(result.suggested);
+    } catch {
+      // A suggestion is a convenience — failing to get one never blocks the upload.
     }
   };
 
@@ -226,7 +244,7 @@ export function EvidenceListPage() {
           <div className="form-grid">
             <div>
               <label>Artefact type</label>
-              <select value={artefactType} onChange={(e) => setArtefactType(e.target.value)}>
+              <select value={artefactType} onChange={(e) => { setArtefactType(e.target.value); setTypeTouched(true); }}>
                 {ARTEFACT_TYPES.map((t) => (
                   <option key={t} value={t}>
                     {ARTEFACT_LABELS[t] ?? t}
@@ -234,10 +252,16 @@ export function EvidenceListPage() {
                 ))}
               </select>
               <p className="muted" style={{ fontSize: 12, margin: "4px 0 0" }}>{ARTEFACT_HELP[artefactType]}</p>
+              {suggestion && (
+                <p className="muted" style={{ fontSize: 12, margin: "4px 0 0" }}>
+                  Suggested from the document's contents: {ARTEFACT_LABELS[suggestion.type] ?? suggestion.type}{" "}
+                  ({Math.round(suggestion.p * 100)}%)
+                </p>
+              )}
             </div>
             <div>
               <label>File</label>
-              <input type="file" accept=".pdf,.docx,.xlsx,.png,.jpg,.jpeg,.txt,.csv" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+              <input type="file" accept=".pdf,.docx,.xlsx,.png,.jpg,.jpeg,.txt,.csv" onChange={(e) => pickFile(e.target.files?.[0] ?? null)} />
             </div>
             <div>
               <label>Description (optional)</label>
