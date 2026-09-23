@@ -23,7 +23,7 @@ from sqlalchemy.orm import Session
 
 from app.content.load import Content
 from app.evaluate import evaluate
-from app.models import Evidence, EvidenceControlLink
+from app.models import Evidence, EvidenceControlLink, Organization
 
 # Hours of effort a single evidence artefact costs to locate, prepare and upload.
 # Deliberately conservative; the spec makes this organisation-configurable, so it
@@ -123,7 +123,25 @@ def framework_readiness(
     and different artefacts legitimately cover different clauses.
     """
     pack = content.framework(framework)
-    total = len(pack.requirements)
+
+    # DPDP-only: a clause backed by a connector source the org has declared out
+    # of scope (Organization.dpdp_na_sources) reads NOT_APPLICABLE rather than
+    # counting forever as NO_EVIDENCE. Four known clauses, already hardcoded
+    # strings in app/content/dpdp-2023.yaml — a local dict is proportionate.
+    na_clauses: set[str] = set()
+    if framework == "DPDP":
+        clause_source = {
+            "Rule 6 - AWS baseline": "aws",
+            "Rule 6 - M365 baseline": "m365",
+            "Rule 6 - Google Workspace baseline": "google-workspace",
+            "Rule 6 - HRMS baseline": "hrms",
+        }
+        org = db.get(Organization, org_id)
+        na_sources = set(org.dpdp_na_sources) if org else set()
+        na_clauses = {clause for clause, source in clause_source.items() if source in na_sources}
+
+    requirements = [req for req in pack.requirements if req.clause not in na_clauses]
+    total = len(requirements)
 
     evidence_pool = (
         db.query(Evidence)
@@ -135,6 +153,8 @@ def framework_readiness(
     for evidence in evidence_pool:
         attributes = evidence.attribute_values()
         for link in evaluate(attributes, evidence.artefact_type, [framework], content, as_of):
+            if link.clause in na_clauses:
+                continue
             best[link.clause] = _better(best.get(link.clause), link.verdict)
 
     satisfied = sum(1 for v in best.values() if v == SATISFIED)
@@ -151,7 +171,11 @@ def framework_readiness(
         clauses=tuple(
             {"clause": req.clause, "title": req.title,
              "verdict": best.get(req.clause, "NO_EVIDENCE")}
-            for req in pack.requirements
+            for req in requirements
+        ) + tuple(
+            {"clause": clause, "title": next((r.title for r in pack.requirements if r.clause == clause), clause),
+             "verdict": "NOT_APPLICABLE"}
+            for clause in sorted(na_clauses)
         ),
     )
 

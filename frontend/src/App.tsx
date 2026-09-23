@@ -18,6 +18,8 @@ import { ActivityPage } from "./pages/Activity";
 import { GlossaryPage } from "./pages/Glossary";
 import { AiCompliancePage } from "./pages/AiCompliance";
 import { DpdpPage } from "./pages/Dpdp";
+import { DpdpOperationsPage } from "./pages/DpdpOperations";
+import { CisoSyncPage } from "./pages/CisoSync";
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   const { identity } = useSession();
@@ -64,6 +66,8 @@ export function App() {
         <Route path="/glossary" element={<GlossaryPage />} />
         <Route path="/ai-compliance" element={<AiCompliancePage />} />
         <Route path="/dpdp" element={<DpdpPage />} />
+        <Route path="/dpdp/operations" element={<DpdpOperationsPage />} />
+        <Route path="/ciso-sync" element={<CisoSyncPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

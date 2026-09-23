@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  ApiError, getReadiness, listConnectors, syncConnector, type ConnectorStatus,
+  ApiError, getReadiness, listConnectors, setConnectorNotApplicable, syncConnector,
+  type ConnectorStatus,
 } from "../api/client";
 import { Badge } from "../components/Badge";
 import { useApi } from "../lib/useApi";
@@ -35,6 +36,17 @@ export function DpdpPage() {
       setError(err instanceof ApiError ? String(err.detail) : (err as Error).message);
     } finally {
       setSyncing(null);
+    }
+  };
+
+  const toggleNa = async (source: ConnectorStatus["source"], applicable: boolean) => {
+    setError(null);
+    try {
+      await setConnectorNotApplicable(source, applicable);
+      connectors.reload();
+      readiness.reload();
+    } catch (err) {
+      setError(err instanceof ApiError ? String(err.detail) : (err as Error).message);
     }
   };
 
@@ -72,40 +84,51 @@ export function DpdpPage() {
             Uploaded policies and privacy notices plus fresh snapshots from AWS, Microsoft
             365, Google Workspace and HRMS. A connector that has never synced contributes no evidence.
           </p>
-          <Link className="btn" to="/evidence">Add document evidence</Link>
+          <div style={{ display: "flex", gap: 8 }}>
+            <Link className="btn" to="/evidence">Add document evidence</Link>
+            <Link className="btn" to="/dpdp/operations">Breach &amp; DSR log</Link>
+          </div>
         </div>
       </div>
 
       <div className="section-title">Automatic evidence sources</div>
       <div className="card-grid">
         {connectors.data?.map((connector) => (
-          <div className="card" key={connector.source}>
+          <div className="card" key={connector.source} style={{ opacity: connector.applicable ? 1 : 0.6 }}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
               <strong>{connector.label}</strong>
-              <Badge value={connector.configured ? connector.status : "NOT_CONFIGURED"} />
+              <Badge value={!connector.applicable ? "NOT_APPLICABLE" : connector.configured ? connector.status : "NOT_CONFIGURED"} />
             </div>
             <p className="stat-sub">
-              {connector.last_synced_at
-                ? `Last collected ${new Date(connector.last_synced_at).toLocaleString()}`
-                : connector.configured
-                  ? "Configured, but no evidence has been collected yet."
-                  : "Requires a server-side collector URL and its least-privilege credential."}
+              {!connector.applicable
+                ? "Marked out of scope — doesn't count against your DPDP score."
+                : connector.last_synced_at
+                  ? `Last collected ${new Date(connector.last_synced_at).toLocaleString()}`
+                  : connector.configured
+                    ? "Configured, but no evidence has been collected yet."
+                    : "Requires a server-side collector URL and its least-privilege credential."}
             </p>
-            <button
-              className="btn btn-primary"
-              disabled={!connector.configured || syncing === connector.source}
-              onClick={() => sync(connector.source)}
-            >
-              {syncing === connector.source ? "Collecting…" : "Collect evidence"}
-            </button>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <button
+                className="btn btn-primary"
+                disabled={!connector.configured || !connector.applicable || syncing === connector.source}
+                onClick={() => sync(connector.source)}
+              >
+                {syncing === connector.source ? "Collecting…" : "Collect evidence"}
+              </button>
+              <button className="btn" onClick={() => toggleNa(connector.source, !connector.applicable)}>
+                {connector.applicable ? "Mark N/A" : "Mark applicable"}
+              </button>
+            </div>
           </div>
         ))}
       </div>
       <p className="muted">
         The collector contract is real automatic ingestion, but not a turnkey vendor integration:
         each configured endpoint must translate that system's API into the supported attributes.
-        HRMS is necessarily adapter-based because there is no common HRMS API. There is not yet
-        a “not applicable” scope control, so an unused source still counts as no evidence.
+        HRMS is necessarily adapter-based because there is no common HRMS API. Mark a source
+        "N/A" if it genuinely doesn't apply to your organisation — it's then excluded from your
+        DPDP score instead of counting as missing evidence forever.
       </p>
 
       <div className="section-title">Score report</div>

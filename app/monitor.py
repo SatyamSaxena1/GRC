@@ -27,6 +27,7 @@ recovery from an outage, never a recomputation of a locked result.
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 
@@ -35,8 +36,13 @@ from sqlalchemy.orm import Session
 from app.content.load import Content
 from app.evaluate import evaluate
 from app.models import (
-    TERMINAL_EVIDENCE_STATUSES, AiRun, Evidence, EvidenceControlLink, Organization,
+    TERMINAL_EVIDENCE_STATUSES, AiRun, BreachEvent, Evidence, EvidenceControlLink, Organization,
+    RightsRequest,
 )
+
+# Same approaching-deadline window for breach/DSR sweeps as notifications.py
+# uses, and for the cron report — one source of truth for "soon" vs "overdue".
+DEADLINE_WARNING_HOURS = 48
 
 # How far ahead to warn. Matches the 30-day threshold app/quality.py::_freshness
 # already uses to mark evidence as approaching expiry.
@@ -81,6 +87,19 @@ class StalledEvidence:
 
 
 @dataclass(frozen=True)
+class DeadlineItem:
+    id: str
+    title: str
+    due_at: str
+    overdue: bool
+    detail: str = ""
+
+    def to_dict(self) -> dict:
+        return {"id": self.id, "title": self.title, "due_at": self.due_at,
+                "overdue": self.overdue, "detail": self.detail}
+
+
+@dataclass(frozen=True)
 class AttentionReport:
     org_id: str
     checked_at: str
@@ -89,10 +108,13 @@ class AttentionReport:
     expiring_soon: tuple[ExpiringEvidence, ...] = field(default=())
     stuck: tuple[StalledEvidence, ...] = field(default=())
     failed: tuple[StalledEvidence, ...] = field(default=())
+    breach: tuple[DeadlineItem, ...] = field(default=())
+    dsr: tuple[DeadlineItem, ...] = field(default=())
 
     @property
     def total(self) -> int:
-        return len(self.expired) + len(self.expiring_soon) + len(self.stuck) + len(self.failed)
+        return (len(self.expired) + len(self.expiring_soon) + len(self.stuck) + len(self.failed)
+                + len(self.breach) + len(self.dsr))
 
     def to_dict(self) -> dict:
         return {
@@ -102,7 +124,49 @@ class AttentionReport:
             "expiring_soon": [e.to_dict() for e in self.expiring_soon],
             "stuck": [s.to_dict() for s in self.stuck],
             "failed": [s.to_dict() for s in self.failed],
+            "breach": [b.to_dict() for b in self.breach],
+            "dsr": [d.to_dict() for d in self.dsr],
         }
+
+
+def breach_and_dsr_attention(db: Session, org_id: str, *, now: datetime | None = None) -> dict:
+    """Open breach-notification and DSR deadlines that are overdue or due
+    within DEADLINE_WARNING_HOURS — the single place that window is defined,
+    shared by the cron report and app/routers/notifications.py so the two
+    never disagree about what counts as "soon"."""
+    now = now or datetime.now(timezone.utc)
+    horizon = now + timedelta(hours=DEADLINE_WARNING_HOURS)
+
+    def aware(dt: datetime | None) -> datetime | None:
+        # SQLite hands these back naive.
+        return dt.replace(tzinfo=timezone.utc) if dt is not None and dt.tzinfo is None else dt
+
+    breach_items: list[DeadlineItem] = []
+    for b in db.query(BreachEvent).filter_by(org_id=org_id).filter(BreachEvent.status != "CLOSED").all():
+        board_due = aware(b.board_notify_due_at)
+        if b.board_notified_at is None and board_due <= horizon:
+            breach_items.append(DeadlineItem(
+                id=b.id, title=f"Notify Board: {b.title}", due_at=b.board_notify_due_at.isoformat(),
+                overdue=now > board_due, detail="board notification",
+            ))
+        affected_due = aware(b.affected_notify_due_at)
+        if affected_due is not None and b.affected_notified_at is None and affected_due <= horizon:
+            breach_items.append(DeadlineItem(
+                id=b.id, title=f"Notify affected persons: {b.title}",
+                due_at=b.affected_notify_due_at.isoformat(),
+                overdue=now > affected_due, detail="affected-person notification",
+            ))
+
+    dsr_items: list[DeadlineItem] = []
+    for r in db.query(RightsRequest).filter_by(org_id=org_id, status="OPEN").all():
+        due = aware(r.due_at)
+        if due is not None and due <= horizon:
+            dsr_items.append(DeadlineItem(
+                id=r.id, title=f"{r.kind} request from {r.requester_name or 'data principal'}",
+                due_at=r.due_at.isoformat(), overdue=now > due, detail=r.kind,
+            ))
+
+    return {"breach": breach_items, "dsr": dsr_items}
 
 
 def _stale_clauses(evidence: Evidence, content: Content, frameworks: list[str],
@@ -186,10 +250,13 @@ def attention_report(db: Session, org_id: str, content: Content, *,
         elif age_minutes >= stuck_after_minutes:
             stuck.append(row)
 
+    deadlines = breach_and_dsr_attention(db, org_id, now=now)
+
     return AttentionReport(
         org_id=org_id, checked_at=now.isoformat(), horizon_days=horizon_days,
         expired=tuple(expired), expiring_soon=tuple(expiring_soon),
         stuck=tuple(stuck), failed=tuple(failed),
+        breach=tuple(deadlines["breach"]), dsr=tuple(deadlines["dsr"]),
     )
 
 
@@ -285,10 +352,65 @@ def _main() -> int:
                 for row in rows:
                     print(f"  {label}: {row.original_filename or row.evidence_id} "
                           f"({row.status}, {row.age_minutes}m) {row.detail}")
-            # Expiring-soon is a warning, not yet a failure; don't page for it.
-            problems += len(report.expired) + len(report.stuck) + len(report.failed)
+            for label, rows in (("BREACH DEADLINE", report.breach), ("DSR DEADLINE", report.dsr)):
+                for row in rows:
+                    print(f"  {label}: {row.title} due {row.due_at}"
+                          f"{' (OVERDUE)' if row.overdue else ''}")
+            # Expiring-soon/due-soon is a warning, not yet a failure; only an
+            # overdue deadline pages.
+            problems += (len(report.expired) + len(report.stuck) + len(report.failed)
+                        + sum(1 for b in report.breach if b.overdue)
+                        + sum(1 for d in report.dsr if d.overdue))
 
     print(f"\n{problems} item(s) need attention")
+    return 1 if problems else 0
+
+
+def sync_all_connectors(db: Session, org_id: str) -> list[str]:
+    """Sync every configured, in-scope DPDP connector source for one org —
+    the batch counterpart to POST /connectors/{source}/sync, sharing its
+    implementation via app.routers.connectors::sync_connector_for_org so
+    there is one place that actually pulls and stores a connector snapshot."""
+    from fastapi import HTTPException
+
+    from app.routers import connectors
+
+    org = db.get(Organization, org_id)
+    na_sources = set(org.dpdp_na_sources) if org else set()
+    results = []
+    for source in connectors.SOURCES:
+        if not os.environ.get(connectors._env_key(source, "URL")):
+            continue
+        if source in na_sources:
+            continue
+        try:
+            connectors.sync_connector_for_org(db, org_id, "system:monitor", "", source)
+            results.append(f"{source}: synced")
+        except HTTPException as exc:
+            results.append(f"{source}: failed ({exc.detail})")
+    return results
+
+
+def _sync_connectors() -> int:
+    """Periodic connector sync for every org — the batch/cron counterpart to
+    clicking "Collect evidence" (app/routers/connectors.py). No in-process
+    scheduler (ADR-006): cron/Task Scheduler already solves recurrence."""
+    from app.db import session_scope, set_tenant
+
+    problems = 0
+    with session_scope() as db:
+        for org in db.query(Organization).order_by(Organization.name).all():
+            set_tenant(db, org.id)  # RLS scopes each pass (no-op on SQLite)
+            results = sync_all_connectors(db, org.id)
+            if not results:
+                continue
+            print(f"\n{org.name} ({org.id})")
+            for line in results:
+                print(f"  {line}")
+                if "failed" in line:
+                    problems += 1
+
+    print(f"\n{problems} connector(s) failed to sync")
     return 1 if problems else 0
 
 
@@ -297,4 +419,6 @@ if __name__ == "__main__":
 
     if "--retry-extractions" in sys.argv:
         raise SystemExit(_retry_extractions())
+    if "--sync-connectors" in sys.argv:
+        raise SystemExit(_sync_connectors())
     raise SystemExit(_main())

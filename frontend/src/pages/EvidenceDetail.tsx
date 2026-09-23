@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   ApiError,
   deleteEvidence,
+  explainDivergence as explainDivergenceApi,
   getEvidence,
   getEvidenceAttributes,
   getEvidenceHistory,
@@ -82,6 +83,9 @@ export function EvidenceDetailPage() {
   const [liveStatus, setLiveStatus] = useState<string | null>(null);
   const [rerunning, setRerunning] = useState(false);
   const [rerunError, setRerunError] = useState<string | null>(null);
+  const [explanation, setExplanation] = useState<string | null>(null);
+  const [explaining, setExplaining] = useState(false);
+  const [explainError, setExplainError] = useState<string | null>(null);
 
   useEffect(() => {
     setLiveAttributes([]);
@@ -143,6 +147,7 @@ export function EvidenceDetailPage() {
   const passwordProtected = evidence.status === "NEEDS_REVIEW" && evidence.is_encrypted;
   const hasLockedLink = shownLinks.some((l) => l.locked);
   const canManage = identity?.kind !== "auditor";
+  const divergentVerdicts = shownLinks.length >= 2 && new Set(shownLinks.map((l) => l.verdict)).size >= 2;
 
   const rerun = async () => {
     setRerunning(true);
@@ -157,6 +162,19 @@ export function EvidenceDetailPage() {
       setRerunError(err instanceof ApiError ? String(err.detail) : (err as Error).message);
     } finally {
       setRerunning(false);
+    }
+  };
+
+  const explainDivergence = async () => {
+    setExplaining(true);
+    setExplainError(null);
+    try {
+      const result = await explainDivergenceApi(id);
+      setExplanation(result.explanation || "No explanation was generated — the tool-calling model may be unavailable.");
+    } catch (err) {
+      setExplainError(err instanceof ApiError ? String(err.detail) : (err as Error).message);
+    } finally {
+      setExplaining(false);
     }
   };
 
@@ -237,6 +255,13 @@ export function EvidenceDetailPage() {
           <div className="stat-label">Size</div>
           <div className="stat-value" style={{ fontSize: 18 }}>{(evidence.size_bytes / 1024).toFixed(1)} KB</div>
         </div>
+        <div className="card stat-card">
+          <div className="stat-label">Model</div>
+          <div className="stat-value" style={{ fontSize: 14 }}>{evidence.ai_model || "server default"}</div>
+          {evidence.ai_vision_model && (
+            <div className="stat-sub">vision: {evidence.ai_vision_model}</div>
+          )}
+        </div>
       </div>
 
       <MetadataEditor
@@ -304,6 +329,20 @@ export function EvidenceDetailPage() {
               <Spinner size={12} /> Evaluation runs after extraction finishes.
             </span>
           )}
+        </div>
+      )}
+      {divergentVerdicts && (
+        <div className="card" style={{ marginBottom: 12 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+            <span className="muted" style={{ fontSize: 13 }}>
+              This evidence got different verdicts across frameworks.
+            </span>
+            <button className="btn" onClick={explainDivergence} disabled={explaining}>
+              {explaining ? "Explaining…" : "Explain why"}
+            </button>
+          </div>
+          {explanation && <p style={{ marginTop: 8 }}>{explanation}</p>}
+          {explainError && <span className="muted" style={{ marginTop: 8, display: "block" }}>{explainError}</span>}
         </div>
       )}
       <div className="card-grid" data-tour="evaluation-links">

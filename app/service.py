@@ -22,7 +22,7 @@ from app.content.load import Content
 from app.documents import is_encrypted_pdf
 from app.evaluate import evaluate, org_defined_attributes
 from app.ingest import (
-    PROMPT_VERSION, extract_attributes, extract_attributes_streaming, generate_nutshell,
+    PROMPT_VERSION, extract_attributes, extract_attributes_streaming, gateway_for, generate_nutshell,
     read_document,
 )
 from app.models import (
@@ -340,7 +340,10 @@ def _run_pipeline(db: Session, content: Content, evidence: Evidence, actor_label
     else:
         if is_encrypted_pdf(evidence.filename, data):
             evidence.is_encrypted = True
-        text, method = read_document(evidence.filename, data)
+        # The uploader's model choice, if any (Evidence.ai_model/ai_vision_model)
+        # — falls back to the server's env-configured default when unset.
+        gateway = gateway_for(evidence.ai_model, evidence.ai_vision_model)
+        text, method = read_document(evidence.filename, data, gateway=gateway)
 
         set_status(db, evidence, "ANALYZING")
         # Stream only while a browser is actually watching this upload: the
@@ -355,9 +358,10 @@ def _run_pipeline(db: Session, content: Content, evidence: Evidence, actor_label
                      "extraction_method": field.extraction_method,
                      "sources": [s.model_dump() for s in field.sources]},
                 ),
+                gateway=gateway,
             )
         else:
-            run = extract_attributes(text, attr_names, method)
+            run = extract_attributes(text, attr_names, method, gateway=gateway)
 
     set_status(db, evidence, "ANALYZING")
 

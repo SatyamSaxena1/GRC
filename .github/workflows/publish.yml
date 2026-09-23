@@ -1,0 +1,40 @@
+name: Publish image
+
+# Builds and pushes the same Dockerfile used for local docker-compose deploys
+# to GHCR. Stops there — it does not deploy anywhere. Pulling and running the
+# published image on a target host (Fly/Railway/Render/a VM) remains a manual
+# step per DEPLOYMENT.md until a target host is chosen.
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        run: |
+          IMAGE="ghcr.io/${{ github.repository }}"
+          TAGS="$IMAGE:latest"
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            TAGS="$IMAGE:${{ github.ref_name }}"
+          fi
+          echo "tags=$TAGS" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}

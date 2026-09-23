@@ -214,6 +214,8 @@ export type EvidenceUploadMetadata = {
   description?: string;
   validUntil?: string;     // yyyy-mm-dd
   isEncrypted?: boolean;
+  aiModel?: string;        // "" / unset = server default
+  aiVisionModel?: string;
 };
 export function uploadEvidence(
   file: File, artefactType: string, meta: EvidenceUploadMetadata = {},
@@ -223,19 +225,32 @@ export function uploadEvidence(
   if (meta.description) form.append("description", meta.description);
   if (meta.validUntil) form.append("valid_until", meta.validUntil);
   if (meta.isEncrypted) form.append("is_encrypted", "true");
+  if (meta.aiModel) form.append("ai_model", meta.aiModel);
+  if (meta.aiVisionModel) form.append("ai_vision_model", meta.aiVisionModel);
   return request("POST", `/evidence?artefact_type=${encodeURIComponent(artefactType)}`, { form });
 }
 
 export function uploadEvidenceVersion(
   evidenceId: string, file: File, artefactType?: string,
+  meta: { aiModel?: string; aiVisionModel?: string } = {},
 ): Promise<EvidenceUploadResult> {
   const form = new FormData();
   form.append("file", file);
+  if (meta.aiModel) form.append("ai_model", meta.aiModel);
+  if (meta.aiVisionModel) form.append("ai_vision_model", meta.aiVisionModel);
   const path = artefactType
     ? `/evidence/${evidenceId}/versions?artefact_type=${encodeURIComponent(artefactType)}`
     : `/evidence/${evidenceId}/versions`;
   return request("POST", path, { form });
 }
+
+export type AiModelsInfo = {
+  available: boolean;
+  models: string[];
+  default_model: string;
+  default_vision_model: string;
+};
+export const listAiModels = () => request<AiModelsInfo>("GET", "/evidence/ai-models");
 
 export const updateEvidenceMetadata = (
   evidenceId: string, body: { description?: string | null; valid_until?: string | null },
@@ -402,6 +417,12 @@ export type RemediationDraft = { draft: string; evidence_needed: string[] };
 export const draftRemediation = (gapId: string) =>
   request<RemediationDraft>("POST", `/gaps/${gapId}/draft-remediation`);
 
+/** Plain-English explanation of why one evidence item got different verdicts
+ * across frameworks. Narration only — it writes nothing and cannot move a
+ * verdict (see ADR-004). */
+export const explainDivergence = (evidenceId: string) =>
+  request<{ explanation: string }>("POST", `/evidence/${evidenceId}/explain-divergence`);
+
 export type EvidenceDetail = {
   id: string;
   version: number;
@@ -420,6 +441,8 @@ export type EvidenceDetail = {
   description: string | null;
   valid_until: string | null;
   is_encrypted: boolean;
+  ai_model: string | null;
+  ai_vision_model: string | null;
 };
 export const getEvidence = (id: string) => request<EvidenceDetail>("GET", `/evidence/${id}`);
 
@@ -589,12 +612,71 @@ export type ConnectorStatus = {
   evidence_id: string | null;
   last_synced_at: string | null;
   status: string;
+  applicable: boolean;
 };
 export const listConnectors = () => request<ConnectorStatus[]>("GET", "/connectors");
 export const syncConnector = (source: ConnectorStatus["source"]) =>
   request<{ source: string; evidence_id: string; status: string }>(
     "POST", `/connectors/${encodeURIComponent(source)}/sync`,
   );
+export const setConnectorNotApplicable = (source: ConnectorStatus["source"], applicable: boolean) =>
+  request<{ source: string; applicable: boolean; dpdp_na_sources: string[] }>(
+    "PATCH", `/connectors/${encodeURIComponent(source)}/not-applicable`, { json: { applicable } },
+  );
+
+// ---------------------------------------------------------------- dpdp operations
+
+export type BreachEvent = {
+  id: string;
+  title: string;
+  description: string;
+  detected_at: string;
+  personal_data_categories: string;
+  affected_count_estimate: number | null;
+  board_notify_due_at: string;
+  board_notified_at: string | null;
+  board_overdue: boolean;
+  affected_notify_due_at: string | null;
+  affected_notified_at: string | null;
+  affected_overdue: boolean;
+  status: "OPEN" | "BOARD_NOTIFIED" | "AFFECTED_NOTIFIED" | "CLOSED";
+  created_by: string;
+  created_at: string;
+};
+export const listBreachEvents = () => request<BreachEvent[]>("GET", "/breach-events");
+export const createBreachEvent = (body: {
+  title: string; description?: string; detected_at: string;
+  personal_data_categories?: string; affected_count_estimate?: number | null;
+}) => request<BreachEvent>("POST", "/breach-events", { json: body });
+export const notifyBoardBreach = (id: string, note = "") =>
+  request<BreachEvent>("POST", `/breach-events/${id}/notify-board`, { json: { note } });
+export const notifyAffectedBreach = (id: string, note = "") =>
+  request<BreachEvent>("POST", `/breach-events/${id}/notify-affected`, { json: { note } });
+export const closeBreachEvent = (id: string, resolution_note = "") =>
+  request<BreachEvent>("POST", `/breach-events/${id}/close`, { json: { resolution_note } });
+
+export type RightsRequest = {
+  id: string;
+  kind: "ACCESS" | "CORRECTION" | "ERASURE" | "NOMINATION" | "GRIEVANCE";
+  requester_name: string;
+  requester_contact: string;
+  details: string;
+  received_at: string;
+  due_at: string | null;
+  overdue: boolean;
+  resolved_at: string | null;
+  resolution_note: string;
+  status: "OPEN" | "CLOSED";
+  created_by: string;
+  created_at: string;
+};
+export const listRightsRequests = () => request<RightsRequest[]>("GET", "/rights-requests");
+export const createRightsRequest = (body: {
+  kind: RightsRequest["kind"]; requester_name?: string; requester_contact?: string;
+  details?: string; received_at: string;
+}) => request<RightsRequest>("POST", "/rights-requests", { json: body });
+export const closeRightsRequest = (id: string, resolution_note = "") =>
+  request<RightsRequest>("POST", `/rights-requests/${id}/close`, { json: { resolution_note } });
 
 export type ExpiringEvidence = {
   evidence_id: string;
@@ -734,3 +816,12 @@ export type CisoSyncStatus = {
   error: string;
 };
 export const getCisoSyncStatus = () => request<CisoSyncStatus[]>("GET", "/admin/ciso-sync/status");
+
+// Re-attempts one push after a FAILED (or SKIPPED, once configured) sync —
+// there is no automatic retry queue (see app/routers/ciso.py). The response
+// only echoes the resulting status, not the full row — reload the list to
+// see an updated last_synced_at/error.
+export const retryCisoSync = (entityType: CisoSyncStatus["entity_type"], entityId: string) =>
+  request<{ entity_type: string; entity_id: string; status: CisoSyncStatus["status"] }>(
+    "POST", `/admin/ciso-sync/${entityType}/${entityId}/retry`
+  );

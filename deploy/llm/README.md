@@ -18,20 +18,33 @@ Render calls it over HTTPS; document text and page images go nowhere else.
    lists the models; without the header it must return 401.
 6. In Render's `grc-secrets` group set `OLLAMA_BASE_URL=https://<LLM_DOMAIN>` and the same `OLLAMA_API_KEY`.
 
-## Running on your own PC (Cloudflare Tunnel)
-Use `docker-compose.pc.yml` instead: nothing is exposed on your network, and the
-PC only makes an outbound connection.
+## Running on your own PC (Tailscale Funnel — no card, no domain)
+Use `docker-compose.pc.yml` instead: nothing is exposed on your network, the PC
+only makes an outbound connection, and Tailscale's free plan needs no payment
+method — you sign in with an existing Google/Microsoft/GitHub account.
 
 1. Docker Desktop (WSL2 backend) and a current NVIDIA driver; check
    `docker run --rm --gpus all ubuntu nvidia-smi`.
-2. A domain managed in Cloudflare (free plan is fine). In Zero Trust →
-   Networks → Tunnels, create a tunnel, copy its token into `TUNNEL_TOKEN`, and add
-   a public hostname such as `llm.<yourdomain>` with service `http://caddy:80`.
-3. `.env`: pin `OLLAMA_VERSION`, set `OLLAMA_API_KEY`, `MODELS`, `TUNNEL_TOKEN`.
-   Keep `OLLAMA_MAX_LOADED_MODELS=1` on 12–16 GB cards.
-4. `docker compose -f docker-compose.pc.yml up -d`, then run the `curl` check from
-   step 5 above against `https://llm.<yourdomain>`.
-5. The site only gets AI extraction while the PC is on, awake and online — turn off
+2. `.env`: pin `OLLAMA_VERSION`, set `OLLAMA_API_KEY`, `MODELS`. No domain and no
+   token needed. Keep `OLLAMA_MAX_LOADED_MODELS=1` on 12–16 GB cards.
+3. `docker compose -f docker-compose.pc.yml up -d`.
+4. One-time interactive login — this is the only manual step:
+   ```
+   docker compose -f docker-compose.pc.yml exec tailscale tailscale up --qr
+   ```
+   Open the printed URL (or scan the QR code) and sign in. No card is asked for
+   on Tailscale's free tier.
+5. Turn the container's local port 80 into a public HTTPS URL:
+   ```
+   docker compose -f docker-compose.pc.yml exec tailscale tailscale funnel 80
+   ```
+   This prints the public URL, `https://grc-llm.<your-tailnet>.ts.net`. That is
+   your `OLLAMA_BASE_URL`. It stays the same across restarts once set.
+6. Verify: `curl -H "Authorization: Bearer $OLLAMA_API_KEY" https://grc-llm.<your-tailnet>.ts.net/api/tags`
+   lists the models; without the header it must return 401.
+7. In Render's `grc-secrets` group set `OLLAMA_BASE_URL` to that URL and the
+   same `OLLAMA_API_KEY`.
+8. The site only gets AI extraction while the PC is on, awake and online — turn off
    sleep/hibernate. When it is off the app keeps working with null-field extraction.
 
 ## Adding a security-tuned model
