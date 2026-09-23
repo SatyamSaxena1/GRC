@@ -1,10 +1,14 @@
 # Free-tier stand-in for Render cron jobs (see render.yaml "Free-tier limits").
 # Runs the same two app.monitor modes DEPLOYMENT.md documents for a VM/cron
 # setup, on GitHub's own schedule instead of Render's. Needs one repo secret:
-# DATABASE_URL — the grc-db connection string from the Render dashboard
-# (Settings on the render.yaml file — no, from the grc-db service page).
+# DATABASE_URL — the *External* Database URL from the grc-db service page on
+# Render (runners are outside Render's private network). Optional, per source:
+# DPDP_<SOURCE>_COLLECTOR_URL / _TOKEN — a source without a URL is skipped.
 # When you move off the free tier, delete this file and use the two Render
 # cron services in the paid render.yaml instead.
+#
+# daily-report exits 1 whenever something needs a human (app/monitor.py,
+# ADR-006) — a red run there can be the alert working, not a broken job.
 name: DPDP monitor
 
 on:
@@ -17,7 +21,19 @@ jobs:
   sync-connectors:
     if: github.event.schedule == '0 */6 * * *' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
+    # Secrets go on the steps that need them, not the job: `pip install` runs
+    # third-party build code and has no business seeing the DB password.
     steps:
+      - name: Require DATABASE_URL
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          [ -n "$DATABASE_URL" ] || { echo "::error::DATABASE_URL secret is not set — add the grc-db External Database URL (gh secret set DATABASE_URL)"; exit 1; }
+      - name: Warn when no collector is configured
+        env:
+          ANY_COLLECTOR: ${{ secrets.DPDP_AWS_COLLECTOR_URL }}${{ secrets.DPDP_M365_COLLECTOR_URL }}${{ secrets.DPDP_GOOGLE_WORKSPACE_COLLECTOR_URL }}${{ secrets.DPDP_HRMS_COLLECTOR_URL }}
+        run: |
+          [ -n "$ANY_COLLECTOR" ] || echo "::warning::No DPDP_*_COLLECTOR_URL secret is set, so there is nothing to sync"
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
@@ -26,11 +42,24 @@ jobs:
       - run: python -m app.monitor --sync-connectors
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DPDP_AWS_COLLECTOR_URL: ${{ secrets.DPDP_AWS_COLLECTOR_URL }}
+          DPDP_AWS_COLLECTOR_TOKEN: ${{ secrets.DPDP_AWS_COLLECTOR_TOKEN }}
+          DPDP_M365_COLLECTOR_URL: ${{ secrets.DPDP_M365_COLLECTOR_URL }}
+          DPDP_M365_COLLECTOR_TOKEN: ${{ secrets.DPDP_M365_COLLECTOR_TOKEN }}
+          DPDP_GOOGLE_WORKSPACE_COLLECTOR_URL: ${{ secrets.DPDP_GOOGLE_WORKSPACE_COLLECTOR_URL }}
+          DPDP_GOOGLE_WORKSPACE_COLLECTOR_TOKEN: ${{ secrets.DPDP_GOOGLE_WORKSPACE_COLLECTOR_TOKEN }}
+          DPDP_HRMS_COLLECTOR_URL: ${{ secrets.DPDP_HRMS_COLLECTOR_URL }}
+          DPDP_HRMS_COLLECTOR_TOKEN: ${{ secrets.DPDP_HRMS_COLLECTOR_TOKEN }}
 
   daily-report:
     if: github.event.schedule == '30 1 * * *' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
+      - name: Require DATABASE_URL
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          [ -n "$DATABASE_URL" ] || { echo "::error::DATABASE_URL secret is not set — add the grc-db External Database URL (gh secret set DATABASE_URL)"; exit 1; }
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
