@@ -13,7 +13,8 @@ from app import audit_log, authorization, events
 from app.auth import Actor, current_actor, deny_read_only
 from app.content.load import load as load_content
 from app.db import get_session, session_scope, set_tenant
-from app.ingest import available_models
+from app.ai import decision
+from app.ingest import available_models, extract_text, gateway_for
 from app.models import (
     TERMINAL_EVIDENCE_STATUSES, Evidence, EvidenceAttribute, EvidenceControlLink, GapRow,
 )
@@ -29,11 +30,23 @@ CONTENT = load_content()
 # and SCREENSHOT have no evidence_requirements mapped to them yet in
 # app/content/*.yaml, so they upload and classify but evaluate against
 # nothing (the existing "nothing in scope for this artefact type" empty
-# state) until a framework pack maps them to a requirement.
+# state) until a framework pack maps them to a requirement. The descriptions
+# are what /evidence/suggest-type shows the model (same text as ARTEFACT_HELP).
 ARTEFACT_TYPES = {
-    "POLICY", "SCAN_REPORT", "REVIEW_RECORD", "AI_POLICY", "AI_INVENTORY",
-    "CERTIFICATE", "SCREENSHOT", "REPORT", "PRIVACY_NOTICE",
+    "POLICY": "A written policy or procedure document — access control, encryption, retention, and similar.",
+    "SCAN_REPORT": "Output from a vulnerability or penetration test scan (e.g. an ASV report).",
+    "REVIEW_RECORD": "A record that a periodic review happened — access reviews, log reviews.",
+    "REPORT": "A narrative finding or audit report, distinct from an automated scan.",
+    "CERTIFICATE": "A third-party attestation or certification (ISO, SOC 2, PCI AOC).",
+    "SCREENSHOT": "A screen capture as supporting proof.",
+    "AI_POLICY": "An AI governance policy, separate from a general security policy.",
+    "AI_INVENTORY": "A system/model inventory for AI systems.",
+    "PRIVACY_NOTICE": "A public-facing notice describing personal data, purposes, rights, withdrawal, complaints, and the privacy contact.",
 }
+
+# Below this the form keeps the user's own choice rather than pre-selecting.
+SUGGEST_THRESHOLD = 0.6
+SUGGEST_MAX_CHARS = 4000
 
 
 def _scoped_evidence(db: Session, actor: Actor, evidence_id: str) -> Evidence:
@@ -163,6 +176,34 @@ def list_ai_models(actor: Actor = Depends(current_actor)):
     defaults. Any signed-in caller may read this; it names no secrets, only
     model identifiers."""
     return available_models()
+
+
+@router.post("/suggest-type")
+def suggest_artefact_type(file: UploadFile, actor: Actor = Depends(current_actor)):
+    """Which artefact type this file most likely is — a pre-selection for the
+    upload form, never a decision. Stores nothing: no evidence exists yet, and
+    the type the user actually submits is what the upload audit records."""
+    if not actor.can_write:
+        raise deny_read_only(actor, "upload evidence")
+    try:
+        upload = validate_upload(file.file, file.filename or "")
+        get_scanner().scan(upload.data)
+    except UploadRejected as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+    try:
+        text = extract_text(upload.filename, upload.data)[:SUGGEST_MAX_CHARS]
+    except Exception:  # noqa: BLE001 - an unparseable file just gets no suggestion
+        text = ""
+    if not text.strip():  # images/scans: native text only here, no vision pass
+        return {"probabilities": {}, "suggested": None}
+
+    probabilities = decision.choose(
+        gateway_for(None), "Which kind of compliance evidence is this document?",
+        f"Filename: {upload.original_filename}\n\nDocument start:\n{text}", ARTEFACT_TYPES,
+    )
+    return {"probabilities": probabilities,
+            "suggested": decision.top(probabilities, SUGGEST_THRESHOLD)}
 
 
 @router.post("", status_code=202)

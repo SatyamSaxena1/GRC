@@ -37,15 +37,22 @@ class OllamaGateway:
         # per-instance override (app/ingest.py::gateway_for) takes priority.
         self.vision_model = vision_model
         self.last_latency_ms = 0
+        self._available: bool | None = None
 
     def available(self) -> bool:
-        try:
-            resp = requests.get(f"{self.base_url}/api/tags", headers=_headers(), timeout=5)
-            resp.raise_for_status()
-            names = {m["name"] for m in resp.json().get("models", [])}
-            return bool(self.model) and self.model in names
-        except requests.RequestException:
-            return False
+        """Checked once per instance. Instances live for one pipeline run or one
+        request (app/ingest.py::gateway_for), and callers ask per link / per new
+        gap — an unreachable host costs ~2s a refused connect on Windows, which
+        multiplied into tens of seconds per upload during an outage."""
+        if self._available is None:
+            try:
+                resp = requests.get(f"{self.base_url}/api/tags", headers=_headers(), timeout=5)
+                resp.raise_for_status()
+                names = {m["name"] for m in resp.json().get("models", [])}
+                self._available = bool(self.model) and self.model in names
+            except requests.RequestException:
+                self._available = False
+        return self._available
 
     def complete_json(self, system: str, user: str) -> str:
         return self._chat({
@@ -107,6 +114,32 @@ class OllamaGateway:
             ],
             "stream": False,
         })
+
+    def next_token_logprobs(self, system: str, user: str, top: int = 20) -> dict[str, float]:
+        """{token: logprob} for the single next token — the raw material for a
+        Jev-style decision (app/ai/decision.py). Needs Ollama >= 0.12.11."""
+        payload = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+            "stream": False,
+            "logprobs": True,
+            "top_logprobs": top,
+            "options": {"num_predict": 1, "temperature": 0},
+        }
+        start = time.monotonic()
+        try:
+            resp = requests.post(f"{self.base_url}/api/chat", json=payload,
+                                 headers=_headers(), timeout=TIMEOUT_S)
+            resp.raise_for_status()
+            first = resp.json()["logprobs"][0]
+            alternatives = first.get("top_logprobs") or [first]
+        except (requests.RequestException, KeyError, IndexError, TypeError, ValueError) as exc:
+            raise RuntimeError("Ollama logprobs call failed") from exc
+        self.last_latency_ms = int((time.monotonic() - start) * 1000)
+        return {a["token"]: a["logprob"] for a in alternatives if "token" in a and "logprob" in a}
 
     def _chat(self, payload: dict) -> str:
         last_error: Exception | None = None
