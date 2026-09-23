@@ -1,5 +1,5 @@
 {
-	auto_https off          # TLS is terminated by Cloudflare, not here
+	auto_https off          # TLS is terminated by Tailscale Funnel, not here
 }
 
 :80 {
@@ -8,6 +8,9 @@
 	@unauth not header Authorization "Bearer {$OLLAMA_API_KEY}"
 	respond @unauth 401
 
+	# caddy shares tailscale's network namespace (see docker-compose.pc.yml),
+	# but both containers are still on the compose network, so the ollama
+	# service name still resolves — this is not localhost.
 	reverse_proxy ollama:11434 {
 		flush_interval -1
 		transport http {

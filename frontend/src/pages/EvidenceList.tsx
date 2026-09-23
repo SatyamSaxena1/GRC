@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  ApiError, listEvidence, reprocessEvidence, uploadEvidence, type EvidenceSummary,
+  ApiError, listAiModels, listEvidence, reprocessEvidence, uploadEvidence, type EvidenceSummary,
 } from "../api/client";
 import { useSession } from "../lib/session";
 import { useApi } from "../lib/useApi";
@@ -78,6 +78,9 @@ export function EvidenceListPage() {
   const [description, setDescription] = useState("");
   const [validUntil, setValidUntil] = useState("");
   const [isEncrypted, setIsEncrypted] = useState(false);
+  const [aiModel, setAiModel] = useState("");
+  const [aiVisionModel, setAiVisionModel] = useState("");
+  const aiModels = useApi(() => listAiModels(), []);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState<string | null>(null);
@@ -136,6 +139,8 @@ export function EvidenceListPage() {
         description: description.trim() || undefined,
         validUntil: validUntil || undefined,
         isEncrypted,
+        aiModel: aiModel || undefined,
+        aiVisionModel: aiVisionModel || undefined,
       });
       navigate(`/evidence/${result.evidence_id}`);
     } catch (err) {
@@ -249,6 +254,27 @@ export function EvidenceListPage() {
               <input type="checkbox" checked={isEncrypted} onChange={(e) => setIsEncrypted(e.target.checked)} />
               This file is password-protected
             </label>
+            {aiModels.data?.available && aiModels.data.models.length > 0 && (
+              <>
+                <div>
+                  <label>Text model (optional)</label>
+                  <select value={aiModel} onChange={(e) => setAiModel(e.target.value)}>
+                    <option value="">Server default ({aiModels.data.default_model || "unconfigured"})</option>
+                    {aiModels.data.models.map((m) => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label>Vision model (optional, for scanned pages)</label>
+                  <select value={aiVisionModel} onChange={(e) => setAiVisionModel(e.target.value)}>
+                    <option value="">Server default ({aiModels.data.default_vision_model || aiModels.data.default_model || "unconfigured"})</option>
+                    {aiModels.data.models.map((m) => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                  <p className="muted" style={{ fontSize: 12, margin: "4px 0 0" }}>
+                    Only used if a page needs OCR fallback — most uploads never touch it.
+                  </p>
+                </div>
+              </>
+            )}
             <button className="btn btn-primary" disabled={!file || busy} onClick={submit}>
               {busy ? "Uploading…" : "Upload"}
             </button>

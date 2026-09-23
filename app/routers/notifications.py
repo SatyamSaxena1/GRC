@@ -66,6 +66,14 @@ def _attention_items(report: dict, checked_at: str) -> list[dict]:
         items.append({"kind": "EVIDENCE_STUCK", "severity": "medium", "at": checked_at,
                       "message": f"{e['original_filename']}: {e['detail']}",
                       "link": f"/evidence/{e['evidence_id']}"})
+    for b in report["breach"]:
+        items.append({"kind": "BREACH_DEADLINE", "severity": "high" if b["overdue"] else "medium",
+                      "at": checked_at, "message": f"{b['title']} — due {b['due_at']}",
+                      "link": "/dpdp/operations"})
+    for d in report["dsr"]:
+        items.append({"kind": "DSR_DEADLINE", "severity": "high" if d["overdue"] else "medium",
+                      "at": checked_at, "message": f"{d['title']} — due {d['due_at']}",
+                      "link": "/dpdp/operations"})
     return items
 
 
