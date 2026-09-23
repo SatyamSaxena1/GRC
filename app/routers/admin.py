@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app import audit_log
 from app.auth import Actor, admin_or_actor, require_admin
-from app.db import get_session
+from app.db import get_session, set_firm, set_tenant
 from app.models import (
     AuditFirm, ControlAssignment, Engagement, EngagementAllocation, OrgControl,
     Organization, User,
@@ -79,6 +79,12 @@ class EngagementIn(BaseModel):
 
 @router.post("/engagements", dependencies=[Depends(require_admin)])
 def create_engagement(body: EngagementIn, db: Session = Depends(get_session)):
+    # engagements carries FORCE ROW LEVEL SECURITY (org_id OR audit_firm_id
+    # match, alembic b8c9d0e1f2a3) — no actor here to derive either GUC from,
+    # so both are set explicitly from the body or the insert's WITH CHECK sees
+    # neither and Postgres rejects it outright.
+    set_tenant(db, body.org_id)
+    set_firm(db, body.audit_firm_id)
     engagement = Engagement(audit_firm_id=body.audit_firm_id, org_id=body.org_id)
     db.add(engagement)
     db.flush()
@@ -92,9 +98,19 @@ def create_engagement(body: EngagementIn, db: Session = Depends(get_session)):
 
 
 @router.post("/engagements/{engagement_id}/close")
-def close_engagement(engagement_id: str, actor: Actor | None = Depends(admin_or_actor),
+def close_engagement(engagement_id: str, org_id: str | None = None, audit_firm_id: str | None = None,
+                     actor: Actor | None = Depends(admin_or_actor),
                      db: Session = Depends(get_session)):
-    """Closing revokes auditor access immediately; the records stay for defensibility."""
+    """Closing revokes auditor access immediately; the records stay for defensibility.
+
+    engagements is FORCE ROW LEVEL SECURITY (org_id OR audit_firm_id match) —
+    the row is invisible to db.get() below until one of those GUCs is set. An
+    authenticated caller's own org/firm already did that (admin_or_actor); the
+    operator-key path has no actor, so it must be told which tenant via a
+    query param — it cannot look the engagement up to find out first."""
+    if actor is None and (org_id or audit_firm_id):
+        set_tenant(db, org_id)
+        set_firm(db, audit_firm_id)
     engagement = db.get(Engagement, engagement_id)
     if engagement is None:
         raise HTTPException(404)
@@ -120,8 +136,14 @@ class ControlIn(BaseModel):
 @router.post("/controls")
 def create_control(body: ControlIn, actor: Actor | None = Depends(admin_or_actor),
                    db: Session = Depends(get_session)):
-    if actor is not None and not (actor.role == "ORG_ADMIN" and actor.org_id == body.org_id):
-        raise HTTPException(403, "you may only register controls for your own organisation")
+    if actor is not None:
+        if not (actor.role == "ORG_ADMIN" and actor.org_id == body.org_id):
+            raise HTTPException(403, "you may only register controls for your own organisation")
+    else:
+        # org_controls is FORCE ROW LEVEL SECURITY (alembic a1b2c3d4e5f6); the
+        # operator key path has no actor to have already set this via
+        # admin_or_actor, so the insert's WITH CHECK would otherwise reject it.
+        set_tenant(db, body.org_id)
     control = db.query(OrgControl).filter_by(**body.model_dump()).one_or_none()
     if control is None:
         control = OrgControl(**body.model_dump())
