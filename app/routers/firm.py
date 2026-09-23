@@ -20,9 +20,9 @@ from sqlalchemy.orm import Session
 
 from app import audit_log
 from app.auth import Actor, current_actor
-from app.db import get_session
+from app.db import get_session, set_firm
 from app.models import (
-    Engagement, EngagementAllocation, EngagementAuditor, EvidenceControlLink,
+    AuditFirm, Engagement, EngagementAllocation, EngagementAuditor, EvidenceControlLink,
     GapRow, OnboardingRequest, OrgControl, Organization, User,
 )
 
@@ -68,7 +68,15 @@ def _request_out(r: OnboardingRequest) -> dict:
 def submit_onboarding_request(body: OnboardingIn, db: Session = Depends(get_session)):
     """Unauthenticated on purpose: this is a prospect asking to be onboarded,
     before any identity for them exists. It creates no tenant — only a request
-    a firm admin can approve or reject."""
+    a firm admin can approve or reject.
+
+    onboarding_requests carries FORCE ROW LEVEL SECURITY keyed on app.firm_id
+    (see alembic b8c9d0e1f2a3) — with no signed-in actor to derive that GUC
+    from, it must be set explicitly from the firm the prospect named, or the
+    insert's WITH CHECK sees no GUC at all and every request 500s."""
+    if db.get(AuditFirm, body.audit_firm_id) is None:
+        raise HTTPException(404, "no such audit firm")
+    set_firm(db, body.audit_firm_id)
     req = OnboardingRequest(**body.model_dump())
     db.add(req)
     audit_log.record(db, actor="anonymous", action="ONBOARDING_REQUESTED",
