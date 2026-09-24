@@ -181,6 +181,8 @@ def _reconcile_gaps(db: Session, link: EvidenceControlLink, new_gaps, evidence,
             ))
 
 
+PRIORITY_THRESHOLD = 0.8
+
 PRIORITY_OPTIONS = {
     "LOW": "cosmetic or documentation-only; no realistic exposure while it stays open",
     "MEDIUM": "a real control weakness, but compensated or limited in reach",
@@ -204,13 +206,17 @@ def _suggest_priority(db: Session, gateway, evidence, link, gap, guidance: str) 
     if not probabilities:
         return "MEDIUM"
     choice = decision.top(probabilities)
+    # Always logged, only applied when confident. Measured 2026-09-24 against
+    # qwen2.5vl:7b: six realistic gaps (missing MFA down to a missing version
+    # number) all came back HIGH at 0.52-0.74 — no discrimination, so below
+    # this bar the suggestion would only turn every MEDIUM into HIGH.
     db.add(AiRun(
         org_id=evidence.org_id, evidence_id=evidence.id, operation="task_priority_suggestion",
         provider=getattr(gateway, "provider", ""), model=getattr(gateway, "model", ""),
         prompt_template_version="task_priority:v1", validated_output=probabilities,
         confidence=probabilities[choice], latency_ms=getattr(gateway, "last_latency_ms", 0),
     ))
-    return choice
+    return choice if probabilities[choice] >= PRIORITY_THRESHOLD else "MEDIUM"
 
 
 def _store_attributes(db: Session, evidence: Evidence, run) -> None:

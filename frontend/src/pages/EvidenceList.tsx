@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ApiError, listAiModels, listEvidence, reprocessEvidence, suggestArtefactType, uploadEvidence,
@@ -76,8 +76,11 @@ export function EvidenceListPage() {
   const navigate = useNavigate();
   const [file, setFile] = useState<File | null>(null);
   const [artefactType, setArtefactType] = useState(ARTEFACT_TYPES[0]);
-  // Once the user picks a type themselves, a suggestion never overrides it.
-  const [typeTouched, setTypeTouched] = useState(false);
+  // Refs, not state: a suggestion lands after an await, and must see the
+  // *current* file and whether the user has since picked a type themselves —
+  // once they have, a suggestion never overrides it.
+  const typeTouched = useRef(false);
+  const latestFile = useRef<File | null>(null);
   const [suggestion, setSuggestion] = useState<{ type: string; p: number } | null>(null);
   const [description, setDescription] = useState("");
   const [validUntil, setValidUntil] = useState("");
@@ -137,12 +140,13 @@ export function EvidenceListPage() {
   const pickFile = async (picked: File | null) => {
     setFile(picked);
     setSuggestion(null);
+    latestFile.current = picked;
     if (!picked) return;
     try {
       const result = await suggestArtefactType(picked);
-      if (!result.suggested) return;
+      if (latestFile.current !== picked || !result.suggested) return; // a newer file was picked
       setSuggestion({ type: result.suggested, p: result.probabilities[result.suggested] });
-      if (!typeTouched) setArtefactType(result.suggested);
+      if (!typeTouched.current) setArtefactType(result.suggested);
     } catch {
       // A suggestion is a convenience — failing to get one never blocks the upload.
     }
@@ -244,7 +248,7 @@ export function EvidenceListPage() {
           <div className="form-grid">
             <div>
               <label>Artefact type</label>
-              <select value={artefactType} onChange={(e) => { setArtefactType(e.target.value); setTypeTouched(true); }}>
+              <select value={artefactType} onChange={(e) => { setArtefactType(e.target.value); typeTouched.current = true; }}>
                 {ARTEFACT_TYPES.map((t) => (
                   <option key={t} value={t}>
                     {ARTEFACT_LABELS[t] ?? t}

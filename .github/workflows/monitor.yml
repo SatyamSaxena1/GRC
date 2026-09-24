@@ -34,8 +34,8 @@ jobs:
           ANY_COLLECTOR: ${{ secrets.DPDP_AWS_COLLECTOR_URL }}${{ secrets.DPDP_M365_COLLECTOR_URL }}${{ secrets.DPDP_GOOGLE_WORKSPACE_COLLECTOR_URL }}${{ secrets.DPDP_HRMS_COLLECTOR_URL }}
         run: |
           [ -n "$ANY_COLLECTOR" ] || echo "::warning::No DPDP_*_COLLECTOR_URL secret is set, so there is nothing to sync"
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
       - run: pip install -e .
@@ -60,8 +60,8 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
           [ -n "$DATABASE_URL" ] || { echo "::error::DATABASE_URL secret is not set — add the grc-db External Database URL (gh secret set DATABASE_URL)"; exit 1; }
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
       - run: pip install -e .
