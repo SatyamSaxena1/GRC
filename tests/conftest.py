@@ -11,6 +11,18 @@ from app import db as db_module
 from app.main import app
 
 
+@pytest.fixture(autouse=True)
+def _no_live_ollama(request, monkeypatch):
+    """Tests run as if no model is installed, without asking the network. A
+    refused connect costs ~2s on Windows, and the pipeline asks once per
+    upload — that alone made the suite take 12+ minutes. Tests that want a
+    model use a stub gateway; test_live_ollama.py opts back into the real one."""
+    if request.module.__name__.endswith("test_live_ollama"):
+        return
+    from app.ai.ollama import OllamaGateway
+    monkeypatch.setattr(OllamaGateway, "available", lambda self: False)
+
+
 @pytest.fixture()
 def client(tmp_path, monkeypatch):
     monkeypatch.setenv("EVIDENCE_STORAGE_DIR", str(tmp_path / "storage"))

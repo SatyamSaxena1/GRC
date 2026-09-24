@@ -5,6 +5,7 @@ __pycache__/
 .env
 *.db
 evidence_storage/
+evidence_storage_demo/
 .pytest_cache/
 
 frontend/node_modules/

@@ -91,10 +91,17 @@ def _run_gap_pipeline(client, bootstrap, upload, monkeypatch, choose):
     return [t for t in tasks if not t["is_manual"]]
 
 
-def test_gap_task_takes_suggested_priority(client, bootstrap, upload, monkeypatch):
+def test_gap_task_takes_a_confident_suggested_priority(client, bootstrap, upload, monkeypatch):
     tasks = _run_gap_pipeline(client, bootstrap, upload, monkeypatch,
-                              lambda *a, **k: {"LOW": 0.1, "MEDIUM": 0.1, "HIGH": 0.7, "CRITICAL": 0.1})
+                              lambda *a, **k: {"LOW": 0.0, "MEDIUM": 0.05, "HIGH": 0.9, "CRITICAL": 0.05})
     assert tasks and all(t["priority"] == "HIGH" for t in tasks)
+
+
+def test_gap_task_ignores_an_unconfident_suggestion(client, bootstrap, upload, monkeypatch):
+    # What the real 7B model returned for every gap tried: HIGH, but only ~0.6.
+    tasks = _run_gap_pipeline(client, bootstrap, upload, monkeypatch,
+                              lambda *a, **k: {"LOW": 0.02, "MEDIUM": 0.08, "HIGH": 0.6, "CRITICAL": 0.3})
+    assert tasks and all(t["priority"] == "MEDIUM" for t in tasks)
 
 
 def test_gap_task_stays_medium_without_a_suggestion(client, bootstrap, upload, monkeypatch):
