@@ -49,6 +49,42 @@ def test_choose_degrades_to_empty():
     assert decision.top({}) is None
 
 
+class PositionBiasedGateway(FakeGateway):
+    """Always answers "A" — whichever option is listed first — and records the
+    listing it was shown, so the rotations can be checked."""
+    def __init__(self):
+        super().__init__({"A": math.log(0.9), "B": math.log(0.05), "C": math.log(0.05)})
+        self.prompts = []
+
+    def next_token_logprobs(self, system, user, top=20):
+        self.prompts.append(user)
+        return self.logprobs
+
+
+def test_order_averaging_cancels_position_bias():
+    one = decision.choose(PositionBiasedGateway(), "q", "s", OPTIONS)
+    assert decision.top(one) == "POLICY" and one["POLICY"] > 0.8  # bias looks like confidence
+
+    gateway = PositionBiasedGateway()
+    averaged = decision.choose(gateway, "q", "s", OPTIONS, orders=3)
+    assert len(gateway.prompts) == 3
+    firsts = {p.split("Options:\n")[1].split("\n")[0].split(": ")[0][3:] for p in gateway.prompts}
+    assert firsts == set(OPTIONS)  # every option led once
+    assert all(math.isclose(p, 1 / 3) for p in averaged.values())
+    assert decision.top(averaged, threshold=0.6) is None  # no longer a confident pick
+
+
+def test_order_averaging_fails_whole_on_a_failed_pass():
+    class FailsSecond(FakeGateway):
+        calls = 0
+
+        def next_token_logprobs(self, system, user, top=20):
+            self.calls += 1
+            return {} if self.calls == 2 else {"A": 0.0}
+
+    assert decision.choose(FailsSecond(), "q", "s", OPTIONS, orders=3) == {}
+
+
 def _suggest(client, headers, content=b"Access control policy. Approved by the CISO."):
     return client.post("/evidence/suggest-type", headers=headers,
                        files={"file": ("policy.txt", content, "text/plain")})
@@ -86,7 +122,7 @@ def test_gap_tasks_are_medium_and_the_model_is_not_asked_for_priority(
     asked = []
     monkeypatch.setattr(service, "extract_attributes", fake_extract)
     monkeypatch.setattr(service, "generate_nutshell", lambda *a, **k: "")
-    monkeypatch.setattr(decision, "choose", lambda g, q, s, options: asked.append(set(options)) or {})
+    monkeypatch.setattr(decision, "choose", lambda g, q, s, options, **_: asked.append(set(options)) or {})
     org_id, _ = bootstrap(client)
     upload(client, org_id)
     tasks = [t for t in client.get("/tasks", headers={"authorization": f"org:{org_id}"}).json()
@@ -102,7 +138,7 @@ def _status_after_upload(client, bootstrap, upload, monkeypatch, type_probs):
         return ExtractionRun(fields={n: ExtractedField() for n in names},
                              model="stub", provider="stub", status="OK")
 
-    def fake_choose(gateway, question, state, options):
+    def fake_choose(gateway, question, state, options, **_):
         return type_probs if "SCAN_REPORT" in options else {}
 
     monkeypatch.setattr(service, "extract_attributes", fake_extract)
@@ -141,7 +177,7 @@ def _status_with_quote_check(client, bootstrap, upload, monkeypatch, support):
             value=8, confidence=0.9, sources=[Source(quote="Passwords must be at least 12 characters.")])
         return ExtractionRun(fields=fields, model="stub", provider="stub", status="OK")
 
-    def fake_choose(gateway, question, state, options):
+    def fake_choose(gateway, question, state, options, **_):
         if "YES" in options:
             asked.append(state)
             return support

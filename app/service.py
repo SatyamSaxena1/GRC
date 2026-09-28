@@ -61,6 +61,7 @@ ARTEFACT_TYPES = {
     "PRIVACY_NOTICE": "A public-facing notice describing personal data, purposes, rights, withdrawal, complaints, and the privacy contact.",
 }
 CLASSIFY_MAX_CHARS = 4000
+CLASSIFY_ORDERS = 3
 
 # Wrong-document guard: flag only when the model is sure the file is some
 # *other* type and gives the declared one next to nothing. Near-neighbours
@@ -75,9 +76,12 @@ def classify_artefact(gateway, filename: str, text: str) -> dict[str, float]:
     the pipeline's wrong-document guard, so both ask the model the same thing."""
     if not text or not text.strip():
         return {}
+    # 3 rotated orderings, averaged: the guard can send an upload to review on
+    # this answer, so it must not hinge on which option happened to be listed first.
     return decision.choose(
         gateway, "Which kind of compliance evidence is this document?",
         f"Filename: {filename}\n\nDocument start:\n{text[:CLASSIFY_MAX_CHARS]}", ARTEFACT_TYPES,
+        orders=CLASSIFY_ORDERS,
     )
 
 
