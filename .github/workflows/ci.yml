@@ -29,3 +29,29 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
       - run: npm run build
+
+  # Render never auto-deployed this repo (every deploy up to 2026-09-28 was
+  # `api` or `blueprint_sync`, none from a push): its GitHub App isn't
+  # connected, so it never hears about pushes. A deploy hook fired from here
+  # fixes that *and* only ships a main commit whose tests passed.
+  # Needs repo secret RENDER_DEPLOY_HOOK_URL (Render → grc → Settings →
+  # Deploy Hook). The URL is itself the credential: anyone with it can deploy.
+  deploy:
+    needs: [backend, frontend]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    concurrency: render-deploy
+    steps:
+      - name: Trigger Render deploy
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "::warning::RENDER_DEPLOY_HOOK_URL secret is not set, so this commit was not deployed"
+            exit 0
+          fi
+          # The hook URL already carries ?key=…, so ref joins with & — and
+          # pins the deploy to the exact commit that just passed.
+          case "$HOOK" in *\?*) sep='&' ;; *) sep='?' ;; esac
+          curl -fsS -X POST "${HOOK}${sep}ref=${GITHUB_SHA}" -o /dev/null
+          echo "Render deploy requested for $GITHUB_SHA"
