@@ -18,8 +18,10 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app import audit_log
+from app.ai import decision
 from app.auth import Actor, current_actor, deny_read_only
 from app.db import get_session
+from app.ingest import gateway_for
 from app.models import OrgCommitment, RightsRequest, TaskRow
 
 router = APIRouter(prefix="/rights-requests", tags=["rights-requests"])
@@ -64,6 +66,42 @@ def _out(r: RightsRequest, now: datetime | None = None) -> dict:
         "resolution_note": r.resolution_note, "status": r.status,
         "created_by": r.created_by, "created_at": r.created_at.isoformat(),
     }
+
+
+# What each kind means, as the model sees it in suggest-kind.
+KINDS = {
+    "ACCESS": "asks what personal data is held about them, how it is processed, or who it was shared with (DPDP s.11)",
+    "CORRECTION": "asks to correct, complete or update inaccurate or incomplete personal data (s.12)",
+    "ERASURE": "asks to delete their personal data, or withdraws consent so it is erased (s.12)",
+    "NOMINATION": "names another person to exercise their rights if they die or become incapacitated (s.14)",
+    "GRIEVANCE": "complains about how their data, or an earlier request, was handled (s.13)",
+}
+SUGGEST_THRESHOLD = 0.6  # same bar as the evidence upload form's type suggestion
+
+
+class KindSuggestion(BaseModel):
+    details: str = Field(max_length=4000)
+
+
+@router.post("/suggest-kind")
+def suggest_kind(body: KindSuggestion, actor: Actor = Depends(current_actor)):
+    """Which kind of request the requester's own words describe — a pre-fill
+    for the log form, never a decision. Stores nothing."""
+    if not actor.can_write:
+        raise deny_read_only(actor, "log a rights request")
+    if not body.details.strip():
+        return {"probabilities": {}, "suggested": None}
+    # An explicit way out: without it, "hello, is this the right email?" was
+    # confidently a GRIEVANCE (0.75, qwen2.5vl:7b) because it had to be *something*.
+    probabilities = decision.choose(
+        gateway_for(None), "Which kind of data-principal request is this?",
+        f"The requester wrote:\n{body.details}",
+        {**KINDS, "NOT_A_REQUEST": "does not ask to exercise any of these rights"},
+    )
+    suggested = decision.top(probabilities, SUGGEST_THRESHOLD)
+    probabilities.pop("NOT_A_REQUEST", None)
+    return {"probabilities": probabilities,
+            "suggested": None if suggested == "NOT_A_REQUEST" else suggested}
 
 
 class RequestCreate(BaseModel):

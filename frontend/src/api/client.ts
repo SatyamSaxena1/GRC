@@ -681,6 +681,10 @@ export type RightsRequest = {
   created_at: string;
 };
 export const listRightsRequests = () => request<RightsRequest[]>("GET", "/rights-requests");
+export const suggestRightsRequestKind = (details: string) =>
+  request<{ probabilities: Record<string, number>; suggested: RightsRequest["kind"] | null }>(
+    "POST", "/rights-requests/suggest-kind", { json: { details } });
+
 export const createRightsRequest = (body: {
   kind: RightsRequest["kind"]; requester_name?: string; requester_contact?: string;
   details?: string; received_at: string;

@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ApiError, closeBreachEvent, closeRightsRequest, createBreachEvent, createRightsRequest,
-  listBreachEvents, listRightsRequests, notifyAffectedBreach, notifyBoardBreach,
+  listBreachEvents, listRightsRequests, notifyAffectedBreach, notifyBoardBreach, suggestRightsRequestKind,
   type BreachEvent, type RightsRequest,
 } from "../api/client";
 import { Badge } from "../components/Badge";
@@ -131,9 +131,15 @@ function RightsRequestSection({ canLog }: { canLog: boolean }) {
   const requests = useApi(() => listRightsRequests(), []);
   const [open, setOpen] = useState(false);
   const [kind, setKind] = useState<RightsRequest["kind"]>("ACCESS");
+  // Same rules as the evidence upload's type suggestion: never override a
+  // type the user picked, and ignore an answer for details since edited.
+  const kindTouched = useRef(false);
+  const [kindHint, setKindHint] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
   const [details, setDetails] = useState("");
+  const detailsRef = useRef("");
+  detailsRef.current = details;
   const [receivedAt, setReceivedAt] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -148,11 +154,26 @@ function RightsRequestSection({ canLog }: { canLog: boolean }) {
       });
       setOpen(false);
       setName(""); setContact(""); setDetails(""); setReceivedAt("");
+      setKindHint(null); kindTouched.current = false;
       requests.reload();
     } catch (err) {
       setError(err instanceof ApiError ? String(err.detail) : (err as Error).message);
     } finally {
       setBusy(false);
+    }
+  };
+
+  const suggestKind = async () => {
+    const asked = details;
+    setKindHint(null);
+    if (!asked.trim()) return;
+    try {
+      const result = await suggestRightsRequestKind(asked);
+      if (!result.suggested || detailsRef.current !== asked) return;
+      setKindHint(`Suggested from the details: ${result.suggested} (${Math.round(result.probabilities[result.suggested] * 100)}%)`);
+      if (!kindTouched.current) setKind(result.suggested);
+    } catch {
+      // A suggestion is a convenience — failing to get one never blocks logging.
     }
   };
 
@@ -181,9 +202,10 @@ function RightsRequestSection({ canLog }: { canLog: boolean }) {
           <div className="form-grid">
             <div>
               <label>Type</label>
-              <select value={kind} onChange={(e) => setKind(e.target.value as RightsRequest["kind"])}>
+              <select value={kind} onChange={(e) => { setKind(e.target.value as RightsRequest["kind"]); kindTouched.current = true; }}>
                 {REQUEST_KINDS.map((k) => <option key={k} value={k}>{k}</option>)}
               </select>
+              {kindHint && <p className="muted" style={{ fontSize: 12, margin: "4px 0 0" }}>{kindHint}</p>}
             </div>
             <div>
               <label>Requester name</label>
@@ -195,7 +217,7 @@ function RightsRequestSection({ canLog }: { canLog: boolean }) {
             </div>
             <div>
               <label>Details</label>
-              <input type="text" value={details} onChange={(e) => setDetails(e.target.value)} />
+              <input type="text" value={details} onChange={(e) => setDetails(e.target.value)} onBlur={suggestKind} />
             </div>
             <div>
               <label>Received at</label>

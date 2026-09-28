@@ -43,6 +43,105 @@ def set_status(db: Session, evidence: Evidence, status: str, detail: str = "") -
     events.publish(evidence.id, "status", {"status": status, "detail": detail})
 
 
+# The upload allowlist (frontend/src/pages/EvidenceList.tsx), enforced again in
+# app/routers/evidence.py — a client-side-only check is not a check.
+# CERTIFICATE and SCREENSHOT have no evidence_requirements mapped yet in
+# app/content/*.yaml, so they upload and classify but evaluate against nothing
+# until a framework pack maps them. The descriptions are what the model sees
+# in classify_artefact (same text as the form's ARTEFACT_HELP).
+ARTEFACT_TYPES = {
+    "POLICY": "A written policy or procedure document — access control, encryption, retention, and similar.",
+    "SCAN_REPORT": "Output from a vulnerability or penetration test scan (e.g. an ASV report).",
+    "REVIEW_RECORD": "A record that a periodic review happened — access reviews, log reviews.",
+    "REPORT": "A narrative finding or audit report, distinct from an automated scan.",
+    "CERTIFICATE": "A third-party attestation or certification (ISO, SOC 2, PCI AOC).",
+    "SCREENSHOT": "A screen capture as supporting proof.",
+    "AI_POLICY": "An AI governance policy, separate from a general security policy.",
+    "AI_INVENTORY": "A system/model inventory for AI systems.",
+    "PRIVACY_NOTICE": "A public-facing notice describing personal data, purposes, rights, withdrawal, complaints, and the privacy contact.",
+}
+CLASSIFY_MAX_CHARS = 4000
+
+# Wrong-document guard: flag only when the model is sure the file is some
+# *other* type and gives the declared one next to nothing. Near-neighbours
+# (POLICY vs AI_POLICY) split their probability and so stay unflagged.
+MISMATCH_TOP = 0.8
+MISMATCH_DECLARED_MAX = 0.05
+
+
+def classify_artefact(gateway, filename: str, text: str) -> dict[str, float]:
+    """{artefact_type: probability} from the document's start, or {} when there
+    is no text to judge or no model. Shared by the upload form's suggestion and
+    the pipeline's wrong-document guard, so both ask the model the same thing."""
+    if not text or not text.strip():
+        return {}
+    return decision.choose(
+        gateway, "Which kind of compliance evidence is this document?",
+        f"Filename: {filename}\n\nDocument start:\n{text[:CLASSIFY_MAX_CHARS]}", ARTEFACT_TYPES,
+    )
+
+
+def _type_mismatch(db: Session, gateway, evidence: Evidence, text: str) -> str:
+    """'' when the declared type is plausible; otherwise the NEEDS_REVIEW detail.
+    Logged as an AiRun either way it was asked, so a flag can be explained."""
+    probabilities = classify_artefact(gateway, evidence.original_filename or evidence.filename, text)
+    if not probabilities:
+        return ""
+    top = decision.top(probabilities)
+    db.add(AiRun(
+        org_id=evidence.org_id, evidence_id=evidence.id, operation="artefact_type_check",
+        provider=getattr(gateway, "provider", ""), model=getattr(gateway, "model", ""),
+        prompt_template_version="artefact_type:v1", validated_output=probabilities,
+        confidence=probabilities[top], latency_ms=getattr(gateway, "last_latency_ms", 0),
+    ))
+    declared = evidence.artefact_type
+    if (top != declared and probabilities[top] >= MISMATCH_TOP
+            and probabilities.get(declared, 0.0) <= MISMATCH_DECLARED_MAX):
+        return (f"uploaded as {declared}, but reads like a {top} "
+                f"({round(probabilities[top] * 100)}%) — if so, upload it again as a new "
+                f"version with the right type")
+    return ""
+
+
+SUPPORT_OPTIONS = {
+    "YES": "the quoted passage states this value",
+    "NO": "the passage does not state it, or states something different",
+}
+# Flag only a confident "no": measured 2026-09-24 (qwen2.5vl:7b) on 7 real
+# extracted fields plus a deliberately wrong copy of each, every answer was
+# right and >= 0.8 sure — but the wrong copies were blunt, real misreads are
+# subtler, so a flag asks a human to look rather than discarding the value.
+UNSUPPORTED_MIN = 0.8
+
+
+def _unsupported_values(db: Session, gateway, evidence: Evidence, run) -> list[str]:
+    """Attributes whose extracted value its own cited quote does not state —
+    a hallucination check on extraction, one yes/no per quoted field."""
+    checked: dict[str, dict] = {}
+    unsupported = []
+    for name, field in run.fields.items():
+        quote = " … ".join(s.quote for s in field.sources if s.quote)
+        if field.value is None or not quote:
+            continue  # nothing claimed, or nothing cited to check it against
+        probabilities = decision.choose(
+            gateway, "Does the quoted passage state this value for this attribute?",
+            f"Attribute: {name}\nValue: {field.value!r}\nQuoted passage: {quote}", SUPPORT_OPTIONS,
+        )
+        if not probabilities:
+            return []  # model gone mid-way: judge nothing rather than half
+        checked[name] = probabilities
+        if probabilities.get("NO", 0.0) >= UNSUPPORTED_MIN:
+            unsupported.append(name)
+    if checked:
+        db.add(AiRun(
+            org_id=evidence.org_id, evidence_id=evidence.id, operation="quote_support_check",
+            provider=getattr(gateway, "provider", ""), model=getattr(gateway, "model", ""),
+            prompt_template_version="quote_support:v1", requested_attributes=list(checked),
+            validated_output=checked, latency_ms=getattr(gateway, "last_latency_ms", 0),
+        ))
+    return unsupported
+
+
 def required_attribute_names(
     content: Content, frameworks: list[str], artefact_type: str
 ) -> list[str]:
@@ -406,6 +505,15 @@ def _run_pipeline(db: Session, content: Content, evidence: Evidence, actor_label
 
     set_status(db, evidence, "ANALYZING")
 
+    # Asked before evaluating, acted on only at the end: a mistyped file still
+    # gets evaluated as declared (that is what was asked for), it just can't
+    # land as READY without a human looking at the type.
+    type_mismatch, unsupported = "", []
+    if method != "connector" and run.status != "UNAVAILABLE":
+        type_mismatch = _type_mismatch(db, gateway, evidence, text)
+    if method != "connector" and run.status == "OK":
+        unsupported = _unsupported_values(db, gateway, evidence, run)
+
     confidences = [f.confidence for f in run.fields.values() if f.confidence is not None]
     db.add(AiRun(
         org_id=evidence.org_id, evidence_id=evidence.id, operation="attribute_extraction",
@@ -527,6 +635,12 @@ def _run_pipeline(db: Session, content: Content, evidence: Evidence, actor_label
         # /reprocess can re-run once the model is back (see
         # app/routers/evidence.py, app/monitor.py).
         set_status(db, evidence, "NEEDS_REVIEW", f"extraction {run.status.lower().replace('_', ' ')}")
+    elif type_mismatch:
+        set_status(db, evidence, "NEEDS_REVIEW", type_mismatch)
+    elif unsupported:
+        set_status(db, evidence, "NEEDS_REVIEW",
+                   f"extracted {', '.join(sorted(unsupported))} not stated by the quoted "
+                   f"source — check before relying on the verdicts")
     else:
         set_status(db, evidence, "READY")
 

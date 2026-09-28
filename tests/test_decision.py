@@ -109,6 +109,99 @@ def test_gap_task_stays_medium_without_a_suggestion(client, bootstrap, upload, m
     assert tasks and all(t["priority"] == "MEDIUM" for t in tasks)
 
 
+def _status_after_upload(client, bootstrap, upload, monkeypatch, type_probs):
+    """Upload a POLICY with extraction working; the type check sees `type_probs`,
+    the (unrelated) gap-task priority check sees nothing."""
+    def fake_extract(text, names, method="native_text", gateway=None):
+        return ExtractionRun(fields={n: ExtractedField() for n in names},
+                             model="stub", provider="stub", status="OK")
+
+    def fake_choose(gateway, question, state, options):
+        return type_probs if "SCAN_REPORT" in options else {}
+
+    monkeypatch.setattr(service, "extract_attributes", fake_extract)
+    monkeypatch.setattr(service, "generate_nutshell", lambda *a, **k: "")
+    monkeypatch.setattr(decision, "choose", fake_choose)
+    org_id, _ = bootstrap(client)
+    evidence_id = upload(client, org_id).json()["evidence_id"]
+    return client.get(f"/evidence/{evidence_id}/status",
+                      headers={"authorization": f"org:{org_id}"}).json()
+
+
+def test_confident_type_mismatch_needs_review(client, bootstrap, upload, monkeypatch):
+    status = _status_after_upload(client, bootstrap, upload, monkeypatch,
+                                  {"SCAN_REPORT": 0.95, "POLICY": 0.01, "REPORT": 0.04})
+    assert status["status"] == "NEEDS_REVIEW"
+    assert "uploaded as POLICY" in status["detail"] and "SCAN_REPORT" in status["detail"]
+
+
+def test_near_neighbour_or_plausible_type_is_not_flagged(client, bootstrap, upload, monkeypatch):
+    # AI_POLICY vs POLICY: confident top, but the declared type keeps real weight.
+    status = _status_after_upload(client, bootstrap, upload, monkeypatch,
+                                  {"AI_POLICY": 0.85, "POLICY": 0.15})
+    assert status["status"] == "READY"
+    status = _status_after_upload(client, bootstrap, upload, monkeypatch, {})  # no model
+    assert status["status"] == "READY"
+
+
+def _status_with_quote_check(client, bootstrap, upload, monkeypatch, support):
+    """password_min_length=8 with a cited quote; the yes/no check answers `support`."""
+    from app.ai.schemas import Source
+    asked = []
+
+    def fake_extract(text, names, method="native_text", gateway=None):
+        fields = {n: ExtractedField() for n in names}
+        fields["password_min_length"] = ExtractedField(
+            value=8, confidence=0.9, sources=[Source(quote="Passwords must be at least 12 characters.")])
+        return ExtractionRun(fields=fields, model="stub", provider="stub", status="OK")
+
+    def fake_choose(gateway, question, state, options):
+        if "YES" in options:
+            asked.append(state)
+            return support
+        return {}
+
+    monkeypatch.setattr(service, "extract_attributes", fake_extract)
+    monkeypatch.setattr(service, "generate_nutshell", lambda *a, **k: "")
+    monkeypatch.setattr(decision, "choose", fake_choose)
+    org_id, _ = bootstrap(client)
+    evidence_id = upload(client, org_id).json()["evidence_id"]
+    status = client.get(f"/evidence/{evidence_id}/status",
+                        headers={"authorization": f"org:{org_id}"}).json()
+    return status, asked
+
+
+def test_value_its_quote_does_not_state_needs_review(client, bootstrap, upload, monkeypatch):
+    status, asked = _status_with_quote_check(client, bootstrap, upload, monkeypatch,
+                                             {"YES": 0.05, "NO": 0.95})
+    assert len(asked) == 1  # only the one field that has both a value and a quote
+    assert "Value: 8" in asked[0] and "at least 12 characters" in asked[0]
+    assert status["status"] == "NEEDS_REVIEW" and "password_min_length" in status["detail"]
+
+
+def test_supported_value_is_not_flagged(client, bootstrap, upload, monkeypatch):
+    status, _ = _status_with_quote_check(client, bootstrap, upload, monkeypatch,
+                                         {"YES": 0.97, "NO": 0.03})
+    assert status["status"] == "READY"
+
+
+def test_suggest_rights_request_kind(client, bootstrap, monkeypatch):
+    org_id, engagement_id = bootstrap(client)
+    headers = {"authorization": f"org:{org_id}"}
+    say = lambda details, h=headers: client.post("/rights-requests/suggest-kind",
+                                                 headers=h, json={"details": details})
+
+    monkeypatch.setattr(decision, "choose", lambda *a, **k: {"ERASURE": 0.9, "ACCESS": 0.1})
+    assert say("please delete my account and all my data").json()["suggested"] == "ERASURE"
+    monkeypatch.setattr(decision, "choose", lambda *a, **k: {"ERASURE": 0.5, "GRIEVANCE": 0.5})
+    assert say("unhappy").json()["suggested"] is None
+    assert say("   ").json() == {"probabilities": {}, "suggested": None}
+    monkeypatch.setattr(decision, "choose", lambda *a, **k: {"NOT_A_REQUEST": 0.95, "GRIEVANCE": 0.05})
+    body = say("hello, is this the right email?").json()
+    assert body["suggested"] is None and "NOT_A_REQUEST" not in body["probabilities"]
+    assert say("x", {"authorization": f"auditor:{engagement_id}"}).status_code == 403
+
+
 def test_task_queue_puts_deadlines_before_priority(client, bootstrap):
     org_id, _ = bootstrap(client)
     headers = {"authorization": f"org:{org_id}"}

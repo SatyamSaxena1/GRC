@@ -18,35 +18,15 @@ from app.ingest import available_models, extract_text, gateway_for
 from app.models import (
     TERMINAL_EVIDENCE_STATUSES, Evidence, EvidenceAttribute, EvidenceControlLink, GapRow,
 )
-from app.service import link_commitment_stale, process_evidence
+from app.service import ARTEFACT_TYPES, classify_artefact, link_commitment_stale, process_evidence
 from app.storage import get_storage, object_key
 from app.upload_security import UploadRejected, get_scanner, validate_upload
 
 router = APIRouter(prefix="/evidence", tags=["evidence"])
 CONTENT = load_content()
 
-# The upload form's de-facto allowlist (frontend/src/pages/EvidenceList.tsx)
-# enforced again here — a client-side-only check is not a check. CERTIFICATE
-# and SCREENSHOT have no evidence_requirements mapped to them yet in
-# app/content/*.yaml, so they upload and classify but evaluate against
-# nothing (the existing "nothing in scope for this artefact type" empty
-# state) until a framework pack maps them to a requirement. The descriptions
-# are what /evidence/suggest-type shows the model (same text as ARTEFACT_HELP).
-ARTEFACT_TYPES = {
-    "POLICY": "A written policy or procedure document — access control, encryption, retention, and similar.",
-    "SCAN_REPORT": "Output from a vulnerability or penetration test scan (e.g. an ASV report).",
-    "REVIEW_RECORD": "A record that a periodic review happened — access reviews, log reviews.",
-    "REPORT": "A narrative finding or audit report, distinct from an automated scan.",
-    "CERTIFICATE": "A third-party attestation or certification (ISO, SOC 2, PCI AOC).",
-    "SCREENSHOT": "A screen capture as supporting proof.",
-    "AI_POLICY": "An AI governance policy, separate from a general security policy.",
-    "AI_INVENTORY": "A system/model inventory for AI systems.",
-    "PRIVACY_NOTICE": "A public-facing notice describing personal data, purposes, rights, withdrawal, complaints, and the privacy contact.",
-}
-
 # Below this the form keeps the user's own choice rather than pre-selecting.
 SUGGEST_THRESHOLD = 0.6
-SUGGEST_MAX_CHARS = 4000
 
 
 def _scoped_evidence(db: Session, actor: Actor, evidence_id: str) -> Evidence:
@@ -192,16 +172,11 @@ def suggest_artefact_type(file: UploadFile, actor: Actor = Depends(current_actor
         raise HTTPException(400, str(exc)) from exc
 
     try:
-        text = extract_text(upload.filename, upload.data)[:SUGGEST_MAX_CHARS]
+        text = extract_text(upload.filename, upload.data)
     except Exception:  # noqa: BLE001 - an unparseable file just gets no suggestion
         text = ""
-    if not text.strip():  # images/scans: native text only here, no vision pass
-        return {"probabilities": {}, "suggested": None}
-
-    probabilities = decision.choose(
-        gateway_for(None), "Which kind of compliance evidence is this document?",
-        f"Filename: {upload.original_filename}\n\nDocument start:\n{text}", ARTEFACT_TYPES,
-    )
+    # images/scans: native text only here, no vision pass -> no suggestion
+    probabilities = classify_artefact(gateway_for(None), upload.original_filename, text)
     return {"probabilities": probabilities,
             "suggested": decision.top(probabilities, SUGGEST_THRESHOLD)}
 
