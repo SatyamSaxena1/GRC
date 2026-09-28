@@ -48,6 +48,7 @@ class LocalStorage:
 class S3Storage:
     def __init__(self, bucket: str | None = None, endpoint_url: str | None = None):
         import boto3
+        from botocore.config import Config
 
         self.bucket = bucket or os.environ["S3_BUCKET"]
         self.client = boto3.client(
@@ -56,6 +57,8 @@ class S3Storage:
             aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
             aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY"),
             region_name=os.environ.get("AWS_REGION", "us-east-1"),
+            # Supabase/R2/MinIO reject the SigV2 presigned URLs boto3 emits for custom endpoints.
+            config=Config(signature_version="s3v4"),
         )
 
     def put(self, key: str, data: bytes) -> str:

@@ -20,11 +20,28 @@ def init_db() -> None:
     Base.metadata.create_all(engine)
 
 
+_GUCS = {"tenant": "app.tenant_id", "firm": "app.firm_id"}
+
+
+@event.listens_for(Session, "after_begin")
+def _rebind_scope(session, transaction, connection):
+    """set_config(..., true) is transaction-local, so every commit silently drops
+    the tenant/firm. Code that commits more than once per session (the evidence
+    pipeline commits on each status change) would then hit FORCE RLS with no
+    scope and match 0 rows. Re-apply the bound scope at each new transaction."""
+    for key, guc in _GUCS.items():
+        value = session.info.get(key)
+        if value:
+            connection.execute(text("SELECT set_config(:guc, :v, true)"),
+                               {"guc": guc, "v": value})
+
+
 def set_tenant(db: Session, org_id: str | None) -> None:
-    """Bind the tenant to the transaction so Postgres RLS can enforce isolation
+    """Bind the tenant to the session so Postgres RLS can enforce isolation
     in the database, not only in application WHERE clauses. A no-op on SQLite,
     where application-level scoping is the only layer available."""
     if org_id and db.bind is not None and db.bind.dialect.name == "postgresql":
+        db.info["tenant"] = org_id
         db.execute(text("SELECT set_config('app.tenant_id', :tenant, true)"),
                    {"tenant": org_id})
 
@@ -35,6 +52,7 @@ def set_firm(db: Session, audit_firm_id: str | None) -> None:
     org_id, so RLS needs its own GUC for them — see the firm policies in
     alembic/versions/*_firm_onboarding.py. A no-op on SQLite, as with set_tenant."""
     if audit_firm_id and db.bind is not None and db.bind.dialect.name == "postgresql":
+        db.info["firm"] = audit_firm_id
         db.execute(text("SELECT set_config('app.firm_id', :firm, true)"),
                    {"firm": audit_firm_id})
 
