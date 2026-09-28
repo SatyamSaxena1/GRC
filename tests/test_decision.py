@@ -76,37 +76,23 @@ def test_suggest_type_stores_nothing_and_rejects_read_only(client, bootstrap, mo
     assert client.get("/evidence", headers={"authorization": f"org:{org_id}"}).json() == []
 
 
-def _run_gap_pipeline(client, bootstrap, upload, monkeypatch, choose):
+def test_gap_tasks_are_medium_and_the_model_is_not_asked_for_priority(
+        client, bootstrap, upload, monkeypatch):
     def fake_extract(text, names, method="native_text", gateway=None):
         # Nothing extracted -> every requirement opens gaps, and so gap tasks.
         return ExtractionRun(fields={n: ExtractedField() for n in names},
                              model="stub", provider="stub", status="OK")
 
+    asked = []
     monkeypatch.setattr(service, "extract_attributes", fake_extract)
     monkeypatch.setattr(service, "generate_nutshell", lambda *a, **k: "")
-    monkeypatch.setattr(decision, "choose", choose)
+    monkeypatch.setattr(decision, "choose", lambda g, q, s, options: asked.append(set(options)) or {})
     org_id, _ = bootstrap(client)
     upload(client, org_id)
-    tasks = client.get("/tasks", headers={"authorization": f"org:{org_id}"}).json()
-    return [t for t in tasks if not t["is_manual"]]
-
-
-def test_gap_task_takes_a_confident_suggested_priority(client, bootstrap, upload, monkeypatch):
-    tasks = _run_gap_pipeline(client, bootstrap, upload, monkeypatch,
-                              lambda *a, **k: {"LOW": 0.0, "MEDIUM": 0.05, "HIGH": 0.9, "CRITICAL": 0.05})
-    assert tasks and all(t["priority"] == "HIGH" for t in tasks)
-
-
-def test_gap_task_ignores_an_unconfident_suggestion(client, bootstrap, upload, monkeypatch):
-    # What the real 7B model returned for every gap tried: HIGH, but only ~0.6.
-    tasks = _run_gap_pipeline(client, bootstrap, upload, monkeypatch,
-                              lambda *a, **k: {"LOW": 0.02, "MEDIUM": 0.08, "HIGH": 0.6, "CRITICAL": 0.3})
+    tasks = [t for t in client.get("/tasks", headers={"authorization": f"org:{org_id}"}).json()
+             if not t["is_manual"]]
     assert tasks and all(t["priority"] == "MEDIUM" for t in tasks)
-
-
-def test_gap_task_stays_medium_without_a_suggestion(client, bootstrap, upload, monkeypatch):
-    tasks = _run_gap_pipeline(client, bootstrap, upload, monkeypatch, lambda *a, **k: {})
-    assert tasks and all(t["priority"] == "MEDIUM" for t in tasks)
+    assert not any("CRITICAL" in options for options in asked)  # only the type check ran
 
 
 def _status_after_upload(client, bootstrap, upload, monkeypatch, type_probs):
