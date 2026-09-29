@@ -86,7 +86,7 @@ alembic upgrade head        # creates the schema, RLS policies, and revokes the 
 ## Tests
 
 ```bash
-pytest -q                                # 181 tests, no infrastructure needed
+pytest -q                                # 426 tests, no infrastructure needed
 pytest tests/test_live_ollama.py -v      # live model; skipped when Ollama is down
 python -m evaluation.runner --no-model   # rule engine against the golden corpus
 python -m evaluation.runner              # full pipeline, live extraction
