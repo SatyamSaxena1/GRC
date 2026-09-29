@@ -145,6 +145,11 @@ export function EvidenceDetailPage() {
   // A locked password can't be fixed by re-running the same file — the fix is a
   // new, unlocked version, so this gets its own banner instead of a Re-run button.
   const passwordProtected = evidence.status === "NEEDS_REVIEW" && evidence.is_encrypted;
+  // Any other NEEDS_REVIEW (the wrong-document guard, mainly) still has a
+  // human-readable detail from the backend — show it instead of leaving the
+  // badge as the only clue something needs a look.
+  const otherReview = evidence.status === "NEEDS_REVIEW" && !extractionIncomplete && !passwordProtected
+    && status.data?.detail;
   const hasLockedLink = shownLinks.some((l) => l.locked);
   const canManage = identity?.kind !== "auditor";
   const divergentVerdicts = shownLinks.length >= 2 && new Set(shownLinks.map((l) => l.verdict)).size >= 2;
@@ -230,6 +235,11 @@ export function EvidenceDetailPage() {
             {rerunning ? "Re-running…" : "Re-run analysis"}
           </button>
           {rerunError && <span className="muted" style={{ marginLeft: 10 }}>{rerunError}</span>}
+        </div>
+      )}
+      {otherReview && (
+        <div className="alert alert-warning">
+          <strong>{otherReview}</strong>
         </div>
       )}
       {evidence.status === "FAILED" && (
