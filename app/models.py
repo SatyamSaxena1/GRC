@@ -49,9 +49,14 @@ class User(Base):
     org_id: Mapped[str | None] = mapped_column(ForeignKey("organizations.id"), default=None)
     audit_firm_id: Mapped[str | None] = mapped_column(ForeignKey("audit_firms.id"), default=None)
     role: Mapped[str] = mapped_column(String, default="CONTROL_OWNER")
-    """Org-side: ORG_ADMIN|CONTROL_OWNER. Firm-side: FIRM_ADMIN|AUDITOR — a
-    FIRM_ADMIN staffs auditors onto engagements and decides onboarding
-    requests; an AUDITOR only works the engagements it is staffed on."""
+    """Org-side: ORG_ADMIN|CONTROL_OWNER|COMPLIANCE_VIEWER. Firm-side:
+    FIRM_ADMIN|AUDITOR — a FIRM_ADMIN staffs auditors onto engagements and
+    decides onboarding requests; an AUDITOR only works the engagements it is
+    staffed on. ORG_ADMIN is the compliance officer: org-wide visibility, owns
+    remediation, is the auditee's voice to the firm. COMPLIANCE_VIEWER is the
+    same visibility with every write path closed (Actor.can_write) — for a
+    second-line reviewer, an external prep consultant, or a dashboard-only
+    exec. See docs/adr/017-compliance-officer-persona.md."""
 
 
 class Engagement(Base):

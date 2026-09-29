@@ -12,7 +12,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app import audit_log, authorization
-from app.auth import Actor, current_actor
+from app.auth import Actor, current_actor, deny_read_only
 from app.content.load import load as load_content
 from app.db import get_session
 from app.ingest import draft_remediation
@@ -142,8 +142,8 @@ def submit_control(control_id: str, actor: Actor = Depends(current_actor),
     """Auditee submits a control for review. Refused once an auditor has locked it —
     enforced in the backend, not by hiding a button."""
     control = _control(db, actor, control_id)
-    if actor.is_auditor:
-        raise HTTPException(403, "auditors do not submit controls")
+    if not actor.can_write:
+        raise deny_read_only(actor, "submit a control")
 
     links = _links_for(db, control)
     if any(l.locked for l in links):
@@ -467,6 +467,8 @@ def create_control_message(control_id: str, body: MessageCreate, actor: Actor = 
                            db: Session = Depends(get_session)):
     control = _control(db, actor, control_id)
 
+    if actor.role == "COMPLIANCE_VIEWER":
+        raise deny_read_only(actor, "post messages on a control")
     if body.kind == "EVIDENCE_REQUEST" and not actor.is_auditor:
         raise HTTPException(403, "only an auditor may request evidence")
     if body.kind == "UNLOCK_REQUEST":

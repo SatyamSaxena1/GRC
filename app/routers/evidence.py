@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app import audit_log, authorization, events
-from app.auth import Actor, current_actor
+from app.auth import Actor, current_actor, deny_read_only
 from app.content.load import load as load_content
 from app.db import get_session, session_scope, set_tenant
 from app.models import (
@@ -164,8 +164,8 @@ def upload_evidence(
     actor: Actor = Depends(current_actor),
     db: Session = Depends(get_session),
 ):
-    if actor.is_auditor:
-        raise HTTPException(403, "auditors review evidence, they do not upload it")
+    if not actor.can_write:
+        raise deny_read_only(actor, "upload evidence")
     evidence = _ingest(db, actor, file, artefact_type,
                        description=description, valid_until=valid_until)
     # The uploader's own guess, honoured immediately; app/documents.py corrects
@@ -191,8 +191,8 @@ def upload_new_version(
     """Supersede an evidence artefact. A locked link belongs only to the version
     the auditor reviewed — it is never cloned or silently changed. A new version
     over a locked control raises EVIDENCE_CHANGED_AFTER_LOCK instead."""
-    if actor.is_auditor:
-        raise HTTPException(403, "auditors review evidence, they do not upload it")
+    if not actor.can_write:
+        raise deny_read_only(actor, "upload a new evidence version")
     prior = _scoped_evidence(db, actor, evidence_id)
     before = {"lifecycle_status": prior.lifecycle_status, "version": prior.version}
 
@@ -240,8 +240,8 @@ def reprocess_evidence(
     exactly what this exists to rescue. The stored file is immutable and reused
     as-is — nothing is re-uploaded.
     """
-    if actor.is_auditor:
-        raise HTTPException(403, "auditors review evidence, they do not process it")
+    if not actor.can_write:
+        raise deny_read_only(actor, "reprocess evidence")
     evidence = _scoped_evidence(db, actor, evidence_id)
 
     # `locked` is a property over locked_by_engagement_id, not a column — check it
@@ -439,8 +439,8 @@ def update_evidence_metadata(
     else about an evidence row (its file, its verdicts, its status) is derived
     by the pipeline and never hand-edited; conflating the two would make it
     unclear which parts of a record a person can quietly rewrite."""
-    if actor.is_auditor:
-        raise HTTPException(403, "auditors review evidence, they do not edit it")
+    if not actor.can_write:
+        raise deny_read_only(actor, "edit evidence metadata")
     evidence = _scoped_evidence(db, actor, evidence_id)
     before = {"description": evidence.description,
               "valid_until": evidence.valid_until.isoformat() if evidence.valid_until else None}
@@ -469,8 +469,8 @@ def delete_evidence(
     counting toward the sha256 dedup guard. Refused once an auditor has locked
     a verdict against this evidence — same rule as reprocess, for the same
     reason: nobody quietly makes a reviewed result disappear."""
-    if actor.is_auditor:
-        raise HTTPException(403, "auditors review evidence, they do not delete it")
+    if not actor.can_write:
+        raise deny_read_only(actor, "delete evidence")
     evidence = _scoped_evidence(db, actor, evidence_id)
 
     links = db.query(EvidenceControlLink).filter_by(evidence_id=evidence.id).all()

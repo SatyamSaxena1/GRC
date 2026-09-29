@@ -8,7 +8,7 @@ import { oidcConfigured, startLogin } from "../lib/pkce";
 
 const FRAMEWORKS = ["ISO-27001", "PCI-DSS", "SOC-2", "NIST-CSF", "HIPAA", "CIS-CONTROLS", "GDPR"];
 
-export type Tab = "org" | "user" | "auditor" | "firm" | "request" | "quickstart" | "sso";
+export type Tab = "org" | "user" | "viewer" | "auditor" | "firm" | "request" | "quickstart" | "sso";
 
 export function LoginPage() {
   const { setIdentity } = useSession();
@@ -43,6 +43,10 @@ export function LoginPage() {
           <button data-tour="tab-user" className={tab === "user" ? "active" : ""} onClick={() => setTab("user")}>
             Control owner
             <Hint>Sign in as a team member who can see only the specific controls assigned to them, nothing else.</Hint>
+          </button>
+          <button data-tour="tab-viewer" className={tab === "viewer" ? "active" : ""} onClick={() => setTab("viewer")}>
+            Compliance viewer
+            <Hint>Sign in with org-wide visibility — readiness, controls, gaps, tasks, evidence and the audit trail — and no ability to change anything.</Hint>
           </button>
           <button data-tour="tab-auditor" className={tab === "auditor" ? "active" : ""} onClick={() => setTab("auditor")}>
             Auditor
@@ -90,6 +94,16 @@ export function LoginPage() {
             onSubmit={(id) => {
               setIdentity({ kind: "user", id, label: "Control owner" });
               navigate("/tasks");
+            }}
+          />
+        )}
+        {tab === "viewer" && (
+          <IdForm
+            label="User id"
+            placeholder="paste a compliance-viewer user id"
+            onSubmit={(id) => {
+              setIdentity({ kind: "user", id, label: "Compliance viewer", role: "COMPLIANCE_VIEWER" });
+              navigate("/overview");
             }}
           />
         )}
