@@ -25,6 +25,11 @@ export function LoginPage() {
   // (self-service — see RequestAudit and firm.py::approve_onboarding_request).
   const production = oidcConfigured();
   const [tab, setTab] = useState<Tab>(production ? "sso" : "quickstart");
+  // Only "Quick start" is shown up front; the id-based sign-ins sit behind a
+  // toggle. Selecting one (also via the guided tour) opens the rest.
+  const [more, setMore] = useState(false);
+  const showAll = production || more || tab !== "quickstart";
+  const selectTab = (t: Tab) => setTab(t);
 
   return (
     <div className="login-shell">
@@ -35,9 +40,7 @@ export function LoginPage() {
         ) : (
           <>
             <p className="muted">
-              There is no account system yet — the backend identifies a caller by a plain
-              <code> org:&lt;id&gt;</code> / <code>user:&lt;id&gt;</code> / <code>auditor:&lt;engagement_id&gt;</code>{" "}
-              token. Start a demo organisation below, or sign in with an id you already have.
+              Turn one evidence document into verdicts across every compliance framework. Try it with a demo organisation — no account needed.
             </p>
             <p className="muted">
               New here? <Link to="/pitch">See what this is, with a live demo</Link>.
@@ -45,7 +48,7 @@ export function LoginPage() {
           </>
         )}
 
-        {!production && <LoginTour onSelectTab={setTab} />}
+        {!production && <LoginTour onSelectTab={selectTab} />}
 
         <div className="pill-select" data-tour="login-tabs">
           {!production && (
@@ -54,6 +57,8 @@ export function LoginPage() {
                 Quick start
                 <Hint>Spins up a demo organisation, audit firm and engagement in one click — the fastest way to see it working.</Hint>
               </button>
+              {showAll && (
+                <>
               <button data-tour="tab-org" className={tab === "org" ? "active" : ""} onClick={() => setTab("org")}>
                 Organisation
                 <Hint>Sign in as the auditee — upload evidence, track gaps, and submit controls for review.</Hint>
@@ -74,12 +79,19 @@ export function LoginPage() {
                 Audit firm
                 <Hint>Sign in on the firm's side of the table — approve who gets onboarded, and staff your auditors onto the clients they are allowed to work.</Hint>
               </button>
+                </>
+              )}
+              {!production && (
+                <button type="button" aria-expanded={showAll} onClick={() => { if (showAll) setTab("quickstart"); setMore(!showAll); }}>
+                  {showAll ? "Fewer options" : "Other ways to sign in"}
+                </button>
+              )}
             </>
           )}
-          <button data-tour="tab-request" className={tab === "request" ? "active" : ""} onClick={() => setTab("request")}>
+          {showAll && <button data-tour="tab-request" className={tab === "request" ? "active" : ""} onClick={() => setTab("request")}>
             Request an audit
             <Hint>The prospect's entry point: ask a firm to audit you. It creates no account — approval by the firm is what does that.</Hint>
-          </button>
+          </button>}
           {oidcConfigured() && (
             <button className={tab === "sso" ? "active" : ""} onClick={() => setTab("sso")}>
               Sign in
@@ -136,6 +148,12 @@ export function LoginPage() {
               navigate("/controls");
             }}
           />
+        )}
+        {!production && (
+          <p className="muted" style={{ fontSize: 12, marginTop: 16 }}>
+            Demo mode: there is no account system yet — the backend identifies a caller by a plain{" "}
+            <code>org:&lt;id&gt;</code> / <code>user:&lt;id&gt;</code> / <code>auditor:&lt;engagement_id&gt;</code> token.
+          </p>
         )}
       </div>
     </div>

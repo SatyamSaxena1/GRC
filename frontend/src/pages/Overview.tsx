@@ -5,6 +5,7 @@ import { useApi } from "../lib/useApi";
 import { useSession } from "../lib/session";
 import { Badge } from "../components/Badge";
 import { PageTour } from "../components/PageTour";
+import { ProcessingNotice } from "../components/ProcessingNotice";
 
 const TOUR_STEPS = [
   {
@@ -50,6 +51,12 @@ export function OverviewPage() {
     ? data.controls.by_verdict.PARTIAL + data.controls.by_verdict.FAIL + data.controls.by_verdict.NO_EVIDENCE
     : null;
 
+  // Empty means nothing uploaded at all — a document still being processed has
+  // no controls yet either, and telling its owner to "upload your first document"
+  // then would be wrong (ProcessingNotice covers that case).
+  const empty = data?.controls.total === 0 && data.evidence.total === 0;
+  const canUpload = identity?.kind !== "auditor"; // same rule EvidenceList uses
+
   return (
     <div>
       <div className="page-header">
@@ -68,6 +75,7 @@ export function OverviewPage() {
         </div>
       </div>
 
+      <ProcessingNotice onSettled={dashboard.reload} />
       {exportError && <div className="alert alert-error">{exportError}</div>}
       {dashboard.error && <div className="alert alert-error">{dashboard.error}</div>}
 
@@ -85,6 +93,28 @@ export function OverviewPage() {
         </Link>
       )}
 
+      {empty && (
+        <div className="card empty-hero">
+          {canUpload ? (
+            <>
+              <h3>Start by uploading one document</h3>
+              <p>Upload a policy or report once — it is read, checked against every framework you subscribe to, and any gap becomes a task.</p>
+              <ol>
+                <li>Upload a document on the Evidence page</li>
+                <li>Review the verdict and any gaps it opens</li>
+                <li>Upload a revised version, then submit for auditor review</li>
+              </ol>
+              <Link to="/evidence" className="btn btn-primary">Upload your first document</Link>
+            </>
+          ) : (
+            <>
+              <h3>Nothing to review yet</h3>
+              <p>The organisation hasn't uploaded any evidence. Controls appear here once it does.</p>
+            </>
+          )}
+        </div>
+      )}
+
       <div className="card-grid" data-tour="stat-cards">
         <Link to="/controls" className="card stat-card action-card">
           <div className="stat-label">Controls tracked</div>
@@ -93,7 +123,7 @@ export function OverviewPage() {
         </Link>
         <Link to="/gaps" className="card stat-card action-card">
           <div className="stat-label">Open gaps</div>
-          <div className="stat-value">{data?.gaps_open ?? "—"}</div>
+          <div className="stat-value" style={{ color: data && data.gaps_open > 0 ? "var(--danger)" : undefined }}>{data?.gaps_open ?? "—"}</div>
           <div className="stat-sub">Specific evidence shortfalls to resolve</div>
         </Link>
         <Link to="/tasks" className="card stat-card action-card">
@@ -113,8 +143,8 @@ export function OverviewPage() {
         </div>
       </div>
 
-      <div className="section-title">Priority work</div>
-      <div className="card-grid">
+      {!empty && <div className="section-title">Priority work</div>}
+      <div className="card-grid" hidden={empty}>
         <Link to="/controls" className="card action-card">
           <strong>Controls needing attention</strong>
           <div className="stat-value" style={{ marginTop: 8 }}>{needsAttention ?? "—"}</div>
@@ -171,7 +201,7 @@ export function OverviewPage() {
               {r.already_subscribed ? (
                 <span className="badge badge-pass">subscribed</span>
               ) : (
-                <span className="badge badge-partial">day-1 preview</span>
+                <span className="badge badge-skipped">day-1 preview</span>
               )}
             </div>
             <div className="readiness-bar">
@@ -185,8 +215,8 @@ export function OverviewPage() {
         ))}
       </div>
 
-      <div className="section-title">All workspace areas</div>
-      <div className="card-grid">
+      {!empty && <div className="section-title">All workspace areas</div>}
+      <div className="card-grid" hidden={empty}>
         <Link to="/evidence" className="card">
           <strong>Upload evidence</strong>
           <div className="stat-sub">Add a document and see it evaluated against every subscribed framework.</div>

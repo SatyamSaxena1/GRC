@@ -7,5 +7,5 @@ export function Badge({ value }: { value: string | null | undefined }) {
   const label = value ?? "—";
   const processing = PROCESSING.has(label);
   const cls = `badge badge-${label.toLowerCase().replace(/\s+/g, "_")}${processing ? " processing" : ""}`;
-  return <span className={cls}>{label}</span>;
+  return <span className={cls}>{label.replace(/_/g, " ")}</span>;
 }

@@ -16,6 +16,7 @@ import { useApi } from "../lib/useApi";
 import { DataTable, type Column } from "../components/DataTable";
 import { Badge } from "../components/Badge";
 import { PageTour } from "../components/PageTour";
+import { ProcessingNotice } from "../components/ProcessingNotice";
 import { useSession } from "../lib/session";
 
 const STATUSES = ["", "OPEN", "DONE"];
@@ -117,6 +118,7 @@ export function TasksListPage() {
         </div>
       </div>
 
+      <ProcessingNotice onSettled={reload} />
       {exportError && <div className="alert alert-error">{exportError}</div>}
 
       {showNewTask && (

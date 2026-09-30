@@ -23,23 +23,25 @@ export function DataTable<T>({
     return <div className="card empty-state">{emptyLabel}</div>;
   }
   return (
-    <table className="data-table">
-      <thead>
-        <tr>
-          {columns.map((c) => (
-            <th key={c.key}>{c.header}</th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((row, i) => (
-          <tr key={i} onClick={onRowClick ? () => onRowClick(row) : undefined}>
+    <div className="table-scroll">
+      <table className="data-table">
+        <thead>
+          <tr>
             {columns.map((c) => (
-              <td key={c.key}>{c.render(row)}</td>
+              <th key={c.key}>{c.header}</th>
             ))}
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {rows.map((row, i) => (
+            <tr key={i} onClick={onRowClick ? () => onRowClick(row) : undefined}>
+              {columns.map((c) => (
+                <td key={c.key}>{c.render(row)}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }

@@ -301,6 +301,9 @@ export type Gap = {
   status: string;
   resolved_at: string | null;
 };
+// One thing a verdict was judged on — `operator` is "present" for a plain
+// "does the document state it" check, else the rule's operator with its bound.
+export type CheckedItem = { attribute: string; operator: string; expected: unknown; actual: unknown; met: boolean };
 export type EvidenceLink = {
   id: string;
   framework: string;
@@ -311,6 +314,7 @@ export type EvidenceLink = {
   ucos: string[];
   locked: boolean;
   gaps: Gap[];
+  checked?: CheckedItem[];
   // Present only when the caller is an auditor — absent (not merely empty) for
   // everyone else. See docs/adr/012-auditor-only-ai-nutshell.md.
   nutshell?: string;
@@ -741,6 +745,7 @@ export type NotificationItem = {
   message: string;
   link: string;
   at: string;
+  count?: number; // set when several open tasks were rolled up into this one item
 };
 export const listNotifications = () =>
   request<{ items: NotificationItem[]; count: number }>("GET", "/notifications");

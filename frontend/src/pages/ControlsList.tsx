@@ -4,6 +4,7 @@ import { useApi } from "../lib/useApi";
 import { DataTable, type Column } from "../components/DataTable";
 import { Badge } from "../components/Badge";
 import { PageTour } from "../components/PageTour";
+import { ProcessingNotice } from "../components/ProcessingNotice";
 import { useSession } from "../lib/session";
 
 const VERDICT_RANK: Record<string, number> = { PASS: 3, PARTIAL: 2, FAIL: 1 };
@@ -75,6 +76,7 @@ export function ControlsListPage() {
         </div>
         <PageTour id="controls" steps={TOUR_STEPS} />
       </div>
+      <ProcessingNotice onSettled={controls.reload} />
       {controls.error && <div className="alert alert-error">{controls.error}</div>}
       <DataTable
         columns={columns}

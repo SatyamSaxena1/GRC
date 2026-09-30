@@ -13,6 +13,7 @@ import {
   reprocessEvidence,
   streamEvidenceEvents,
   updateEvidenceMetadata,
+  type CheckedItem,
   type EvidenceAttribute,
   type EvidenceVersion,
   type Gap,
@@ -24,7 +25,9 @@ import { useSession } from "../lib/session";
 import { useApi } from "../lib/useApi";
 import { Badge } from "../components/Badge";
 import { PageTour } from "../components/PageTour";
+import { GapFinding } from "../components/GapFinding";
 import { Spinner } from "../components/Spinner";
+import { describeBound, humanize, prettyValue } from "../lib/format";
 
 // Persisted gaps carry an id/status/required_action; streamed ones don't yet.
 // One display type that is honest about which fields may be absent, rather
@@ -33,9 +36,45 @@ type ShownGap = StreamedGap & Partial<Pick<Gap, "id" | "status" | "required_acti
 type LiveLink = {
   id: string; framework: string; clause: string; verdict: string;
   locked: boolean; gaps: ShownGap[];
+  checked?: CheckedItem[]; // absent on a live-preview link: the stream doesn't carry it
+};
+
+// A distinct thing to change in the document, and everything it would close.
+type Fix = {
+  attribute: string; kind: string; missing: boolean; requirements: number; frameworks: string[];
+  actions: string[]; // each distinct how-to, said once here instead of on every row
+  draftFrom: (ShownGap & { framework: string; clause: string }) | null;
 };
 
 const TERMINAL = new Set(["READY", "FAILED", "NEEDS_REVIEW"]);
+
+// app/service.py::_remediation writes "<generic how-to>\n\nFramework guidance: <advice>". For a
+// missing or wrong value the how-to restates the finding, so rows show only the advice; the
+// how-to is said once, under the fix it belongs to.
+const GUIDANCE_MARK = "\n\nFramework guidance:";
+const howToOf = (text?: string) => (text ?? "").split(GUIDANCE_MARK)[0];
+const adviceOf = (text?: string) => {
+  const i = (text ?? "").indexOf(GUIDANCE_MARK);
+  return i < 0 ? "" : (text as string).slice(i).trim();
+};
+// Plain-language how-to for the two kinds whose backend text restates the finding and leaks
+// attribute names and Python reprs; any other kind (stale, no commitment) keeps its own text.
+const HOW_TO: Record<string, string> = {
+  MISSING_ATTRIBUTE: "State it explicitly in the document, get the document approved, and upload a revised version.",
+  DELTA: "Change the document so it meets the requirement, get it approved, and upload a revised version.",
+};
+const restatesFinding = (kind: string) => kind === "MISSING_ATTRIBUTE" || kind === "DELTA";
+
+// Worst first: what needs action leads, passes are a quiet tail.
+const SEVERITY: Record<string, number> = { FAIL: 0, NO_EVIDENCE: 1, PARTIAL: 2, PASS: 3 };
+
+function groupByFramework(links: LiveLink[]): [string, LiveLink[]][] {
+  const groups = new Map<string, LiveLink[]>();
+  for (const l of links) groups.set(l.framework, [...(groups.get(l.framework) ?? []), l]);
+  return [...groups.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([fw, ls]) => [fw, [...ls].sort((x, y) => (SEVERITY[x.verdict] ?? 9) - (SEVERITY[y.verdict] ?? 9) || x.clause.localeCompare(y.clause))]);
+}
 
 const TOUR_STEPS = [
   {
@@ -116,6 +155,7 @@ export function EvidenceDetailPage() {
     const timer = setInterval(() => {
       detail.reload();
       status.reload();
+      attributes.reload();
     }, 2000);
     return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -133,7 +173,7 @@ export function EvidenceDetailPage() {
   const shownLinks: LiveLink[] = evidence.links.length
     ? evidence.links.map((l) => ({
         id: l.id, framework: l.framework, clause: l.clause, verdict: l.verdict,
-        locked: l.locked, gaps: l.gaps,
+        locked: l.locked, gaps: l.gaps, checked: l.checked,
       }))
     : liveLinks;
 
@@ -153,6 +193,37 @@ export function EvidenceDetailPage() {
   const hasLockedLink = shownLinks.some((l) => l.locked);
   const canManage = identity?.kind !== "auditor";
   const divergentVerdicts = shownLinks.length >= 2 && new Set(shownLinks.map((l) => l.verdict)).size >= 2;
+  // Same gap, many requirements: rank distinct failing attributes by how many
+  // requirements they block. Aggregation of gaps the evaluator already produced —
+  // never a new verdict (ADR-004).
+  const topFixes: Fix[] = (() => {
+    const by = new Map<string, { attribute: string; kind: string; missing: boolean; keys: Set<string>; frameworks: Set<string>; actions: Set<string>; draftFrom: Fix["draftFrom"] }>();
+    for (const l of shownLinks) {
+      for (const g of l.gaps) {
+        if (g.status === "RESOLVED_BY_EVIDENCE") continue;
+        const e = by.get(g.attribute) ?? { attribute: g.attribute, kind: g.kind, missing: g.kind === "MISSING_ATTRIBUTE", keys: new Set(), frameworks: new Set(), actions: new Set(), draftFrom: null };
+        e.keys.add(`${l.framework}|${l.clause}`);
+        e.frameworks.add(l.framework);
+        if (g.required_action) e.actions.add(howToOf(g.required_action));
+        if (!e.draftFrom && g.id) e.draftFrom = { ...g, framework: l.framework, clause: l.clause };
+        by.set(g.attribute, e);
+      }
+    }
+    return [...by.values()]
+      .map((e) => ({
+        attribute: e.attribute, kind: e.kind, missing: e.missing, requirements: e.keys.size, frameworks: [...e.frameworks].sort(),
+        actions: [...e.actions], draftFrom: e.draftFrom,
+      }))
+      .sort((a, b) => b.requirements - a.requirements || a.attribute.localeCompare(b.attribute));
+  })();
+  const sourceOf = (name: string) => shownAttributes.find((a) => a.name === name)?.sources[0];
+  const filename = versions.data?.find((v) => v.id === id)?.original_filename;
+  const provisional = !TERMINAL.has(evidence.status);
+  const verdictSummary = ["FAIL", "NO_EVIDENCE", "PARTIAL", "PASS"]
+    .map((v) => [v, shownLinks.filter((l) => l.verdict === v).length] as const)
+    .filter(([, n]) => n > 0)
+    .map(([v, n]) => `${n} ${v.toLowerCase().replace(/_/g, " ")}`)
+    .join(" · ");
 
   const rerun = async () => {
     setRerunning(true);
@@ -187,8 +258,12 @@ export function EvidenceDetailPage() {
     <div>
       <div className="page-header">
         <div>
-          <h2>{evidence.mime_type ? evidence.mime_type.split("/").pop() : "Evidence"} · v{evidence.version}</h2>
-          <p className="mono">{evidence.id}</p>
+          <h2>{filename ?? (evidence.mime_type ? evidence.mime_type.split("/").pop() : "Evidence")}</h2>
+          <p>
+            v{evidence.version}
+            {evidence.description && <> · {evidence.description}</>}
+            {" · "}{shownLinks.length > 0 ? verdictSummary : "not yet assessed"}
+          </p>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <Badge value={evidence.status} />
@@ -252,84 +327,20 @@ export function EvidenceDetailPage() {
         </div>
       )}
 
-      <div className="card-grid">
-        <div className="card stat-card">
-          <div className="stat-label">Quality score</div>
-          <div className="stat-value">{evidence.quality_score != null ? `${evidence.quality_score} / 5` : "—"}</div>
-        </div>
-        <div className="card stat-card">
-          <div className="stat-label">SHA-256</div>
-          <div className="mono" style={{ fontSize: 11, wordBreak: "break-all" }}>{evidence.sha256}</div>
-        </div>
-        <div className="card stat-card">
-          <div className="stat-label">Size</div>
-          <div className="stat-value" style={{ fontSize: 18 }}>{(evidence.size_bytes / 1024).toFixed(1)} KB</div>
-        </div>
-        <div className="card stat-card">
-          <div className="stat-label">Model</div>
-          <div className="stat-value" style={{ fontSize: 14 }}>{evidence.ai_model || "server default"}</div>
-          {evidence.ai_vision_model && (
-            <div className="stat-sub">vision: {evidence.ai_vision_model}</div>
-          )}
-        </div>
-      </div>
-
-      <MetadataEditor
-        evidenceId={id} description={evidence.description} validUntil={evidence.valid_until}
-        editable={canManage} onSaved={detail.reload}
-      />
-
-      {evidence.quality?.dimensions && evidence.quality.dimensions.length > 0 && (
-        <>
-          <div className="section-title">Quality breakdown</div>
-          <div className="card">
-            <div className="quality-dims">
-              {evidence.quality.dimensions.map((d) => (
-                <div key={d.name} className="quality-dim">
-                  <span style={{ textTransform: "capitalize" }}>{d.name.replace(/_/g, " ")}</span>
-                  <div className="bar">
-                    <div style={{ width: `${Math.round(d.score * 100)}%` }} />
-                  </div>
-                  <span className="muted">{d.reason}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </>
-      )}
-
-      <div className="section-title">Extracted attributes</div>
-      <div className="card" data-tour="extracted-attributes">
-        {!TERMINAL.has(evidence.status) && (
-          <p className="muted" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <Spinner size={12} />
-            {shownAttributes.length > 0
-              ? `Extracting — ${shownAttributes.length} fact${shownAttributes.length > 1 ? "s" : ""} so far, live.`
-              : "Waiting on extraction — values will appear here as they're found."}
-          </p>
-        )}
-        {TERMINAL.has(evidence.status) && shownAttributes.length === 0 && (
-          <p className="muted">Nothing extracted — no model was available, or the document did not state these values.</p>
-        )}
-        {shownAttributes.map((a) => (
-          <div key={a.name} style={{ marginBottom: 10, fontSize: 13 }}>
-            <strong>{a.name}</strong>: {JSON.stringify(a.value)}
-            {a.confidence != null && <span className="muted"> (confidence {a.confidence.toFixed(2)})</span>}
-            {a.sources.length > 0 && (
-              <div className="muted" style={{ fontSize: 12 }}>
-                {a.sources.map((s, i) => (
-                  <span key={i}>{s.page ? `page ${s.page}` : ""} {s.quote ? `"${s.quote}"` : ""} </span>
-                ))}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-
       <div className="section-title">
-        Evaluation, per framework
+        Verdicts, per framework
         {shownLinks.length > 0 && <span className="muted"> · {shownLinks.length} requirement{shownLinks.length > 1 ? "s" : ""} assessed from this one artefact</span>}
       </div>
+      {shownLinks.length > 0 && (
+        <p className="muted verdict-legend">
+          <strong>PASS</strong> every needed fact is stated and meets it · <strong>PARTIAL</strong> addressed, but a fact is missing or falls short · <strong>FAIL</strong> not addressed at all, or expired
+        </p>
+      )}
+      {provisional && shownLinks.length > 0 && (
+        <div className="alert alert-info">
+          <strong>Provisional.</strong> These verdicts are a live preview — they become final, and open gaps and tasks, when processing completes.
+        </div>
+      )}
       {shownLinks.length === 0 && (
         <div className="card empty-state">
           {TERMINAL.has(evidence.status) ? (
@@ -345,30 +356,145 @@ export function EvidenceDetailPage() {
         <div className="card" style={{ marginBottom: 12 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
             <span className="muted" style={{ fontSize: 13 }}>
-              This evidence got different verdicts across frameworks.
+              Verdicts differ across frameworks — each asks for different things of the same document.
             </span>
             <button className="btn" onClick={explainDivergence} disabled={explaining}>
               {explaining ? "Explaining…" : "Explain why"}
             </button>
           </div>
-          {explanation && <p style={{ marginTop: 8 }}>{explanation}</p>}
+          {explanation && (
+            <div style={{ marginTop: 8 }}>
+              <span className="eyebrow">AI explanation · narrates the verdicts, never changes them</span>
+              <p style={{ margin: "4px 0 0" }}>{explanation}</p>
+            </div>
+          )}
           {explainError && <span className="muted" style={{ marginTop: 8, display: "block" }}>{explainError}</span>}
         </div>
       )}
-      <div className="card-grid" data-tour="evaluation-links">
-        {shownLinks.map((link) => (
-          <div key={link.id} className="card">
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <strong>{link.framework} {link.clause}</strong>
-              <Badge value={link.verdict} />
+      {topFixes.length > 0 && <FixFirst fixes={topFixes} />}
+      <div data-tour="evaluation-links">
+        {groupByFramework(shownLinks).map(([framework, links]) => {
+          const attention = links.filter((l) => l.verdict !== "PASS").length;
+          return (
+            <details key={framework} open={attention > 0} className={`card verdict-group${provisional ? " provisional" : ""}`}>
+              <summary className="verdict-group-head">
+                <strong>{framework}</strong>
+                <span className="muted">{attention > 0 ? `${attention} of ${links.length} need attention` : `all ${links.length} met`}</span>
+              </summary>
+              {links.map((link) => {
+                const open = link.gaps.filter((g) => g.status !== "RESOLVED_BY_EVIDENCE");
+                const seen = new Set<string>(); // same advice on every gap of one clause: say it once
+                const extras = open.map((g) => {
+                  const text = restatesFinding(g.kind) ? adviceOf(g.required_action) : g.required_action ?? "";
+                  if (!text || seen.has(text)) return "";
+                  seen.add(text);
+                  return text;
+                });
+                return (
+                  <div key={link.id} className="verdict-row">
+                    <div className="verdict-row-head">
+                      <span className="mono">{link.clause}</span>
+                      <span>
+                        {link.locked && <span className="badge badge-locked" style={{ marginRight: 6 }}>locked</span>}
+                        <Badge value={link.verdict} />
+                      </span>
+                    </div>
+                    {open.map((gap, i) => (
+                      <GapRow key={gap.id ?? `${link.id}-${i}`} gap={gap} extra={extras[i]} />
+                    ))}
+                    {link.checked?.some((c) => c.met) ? (
+                      <Checked checks={link.checked} passed={link.verdict === "PASS"} sourceOf={sourceOf} />
+                    ) : (
+                      open.length === 0 && link.verdict === "PASS" && <div className="muted verdict-ok">All conditions met.</div>
+                    )}
+                  </div>
+                );
+              })}
+            </details>
+          );
+        })}
+      </div>
+
+      <div className="section-title">What the document says</div>
+      <div className="card" data-tour="extracted-attributes">
+        {!TERMINAL.has(evidence.status) && (
+          <p className="muted" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Spinner size={12} />
+            {shownAttributes.length > 0
+              ? `Extracting — ${shownAttributes.length} fact${shownAttributes.length > 1 ? "s" : ""} so far, live.`
+              : "Waiting on extraction — values will appear here as they're found."}
+          </p>
+        )}
+        {TERMINAL.has(evidence.status) && shownAttributes.length === 0 && (
+          <p className="muted">Nothing extracted — no model was available, or the document did not state these values.</p>
+        )}
+        {shownAttributes.length > 0 && (
+          <p className="muted" style={{ margin: "0 0 10px", fontSize: 12 }}>
+            Facts read from the file by the model, each with its source. The verdicts above are decided by fixed rules from these facts — not by the model.
+          </p>
+        )}
+        {shownAttributes.map((a) => (
+          <div key={a.name} className="attr-row">
+            <div className="attr-name">{humanize(a.name)}</div>
+            <div className="attr-value">{prettyValue(a.value)}</div>
+            <div className="attr-conf" title={a.confidence != null ? `Model confidence ${a.confidence.toFixed(2)}` : "No confidence reported"}>
+              {a.confidence != null && (
+                <>
+                  <div className="bar"><div style={{ width: `${Math.round(a.confidence * 100)}%` }} /></div>
+                  <span className="muted">{Math.round(a.confidence * 100)}%</span>
+                </>
+              )}
             </div>
-            {link.locked && <div className="badge badge-locked" style={{ marginTop: 6 }}>locked</div>}
-            {link.gaps.filter((g) => g.status !== "RESOLVED_BY_EVIDENCE").map((gap, i) => (
-              <GapRow key={gap.id ?? `${link.id}-${i}`} gap={gap} />
-            ))}
+            {a.sources.length > 0 && (
+              <div className="attr-source">
+                {a.sources.map((src, i) => (
+                  <blockquote key={i}>
+                    {src.quote && <>“{src.quote}”</>}
+                    {src.page ? <cite> — page {src.page}</cite> : null}
+                  </blockquote>
+                ))}
+              </div>
+            )}
           </div>
         ))}
       </div>
+
+      {evidence.quality?.dimensions && evidence.quality.dimensions.length > 0 && (
+        <>
+          <div className="section-title">
+            Evidence quality{evidence.quality_score != null && <span className="muted"> · {evidence.quality_score} / 5</span>}
+          </div>
+          <div className="card">
+            <div className="quality-dims">
+              {evidence.quality.dimensions.map((d) => (
+                <div key={d.name} className="quality-dim">
+                  <span style={{ textTransform: "capitalize" }}>{d.name.replace(/_/g, " ")}</span>
+                  <div className="bar">
+                    <div style={{ width: `${Math.round(d.score * 100)}%` }} />
+                  </div>
+                  <span className="muted quality-reason">{d.reason}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      <MetadataEditor
+        evidenceId={id} description={evidence.description} validUntil={evidence.valid_until}
+        editable={canManage} onSaved={detail.reload}
+      />
+
+      <details className="card tech-details">
+        <summary>File &amp; model details</summary>
+        <dl>
+          <dt>Evidence ID</dt><dd className="mono">{evidence.id}</dd>
+          <dt>SHA-256</dt><dd className="mono">{evidence.sha256}</dd>
+          <dt>Size</dt><dd>{(evidence.size_bytes / 1024).toFixed(1)} KB</dd>
+          <dt>Model</dt>
+          <dd>{evidence.ai_model || "server default"}{evidence.ai_vision_model && ` · vision: ${evidence.ai_vision_model}`}</dd>
+        </dl>
+      </details>
 
       <VersionsAndUpload evidenceId={id} data={versions.data} reload={versions.reload} />
 
@@ -508,20 +634,90 @@ function RemoveEvidence({
   );
 }
 
-/** One gap, with an on-demand LLM draft of wording that would close it.
- * The draft is a suggestion for a human to edit and adopt — requesting it
- * writes nothing and cannot move the verdict (see ADR-004). */
-function GapRow({ gap }: { gap: ShownGap }) {
+/** One gap inside a requirement: the finding, plus only advice that adds to it. The
+ * generic how-to lives once under Fix these first, not on every row. */
+function GapRow({ gap, extra }: { gap: ShownGap; extra: string }) {
+  return (
+    <div className="gap-row">
+      <GapFinding gap={gap} />
+      {extra && <div className="muted">{extra}</div>}
+    </div>
+  );
+}
+
+/** What a verdict was judged on, met or not, with the document's own words for each
+ * fact — so a PASS shows its working and a PARTIAL shows what did hold. */
+function Checked({
+  checks, passed, sourceOf,
+}: {
+  checks: CheckedItem[];
+  passed: boolean;
+  sourceOf: (attribute: string) => { page?: number | null; quote?: string | null } | undefined;
+}) {
+  const met = checks.filter((c) => c.met).length;
+  return (
+    <details className="checked">
+      <summary className="muted">
+        {passed ? "All conditions met" : `${met} of ${checks.length} checks met`} · what was checked
+      </summary>
+      <ul>
+        {checks.map((c, i) => {
+          const src = c.met ? sourceOf(c.attribute) : undefined;
+          return (
+            <li key={i} className={c.met ? "check-met" : "check-unmet"}>
+              <span aria-hidden="true">{c.met ? "✓" : "✗"}</span>
+              <span className="sr-only">{c.met ? "Met: " : "Not met: "}</span>{" "}
+              <strong>{humanize(c.attribute)}</strong>
+              {c.operator === "present" ? (
+                c.met ? <> — stated: <em>{prettyValue(c.actual)}</em></> : " — not stated"
+              ) : (
+                <> — must {describeBound(c.operator, c.expected)}; the document says <em>{prettyValue(c.actual)}</em></>
+              )}
+              {src?.quote && (
+                <blockquote>“{src.quote}”{src.page ? <cite> — page {src.page}</cite> : null}</blockquote>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </details>
+  );
+}
+
+function FixFirst({ fixes }: { fixes: Fix[] }) {
+  const [all, setAll] = useState(false);
+  return (
+    <div className="card fix-first">
+      <div className="fix-first-head">
+        <strong>Fix these first</strong>
+        <span className="muted">One change to the document can close several requirements at once.</span>
+      </div>
+      {(all ? fixes : fixes.slice(0, 5)).map((f) => <FixRow key={f.attribute} fix={f} />)}
+      {fixes.length > 5 && (
+        <button type="button" className="btn-link" onClick={() => setAll(!all)}>
+          {all ? "Show fewer" : `Show all ${fixes.length}`}
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** One distinct fix, with the shared how-to and an on-demand LLM draft of wording
+ * that would close it. The draft is a suggestion for a human to edit and adopt —
+ * requesting it writes nothing and cannot move the verdict (see ADR-004). It is
+ * drafted against one requirement's text, so it says which. */
+function FixRow({ fix }: { fix: Fix }) {
   const [draft, setDraft] = useState<RemediationDraft | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const source = fix.draftFrom; // a streamed (preview) gap has no persisted id to draft against yet
 
   const requestDraft = async () => {
-    if (!gap.id) return; // a streamed gap has no persisted id to draft against yet
+    if (!source?.id) return;
     setBusy(true);
     setError(null);
     try {
-      setDraft(await draftRemediation(gap.id));
+      setDraft(await draftRemediation(source.id));
     } catch (err) {
       setError(err instanceof ApiError ? String(err.detail) : (err as Error).message);
     } finally {
@@ -530,33 +726,35 @@ function GapRow({ gap }: { gap: ShownGap }) {
   };
 
   return (
-    <div style={{ marginTop: 10, fontSize: 13, borderTop: "1px solid var(--border)", paddingTop: 8 }}>
-      <div>
-        <strong>{gap.attribute}</strong> — actual <code>{gap.actual_value ?? "missing"}</code>, required{" "}
-        <code>{gap.required_value ?? "n/a"}</code>
+    <details className="fix-first-row">
+      <summary>
+        <span><strong>{humanize(fix.attribute)}</strong> <span className="muted">— {fix.missing ? "not stated" : "below what's required"}</span></span>
+        <span className="muted">closes {fix.requirements} requirement{fix.requirements > 1 ? "s" : ""} · {fix.frameworks.join(", ")}</span>
+      </summary>
+      <div className="fix-first-body">
+        {HOW_TO[fix.kind] ? <p className="muted">{HOW_TO[fix.kind]}</p> : fix.actions.map((a) => <p key={a} className="muted">{a}</p>)}
+        {error && <div className="alert alert-error">{error}</div>}
+        {!draft && source?.id && (
+          <button className="btn" disabled={busy} onClick={requestDraft}>
+            {busy ? "Drafting…" : "Draft wording to close this"}
+          </button>
+        )}
+        {draft && (
+          <div className="card" style={{ background: "var(--bg)" }}>
+            <span className="eyebrow">Suggested wording · drafted against {source?.framework} {source?.clause} · review before adopting</span>
+            <p style={{ margin: "6px 0 0" }}>{draft.draft || "No draft available — the model was unreachable."}</p>
+            {draft.evidence_needed.length > 0 && (
+              <>
+                <div className="muted" style={{ marginTop: 10, fontWeight: 700 }}>An auditor would expect to see</div>
+                <ul style={{ margin: "4px 0 0", paddingLeft: 18 }}>
+                  {draft.evidence_needed.map((item, i) => <li key={i} className="muted">{item}</li>)}
+                </ul>
+              </>
+            )}
+          </div>
+        )}
       </div>
-      {gap.required_action && <div className="muted">{gap.required_action}</div>}
-      {error && <div className="alert alert-error" style={{ marginTop: 8 }}>{error}</div>}
-      {!draft && gap.id && (
-        <button className="btn" style={{ marginTop: 8 }} disabled={busy} onClick={requestDraft}>
-          {busy ? "Drafting…" : "Draft wording to close this"}
-        </button>
-      )}
-      {draft && (
-        <div className="card" style={{ marginTop: 8, background: "var(--background)" }}>
-          <span className="eyebrow">Suggested wording · review before adopting</span>
-          <p style={{ margin: "6px 0 0" }}>{draft.draft || "No draft available — the model was unreachable."}</p>
-          {draft.evidence_needed.length > 0 && (
-            <>
-              <div className="muted" style={{ marginTop: 10, fontWeight: 700 }}>An auditor would expect to see</div>
-              <ul style={{ margin: "4px 0 0", paddingLeft: 18 }}>
-                {draft.evidence_needed.map((item, i) => <li key={i} className="muted">{item}</li>)}
-              </ul>
-            </>
-          )}
-        </div>
-      )}
-    </div>
+    </details>
   );
 }
 

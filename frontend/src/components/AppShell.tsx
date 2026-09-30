@@ -1,5 +1,5 @@
-import { useEffect } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { listNotifications } from "../api/client";
 import { useApi } from "../lib/useApi";
 import { useSession } from "../lib/session";
@@ -111,6 +111,12 @@ const AUDITOR_NAV = [
   ORG_NAV[10],
 ];
 
+const NAV_GROUPS: [string, string[]][] = [
+  ["Work", ["/evidence", "/controls", "/gaps", "/tasks"]],
+  ["Compliance", ["/overview", "/ai-compliance", "/dpdp", "/dpdp/operations", "/ciso-sync"]],
+  ["Workspace", ["/activity", "/admin", "/glossary"]],
+];
+
 export function AppShell() {
   const { identity, setIdentity } = useSession();
   const navigate = useNavigate();
@@ -129,17 +135,47 @@ export function AppShell() {
     navigate("/login");
   };
 
+  const [open, setOpen] = useState(false);
+  const { pathname } = useLocation();
+  useEffect(() => setOpen(false), [pathname]);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
+  // Group headings only — role menus above stay index-based and untouched.
+  // Items in no group (firm console, engagement views) render first, ungrouped.
+  const grouped = new Set(NAV_GROUPS.flatMap(([, paths]) => paths));
+  const ungrouped = nav.filter((i) => !grouped.has(i.to));
+  const link = (item: (typeof nav)[number]) => (
+    <NavLink key={item.to} to={item.to} data-tour={`nav-${item.to.slice(1)}`} className={({ isActive }) => (isActive ? "active" : "")}>
+      {item.label}
+      <Hint>{item.hint}</Hint>
+    </NavLink>
+  );
+
   return (
     <div className="app-shell">
-      <nav className="sidebar">
+      <div className="topbar">
+        <button aria-label="Open menu" aria-expanded={open} aria-controls="primary-nav" onClick={() => setOpen(true)}>☰</button>
+        GRC Workspace
+      </div>
+      <div className={`sidebar-backdrop${open ? " open" : ""}`} onClick={() => setOpen(false)} />
+      <nav id="primary-nav" aria-label="Primary" className={`sidebar${open ? " open" : ""}`}>
         <h1>GRC Workspace</h1>
         <NotificationsLink />
-        {nav.map((item) => (
-          <NavLink key={item.to} to={item.to} data-tour={`nav-${item.to.slice(1)}`} className={({ isActive }) => (isActive ? "active" : "")}>
-            {item.label}
-            <Hint>{item.hint}</Hint>
-          </NavLink>
-        ))}
+        {ungrouped.map(link)}
+        {NAV_GROUPS.map(([title, paths]) => {
+          const items = nav.filter((i) => paths.includes(i.to));
+          return items.length > 0 && (
+            <div key={title} style={{ display: "contents" }}>
+              <div className="nav-group">{title}</div>
+              {items.map(link)}
+            </div>
+          );
+        })}
         <GettingStartedTour />
         {import.meta.env.VITE_CISO_ASSISTANT_URL && (
           <a href={import.meta.env.VITE_CISO_ASSISTANT_URL} target="_blank" rel="noreferrer">
