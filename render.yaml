@@ -64,14 +64,19 @@ envVarGroups:
         value: noop                  # clamav needs its own clamd service
 
 services:
+  # Production: grc.blinkedit.me. The original `grc` service (grc-8u6a.onrender.com)
+  # is now the public demo — see render-demo.yaml. Keep them apart: the demo
+  # runs stub auth and must never be given this DATABASE_URL.
   - type: web
-    name: grc
+    name: grc-prod
     runtime: docker
     dockerfilePath: ./Dockerfile
     plan: free
     region: singapore
     numInstances: 1
     healthCheckPath: /health/ready
+    domains:
+      - grc.blinkedit.me       # DNS: CNAME grc -> this service's onrender.com host
     envVars:
       - key: PORT
         value: "8000"

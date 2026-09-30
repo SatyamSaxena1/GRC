@@ -126,15 +126,36 @@ first from `deploy/llm/` (Ollama behind a bearer-token proxy), then:
    page sends no key, so it does not work against a production deploy.
 5. Keep `numInstances: 1`: SSE and upload background tasks are in-process.
 
-## Demo site (a second Render service)
+## Production and demo sites on Render
 
-`render-demo.yaml` describes `grc-demo`, a separate public demo that opens on the
-one-click role deck (stub auth, SQLite, local storage, no SSO, no admin key). It
-does not touch the production `grc` service or its database and env groups.
-Create it with New > Blueprint and the Blueprint path `render-demo.yaml`, or as a
-plain Docker web service with the env values listed in that file. Data resets
-whenever the free instance sleeps or redeploys; visitors' browsers reseed it.
-Anyone can sign in as any role there, so never load real data into it.
+Two services, never sharing a database:
+
+- **Production, grc.blinkedit.me**: `grc-prod` in `render.yaml`. SSO only
+  (`AUTH_STUB_ENABLED=false`), `grc-db`, the `grc-config` and `grc-secrets`
+  groups, and the `VITE_OIDC_*` build values.
+- **Demo, grc-8u6a.onrender.com**: the original `grc` service, configured as in
+  `render-demo.yaml`. Stub auth, SQLite, local storage, no SSO, no admin key, so
+  anyone can sign in as any role. It resets whenever the free instance sleeps
+  or redeploys; visitors' browsers reseed it. Never load real data into it.
+
+Order for the switch (production keeps running on grc-8u6a until step 5):
+
+1. Create `grc-prod` (Docker, this repo, `main`) with `DATABASE_URL` set to
+   `grc-db`'s internal URL, both env groups linked, and the same `VITE_OIDC_*`
+   values the old `grc` service had. Deploy it.
+2. Add the custom domain `grc.blinkedit.me` to `grc-prod`, then a DNS CNAME
+   record `grc` -> `<grc-prod host>.onrender.com`; wait for Render to verify it
+   and issue the certificate.
+3. In the identity provider, allow `https://grc.blinkedit.me/oidc-callback` as a
+   callback URL and `https://grc.blinkedit.me` as a web origin and logout URL.
+4. Sign in with SSO at grc.blinkedit.me and confirm existing data is there.
+5. On the old `grc` service: delete `DATABASE_URL` and the `VITE_OIDC_*`
+   variables, unlink `grc-config` and `grc-secrets`, then add the values from
+   `render-demo.yaml` and deploy.
+
+The CI deploy hook (`RENDER_DEPLOY_HOOK_URL`) still points at the old `grc`
+service, so after the switch pushes to `main` redeploy the demo; deploy
+`grc-prod` manually or give it its own hook.
 
 ## Continuous integration / image publishing
 

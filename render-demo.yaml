@@ -1,10 +1,14 @@
-# Render Blueprint — PUBLIC DEMO SITE. A second, separate service that opens on
-# the one-click role deck instead of SSO. It shares nothing with the production
-# service in render.yaml: no grc-db, no grc-config / grc-secrets groups, no
-# OIDC. Applying this file creates `grc-demo` only and never edits `grc`.
+# Render Blueprint — PUBLIC DEMO SITE at https://grc-8u6a.onrender.com.
+# This is the ORIGINAL `grc` service, repurposed: it opens on the one-click
+# role deck instead of SSO. Production moved to its own service (`grc-prod`,
+# grc.blinkedit.me) in render.yaml. The demo shares nothing with production:
+# no grc-db, no grc-config / grc-secrets groups, no OIDC.
 #
-# Apply it from the dashboard: New > Blueprint, pick this repo, and set the
-# Blueprint path to `render-demo.yaml` (Render reads render.yaml by default).
+# The existing service was created by hand, not from a Blueprint, so these
+# values are applied by hand in its Environment tab (see "Demo site" in
+# DEPLOYMENT.md for the order). Remove its DATABASE_URL, VITE_OIDC_* and env
+# group links BEFORE setting AUTH_STUB_ENABLED=true, so a stub-auth server
+# never runs against the production database.
 #
 # What makes it a demo, and why each value matters:
 # - AUTH_STUB_ENABLED=true: the role deck signs in with stub tokens
@@ -23,7 +27,7 @@
 
 services:
   - type: web
-    name: grc-demo
+    name: grc
     runtime: docker
     dockerfilePath: ./Dockerfile
     plan: free
