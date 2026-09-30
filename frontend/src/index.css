@@ -1175,16 +1175,20 @@ html.deck-mode body { background: #0e1120; }
 
 .gate {
   --role: #0f9d8a;
+  position: relative; isolation: isolate;
   min-height: 100vh; display: flex; flex-direction: column;
-  background:
-    radial-gradient(1200px 600px at 75% 40%, color-mix(in srgb, var(--role) 22%, transparent), transparent 70%),
-    #0d1020;
+  /* Shown until the three.js surface (RoleSurface) paints, and if WebGL is off. */
+  background: color-mix(in srgb, var(--role) 20%, #07080f);
   color: #dfe3f5;
   transition: background .4s;
 }
+.role-surface { position: fixed; inset: 0; z-index: -1; pointer-events: none; }
+.role-surface canvas { display: block; width: 100%; height: 100%; }
 .gate-bar {
   display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
-  padding: 10px 20px; border-bottom: 1px solid #22284a; font-size: 13px;
+  padding: 10px 20px; font-size: 13px;
+  border-bottom: 1px solid color-mix(in srgb, var(--role) 25%, transparent);
+  background: rgba(5, 6, 14, .35); backdrop-filter: blur(6px);
 }
 .gate-bar strong { color: #fff; font-size: 14px; }
 .gate-bar__demo { font-size: 10px; font-weight: 800; letter-spacing: .12em; padding: 2px 6px; border-radius: 4px; background: var(--role); color: #fff; }
@@ -1196,14 +1200,15 @@ html.deck-mode body { background: #0e1120; }
 .gate-grid { flex: 1; display: grid; grid-template-columns: minmax(340px, 440px) 1fr; min-height: 0; }
 .gate-manual { flex: 1; display: flex; justify-content: center; padding: 28px 16px; color: var(--text); }
 
-.role-deck { display: flex; flex-direction: column; gap: 8px; padding: 16px; border-right: 1px solid #22284a; overflow-y: auto; }
+.role-deck { display: flex; flex-direction: column; gap: 8px; padding: 16px; border-right: 1px solid color-mix(in srgb, var(--role) 20%, transparent); overflow-y: auto; }
 .role-card {
   display: grid; grid-template-columns: 74px 1fr 20px; align-items: stretch;
   text-align: left; padding: 0; overflow: hidden; cursor: pointer;
-  background: #151a33; color: inherit; border: 1px solid #262d55; border-radius: 10px;
+  background: rgba(8, 10, 22, .55); backdrop-filter: blur(8px); color: inherit;
+  border: 1px solid rgba(255, 255, 255, .08); border-radius: 10px;
   transition: border-color .15s, transform .15s, background .15s;
 }
-.role-card:hover, .role-card.is-active { border-color: var(--c); background: color-mix(in srgb, var(--c) 12%, #151a33); transform: translateX(3px); }
+.role-card:hover, .role-card.is-active { border-color: var(--c); background: color-mix(in srgb, var(--c) 16%, rgba(8, 10, 22, .6)); transform: translateX(3px); }
 .role-card[disabled] { cursor: progress; }
 .role-card__swatch {
   display: flex; flex-direction: column; justify-content: space-between; padding: 8px;
@@ -1228,7 +1233,7 @@ html.deck-mode body { background: #0e1120; }
 .gate-map__caption strong { color: #fff; }
 .gate-map__caption .muted { color: #7d84ab; }
 .gate-map__dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--role); margin-right: 8px; box-shadow: 0 0 10px var(--role); }
-.gate-map__list { display: flex; flex-wrap: wrap; gap: 4px; list-style: none; margin: 0; padding: 10px 18px 16px; border-top: 1px solid #22284a; }
+.gate-map__list { display: flex; flex-wrap: wrap; gap: 4px; list-style: none; margin: 0; padding: 10px 18px 16px; border-top: 1px solid color-mix(in srgb, var(--role) 20%, transparent); }
 .gate-map__list li span, .gate-map__list li button { display: inline-block; font-size: 11.5px; padding: 3px 8px; border-radius: 5px; border: 1px solid #262d55; color: #5d6390; background: none; }
 .gate-map__list li.is-on button { color: #fff; border-color: var(--role); background: color-mix(in srgb, var(--role) 25%, transparent); cursor: pointer; }
 

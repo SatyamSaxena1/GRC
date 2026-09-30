@@ -11,6 +11,7 @@ import { FEATURES, reachOf } from "../lib/nav";
 
 // three.js is only needed for the map, so it arrives in its own chunk.
 const FeatureConstellation = lazy(() => import("../components/FeatureConstellation"));
+const RoleSurface = lazy(() => import("../components/RoleSurface"));
 
 const FRAMEWORKS = ["ISO-27001", "PCI-DSS", "SOC-2", "NIST-CSF", "HIPAA", "CIS-CONTROLS", "GDPR"];
 
@@ -75,6 +76,9 @@ function DemoGate() {
 
   return (
     <div className="gate" style={{ "--role": active.color, "--role-dark": active.dark } as React.CSSProperties}>
+      <Suspense fallback={null}>
+        <RoleSurface color={active.color} />
+      </Suspense>
       <header className="gate-bar">
         <strong>GRC Workspace</strong>
         <span className="gate-bar__demo">DEMO</span>
