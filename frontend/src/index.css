@@ -1237,19 +1237,168 @@ html.deck-mode body { background: #0e1120; }
 .card-grid-5 { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
 .btn-ghost { background: transparent; }
 
-/* ---- 3D backdrop: login side panel + pitch hero. Decorative, never over the working app. ---- */
-.login-visual { display: none; }
+/* ---- 3D backdrop: pitch hero. Decorative, never over the working app. ---- */
 .hero-shield { position: absolute; top: 0; right: 0; bottom: 0; width: 55%; opacity: .6; pointer-events: none; }
 .slide-hero { position: relative; overflow: hidden; }
 .slide-hero .slide-inner { position: relative; }
 @media (max-width: 899px) { .hero-shield { width: 100%; opacity: .22; } }
-@media (min-width: 900px) {
-  .login-shell { gap: 56px; }
-  .login-visual {
-    display: flex; position: relative; overflow: hidden; align-items: flex-end; justify-content: center;
-    width: 360px; height: 480px; padding-bottom: 28px; border-radius: 16px; color: #e8ebfa; font-size: 22px; font-weight: 700; text-align: center; line-height: 1.3;
-    background: radial-gradient(420px 260px at 50% 30%, #1e2a63 0%, transparent 70%), #0e1120;
-  }
-  .login-visual p { position: relative; margin: 0; }
-  .login-visual-canvas { position: absolute; inset: 0; }
+/* ======================================================= role colour system
+   --role / --role-dark are set on :root by applyRoleTheme (src/lib/roles.ts),
+   alongside --primary, so the whole app wears the signed-in role's colour. */
+
+.sidebar {
+  background: color-mix(in srgb, var(--role, #3454d1) 13%, #121526);
+  border-top: 4px solid var(--role, transparent);
+  gap: 2px;
+}
+.sidebar a { padding: 6px 10px; font-size: 13px; }
+.sidebar a:hover { background: color-mix(in srgb, var(--role, #3454d1) 22%, #1b1f36); }
+
+.btn-sm { padding: 4px 10px; font-size: 12px; }
+
+.role-switch { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin: 0 0 14px; }
+.role-switch__label { grid-column: 1 / -1; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: #8d93b5; margin: 0 2px 2px; }
+.role-switch button {
+  display: flex; flex-direction: column; align-items: stretch; gap: 3px;
+  padding: 0; border: 0; background: none; cursor: pointer; color: #9aa0c2;
+}
+.role-switch__chip {
+  display: block; height: 22px; border-radius: 5px; background: var(--c);
+  opacity: .45; transition: opacity .15s, transform .15s, box-shadow .15s;
+}
+.role-switch button:hover .role-switch__chip { opacity: .85; transform: translateY(-1px); }
+.role-switch button.is-current .role-switch__chip { opacity: 1; box-shadow: 0 0 0 2px #fff, 0 0 14px var(--c); }
+.role-switch__name { font-size: 9.5px; line-height: 1.15; text-align: center; overflow: hidden; }
+.role-switch button.is-current .role-switch__name { color: #fff; font-weight: 700; }
+.role-switch--solo { display: flex; align-items: center; gap: 8px; color: #fff; font-size: 13px; font-weight: 700; }
+.role-switch--solo .role-switch__chip { width: 18px; height: 18px; opacity: 1; }
+
+/* ---------------------------------------------------------- demo login gate */
+
+.gate {
+  --role: #0f9d8a;
+  position: relative; isolation: isolate;
+  min-height: 100vh; display: flex; flex-direction: column;
+  /* Shown until the three.js surface (RoleSurface) paints, and if WebGL is off. */
+  background: color-mix(in srgb, var(--role) 20%, #07080f);
+  color: #dfe3f5;
+  transition: background .4s;
+}
+.role-surface { position: fixed; inset: 0; z-index: -1; pointer-events: none; }
+.role-surface canvas { display: block; width: 100%; height: 100%; }
+.gate-bar {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 10px 20px; font-size: 13px;
+  border-bottom: 1px solid color-mix(in srgb, var(--role) 25%, transparent);
+  background: rgba(5, 6, 14, .35); backdrop-filter: blur(6px);
+}
+.gate-bar strong { color: #fff; font-size: 14px; }
+.gate-bar__demo { font-size: 10px; font-weight: 800; letter-spacing: .12em; padding: 2px 6px; border-radius: 4px; background: var(--role); color: #fff; }
+.gate-bar__what { flex: 1; color: #9aa0c2; min-width: 240px; }
+.gate-bar a, .gate-link { color: #c9cff0; font-size: 13px; }
+.gate-link { background: none; border: 1px solid #333a66; border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+.gate-link:hover { border-color: var(--role); color: #fff; }
+
+.gate-grid { flex: 1; display: grid; grid-template-columns: minmax(340px, 440px) 1fr; min-height: 0; }
+.gate-manual { flex: 1; display: flex; justify-content: center; padding: 28px 16px; color: var(--text); }
+
+.role-deck { display: flex; flex-direction: column; gap: 8px; padding: 16px; border-right: 1px solid color-mix(in srgb, var(--role) 20%, transparent); overflow-y: auto; }
+.role-card {
+  display: grid; grid-template-columns: 74px 1fr 20px; align-items: stretch;
+  text-align: left; padding: 0; overflow: hidden; cursor: pointer;
+  background: rgba(8, 10, 22, .55); backdrop-filter: blur(8px); color: inherit;
+  border: 1px solid rgba(255, 255, 255, .08); border-radius: 10px;
+  transition: border-color .15s, transform .15s, background .15s;
+}
+.role-card:hover, .role-card.is-active { border-color: var(--c); background: color-mix(in srgb, var(--c) 16%, rgba(8, 10, 22, .6)); transform: translateX(3px); }
+.role-card[disabled] { cursor: progress; }
+.role-card__swatch {
+  display: flex; flex-direction: column; justify-content: space-between; padding: 8px;
+  background: linear-gradient(160deg, var(--c), var(--cd)); color: #fff;
+}
+.role-card__swatch kbd { font: 700 18px/1 ui-monospace, monospace; opacity: .9; }
+.role-card__swatch small { font-size: 10px; line-height: 1.2; font-weight: 700; opacity: .92; }
+.role-card__body { display: flex; flex-direction: column; gap: 4px; padding: 9px 12px; min-width: 0; }
+.role-card__top { display: flex; align-items: baseline; gap: 8px; }
+.role-card__top strong { color: #fff; font-size: 14.5px; }
+.role-card__top em { font-style: normal; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--c); font-weight: 800; }
+.role-card__who { font-size: 12.5px; color: #aeb4d6; }
+.role-card__does { display: flex; flex-wrap: wrap; gap: 4px; }
+.role-card__does span { font-size: 11px; padding: 1px 6px; border-radius: 4px; background: #1f2547; color: #cdd2ee; }
+.role-card__foot { font-size: 11px; color: #7d84ab; }
+.role-card__go { display: flex; align-items: center; color: var(--c); font-size: 18px; font-weight: 700; }
+.role-deck__status { margin: 4px 2px 0; font-size: 12px; color: #8d93b5; min-height: 1.4em; }
+.gate-error { color: #ff8a8a; }
+
+.gate-map { position: relative; display: flex; flex-direction: column; min-height: 520px; }
+.gate-map__caption { position: absolute; top: 14px; left: 18px; right: 18px; z-index: 2; font-size: 14px; color: #c9cff0; pointer-events: none; }
+.gate-map__caption strong { color: #fff; }
+.gate-map__caption .muted { color: #7d84ab; }
+.gate-map__dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--role); margin-right: 8px; box-shadow: 0 0 10px var(--role); }
+.gate-map__list { display: flex; flex-wrap: wrap; gap: 4px; list-style: none; margin: 0; padding: 10px 18px 16px; border-top: 1px solid color-mix(in srgb, var(--role) 20%, transparent); }
+.gate-map__list li span, .gate-map__list li button { display: inline-block; font-size: 11.5px; padding: 3px 8px; border-radius: 5px; border: 1px solid #262d55; color: #5d6390; background: none; }
+.gate-map__list li.is-on button { color: #fff; border-color: var(--role); background: color-mix(in srgb, var(--role) 25%, transparent); cursor: pointer; }
+
+.constellation { position: relative; flex: 1; min-height: 420px; overflow: hidden; cursor: grab; }
+.constellation canvas { display: block; }
+.constellation--loading, .graph3d--loading { display: grid; place-items: center; color: #7d84ab; font-size: 13px; }
+.constellation-labels, .graph-labels { position: absolute; inset: 0; pointer-events: none; }
+.constellation-node {
+  pointer-events: auto; cursor: pointer; white-space: nowrap;
+  font-size: 11.5px; font-weight: 600; padding: 2px 7px; border-radius: 5px;
+  color: #4e5480; background: rgba(13, 16, 32, .6); border: 1px solid #252b50;
+  transition: color .2s, border-color .2s, background .2s;
+}
+.constellation-node.is-on { color: #fff; border-color: var(--node); background: color-mix(in srgb, var(--node) 30%, rgba(13, 16, 32, .8)); }
+.constellation-node.is-on:hover { background: var(--node); }
+.constellation-node[disabled] { cursor: default; }
+.constellation-stage { font-size: 10px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: #6c7299; }
+
+@media (max-width: 860px) {
+  .gate-grid { grid-template-columns: 1fr; }
+  .role-deck { border-right: 0; border-bottom: 1px solid #22284a; }
+  .gate-map { min-height: 460px; }
+}
+
+/* ---------------------------------------------------------- evidence map */
+
+.main:has(.map-page) { max-width: none; padding: 0; }
+.map-page { display: grid; grid-template-columns: 1fr 300px; height: 100vh; }
+.map-stage { position: relative; background: radial-gradient(900px 500px at 50% 40%, color-mix(in srgb, var(--role, #3454d1) 16%, #0f1224), #0b0d1a 75%); color: #d7dbec; display: flex; flex-direction: column; min-width: 0; }
+.map-stage__hud { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 10px 14px; font-size: 12px; color: #9aa0c2; border-bottom: 1px solid #22284a; z-index: 2; }
+.map-stage__hud strong { color: #fff; font-size: 14px; }
+.map-stage__hud i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
+.map-stage__help { flex: 1; text-align: right; color: #6c7299; }
+.map-stage__hud .btn { background: transparent; color: #d7dbec; border-color: #333a66; }
+.map-stage__focus { position: absolute; left: 14px; bottom: 14px; display: flex; flex-direction: column; gap: 2px; padding: 10px 14px; border-radius: 8px; background: rgba(12, 14, 30, .85); border: 1px solid var(--role, #333a66); font-size: 12px; pointer-events: none; }
+.map-stage__focus small { text-transform: uppercase; letter-spacing: .1em; font-size: 10px; color: var(--role); font-weight: 800; }
+.map-stage__focus strong { color: #fff; font-size: 14px; }
+.graph3d { position: relative; flex: 1; min-height: 0; overflow: hidden; }
+.graph3d canvas { display: block; cursor: grab; }
+.graph-label { font-size: 11px; font-weight: 700; color: #e6e9fb; white-space: nowrap; text-shadow: 0 1px 3px #000; transition: opacity .2s; }
+.graph-label--framework { font-size: 12px; letter-spacing: .04em; color: #fff; padding: 1px 6px; border-radius: 4px; background: color-mix(in srgb, var(--role, #3454d1) 55%, transparent); }
+.graph-label--evidence { font-weight: 600; color: #c9cff0; max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
+
+.map-side { overflow-y: auto; padding: 14px; background: var(--panel); border-left: 1px solid var(--border); font-size: 13px; }
+.map-side h4 { margin: 16px 0 6px; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-muted); }
+.map-kpis { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; text-align: center; }
+.map-kpis div { padding: 6px 2px; border-radius: 6px; background: var(--neutral-bg); }
+.map-kpis b { display: block; font-size: 18px; }
+.map-kpis small { font-size: 10px; color: var(--text-muted); }
+.map-fw, .map-ev { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.map-fw button, .map-ev button { width: 100%; display: flex; align-items: center; gap: 8px; padding: 5px 8px; border: 1px solid transparent; border-radius: 6px; background: none; cursor: pointer; text-align: left; }
+.map-fw button:hover, .map-ev button:hover, .map-fw button.is-on { border-color: var(--primary); background: var(--neutral-bg); }
+.map-fw__name { width: 92px; font-weight: 600; font-size: 12px; }
+.map-fw__bar { flex: 1; display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--neutral-bg); }
+.map-fw__n { font-size: 11px; color: var(--text-muted); width: 34px; text-align: right; }
+.map-ev button span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.map-ev button b { color: var(--primary); }
+
+@media (max-width: 900px) {
+  .map-page { grid-template-columns: 1fr; height: auto; }
+  .map-stage { height: 70vh; }
+}
+@media (max-width: 600px) {
+  .constellation-node { font-size: 9.5px; padding: 1px 4px; }
+  .constellation-stage { display: none; }
 }

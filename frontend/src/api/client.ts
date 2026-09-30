@@ -11,7 +11,9 @@ export type Identity =
   // `role` is a UI hint only (which nav to show) — the backend re-derives it
   // from the user row on every call. Set for a COMPLIANCE_VIEWER so it gets the
   // org-wide read-only nav instead of the control-owner one.
-  | { kind: "org" | "user" | "auditor" | "firm"; id: string; label: string; engagementId?: string; role?: string }
+  // `persona` names the demo role this identity was picked as (src/lib/roles.ts)
+  // — it only chooses the colour scheme; the backend never sees it.
+  | { kind: "org" | "user" | "auditor" | "firm"; id: string; label: string; engagementId?: string; role?: string; persona?: string }
   | { kind: "oidc"; token: string; label: string; engagementId?: string };
 
 const STORAGE_KEY = "grc.identity";
@@ -41,8 +43,8 @@ export class ApiError extends Error {
   }
 }
 
-function authHeaders(): Record<string, string> {
-  const identity = loadIdentity();
+function authHeaders(as?: Identity): Record<string, string> {
+  const identity = as ?? loadIdentity();
   if (!identity) throw new ApiError(401, "no identity selected");
   if (identity.kind === "oidc") {
     const headers: Record<string, string> = { Authorization: `Bearer ${identity.token}` };
@@ -73,13 +75,15 @@ function safeJson(text: string): unknown {
   }
 }
 
-async function request<T>(method: string, path: string, opts: { json?: unknown; query?: Record<string, string | number | undefined>; form?: FormData } = {}): Promise<T> {
+type RequestOpts = { json?: unknown; query?: Record<string, string | number | undefined>; form?: FormData; as?: Identity };
+
+async function request<T>(method: string, path: string, opts: RequestOpts = {}): Promise<T> {
   const url = new URL(path, window.location.origin);
   for (const [key, value] of Object.entries(opts.query ?? {})) {
     if (value !== undefined && value !== "") url.searchParams.set(key, String(value));
   }
 
-  const headers: Record<string, string> = authHeaders();
+  const headers: Record<string, string> = authHeaders(opts.as);
   let body: BodyInit | undefined;
   if (opts.form) {
     body = opts.form; // browser sets multipart boundary itself
@@ -101,6 +105,11 @@ async function anon<T>(method: string, path: string, json?: unknown): Promise<T>
   });
   return handle<T>(res);
 }
+
+/** A call made as a specific identity rather than the signed-in one — used to
+ *  seed the demo world, where one setup acts as several people in turn. */
+export const requestAs = <T>(as: Identity, method: string, path: string, opts: Omit<RequestOpts, "as"> = {}) =>
+  request<T>(method, path, { ...opts, as });
 
 // ---------------------------------------------------------------- admin (bootstrap)
 
