@@ -185,3 +185,33 @@ def test_encryption_and_logging_gaps_are_named_precisely():
     fixed = {l.clause: l for l in evaluate(encrypted, "POLICY", ["SOC-2", "NIST-CSF"], CONTENT)}
     assert fixed["CC6.7"].verdict == "PASS"
     assert fixed["PR.PT-01"].verdict == "PASS"
+
+
+def test_a_pass_shows_what_it_passed_on():
+    """Not just 'no gaps': the check list names the bound and the value that met it."""
+    link = {l.clause: l for l in evaluate(POLICY | {"password_min_length": 14}, "POLICY",
+                                          ["PCI-DSS"], CONTENT)}["8.3.6"]
+    assert link.verdict == "PASS"
+    assert [(c.attribute, c.operator, c.expected, c.actual, c.met) for c in link.checked] == [
+        ("password_min_length", ">=", 12, 14, True)
+    ]
+
+
+def test_silence_is_an_unmet_presence_check_not_a_missing_row():
+    link = {l.clause: l for l in evaluate({}, "POLICY", ["PCI-DSS"], CONTENT)}["8.3.6"]
+    assert [(c.attribute, c.operator, c.met) for c in link.checked] == [("password_min_length", "present", False)]
+
+
+@pytest.mark.parametrize("attrs", [
+    POLICY, {},
+    POLICY | {"password_min_length": 3, "mfa_required_for": ["nobody"], "systems_covered": []},
+])
+def test_checked_never_disagrees_with_gaps(attrs):
+    """`checked` is a second pass over the same rules; if it drifted from the gaps the
+    evaluator reported, a PASS would show its working wrongly."""
+    frameworks = ["ISO-27001", "PCI-DSS", "SOC-2", "NIST-CSF", "HIPAA", "CIS-CONTROLS", "GDPR"]
+    for link in evaluate(attrs, "POLICY", frameworks, CONTENT):
+        unmet = {c.attribute for c in link.checked if not c.met}
+        assert unmet <= {g.attribute for g in link.gaps}, (link.framework, link.clause)
+        if link.verdict == "PASS":
+            assert all(c.met for c in link.checked), (link.framework, link.clause)

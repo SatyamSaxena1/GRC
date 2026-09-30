@@ -23,6 +23,7 @@ from app import monitor
 from app.auth import Actor, current_actor
 from app.content.load import load as load_content
 from app.db import get_session
+from app.models import Evidence
 from app.routers import controls as controls_router
 from app.routers.analytics import control_details
 
@@ -37,6 +38,37 @@ def _task_item(t: dict) -> dict:
         "kind": "TASK_OPEN", "severity": t["priority"], "at": t["created_at"],
         "message": f"Open task: {t['title']}", "link": "/tasks",
     }
+
+
+def _task_items(db: Session, tasks: list[dict]) -> list[dict]:
+    """One item per piece of work, not per row.
+
+    Every gap opens its own task, so one weak upload is dozens of tasks — but one
+    thing to do: open that evidence and fix what it names. Counting them 1:1 made
+    the nav badge read 43 for a single document and duplicated the Tasks and Gaps
+    pages. Gap-derived tasks from the same evidence roll up into one item pointing
+    at it; a lone one, and every manual task (someone deliberately assigned it),
+    keeps its own line.
+    """
+    items, by_evidence = [], {}
+    for t in tasks:
+        if t["gap_id"] and t["evidence_id"]:
+            by_evidence.setdefault(t["evidence_id"], []).append(t)
+        else:
+            items.append(_task_item(t))
+    names = {e.id: e.original_filename for e in db.query(Evidence).filter(Evidence.id.in_(list(by_evidence)))} if by_evidence else {}
+    for evidence_id, group in by_evidence.items():
+        if len(group) == 1:
+            items.append(_task_item(group[0]))
+            continue
+        items.append({
+            "kind": "TASK_OPEN",
+            "severity": max(group, key=lambda t: controls_router.PRIORITY_RANK.get(t["priority"], 1))["priority"],
+            "at": max(t["created_at"] for t in group),
+            "message": f"{names.get(evidence_id) or 'Evidence'}: {len(group)} open remediation tasks from its gaps",
+            "link": f"/evidence/{evidence_id}", "count": len(group),
+        })
+    return items
 
 
 def _request_item(r: dict) -> dict:
@@ -82,7 +114,7 @@ def list_notifications(actor: Actor = Depends(current_actor), db: Session = Depe
     now = datetime.now(timezone.utc).isoformat()
     items: list[dict] = []
 
-    items += [_task_item(t) for t in controls_router.list_tasks(status="OPEN", actor=actor, db=db)]
+    items += _task_items(db, controls_router.list_tasks(status="OPEN", actor=actor, db=db))
     items += [_request_item(r) for r in controls_router.list_requests(status="OPEN", actor=actor, db=db)]
 
     report = monitor.attention_report(db, actor.org_id, CONTENT).to_dict()

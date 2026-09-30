@@ -60,3 +60,31 @@ def test_notifications_are_org_isolated(client, bootstrap, upload):
     b = client.get("/notifications", headers={"authorization": f"org:{org_b}"}).json()
     assert a["count"] > 0
     assert b["count"] == 0
+
+
+def test_gap_tasks_from_one_upload_roll_up_into_one_notification(client, bootstrap, upload):
+    """One weak document opens a task per gap — dozens — but it is one thing to do.
+    The feed (and the nav badge that counts it) reports it once, pointing at the evidence."""
+    org_id, _ = bootstrap(client)
+    evidence_id = upload(client, org_id).json()["evidence_id"]
+    headers = {"authorization": f"org:{org_id}"}
+
+    tasks = client.get("/tasks", headers=headers).json()
+    assert len(tasks) > 1
+
+    body = client.get("/notifications", headers=headers).json()
+    assert body["count"] == 1
+    (item,) = body["items"]
+    assert item["kind"] == "TASK_OPEN" and item["link"] == f"/evidence/{evidence_id}"
+    assert item["count"] == len(tasks)
+
+
+def test_a_manual_task_keeps_its_own_notification(client, bootstrap, upload):
+    org_id, _ = bootstrap(client)
+    upload(client, org_id)
+    headers = {"authorization": f"org:{org_id}"}
+    client.post("/tasks", headers=headers, json={"title": "get the policy signed"})
+
+    items = client.get("/notifications", headers=headers).json()["items"]
+    assert len(items) == 2
+    assert any(i["message"] == "Open task: get the policy signed" and i["link"] == "/tasks" for i in items)

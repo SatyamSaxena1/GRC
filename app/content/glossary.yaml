@@ -56,9 +56,12 @@ terms:
 
   - term: Verdict
     definition: >-
-      The evaluation outcome for one piece of evidence against one requirement —
-      PASS, PARTIAL or FAIL. Computed deterministically from extracted
-      attributes, never by the model alone.
+      The evaluation outcome for one piece of evidence against one requirement,
+      computed by fixed rules from the extracted facts — never by the model.
+      PASS: every fact the requirement needs is stated and meets it. PARTIAL: the
+      document addresses the requirement, but a fact is missing or falls short
+      (the gaps name which), or one document can only ever partly cover it.
+      FAIL: none of the facts it needs are stated, or the evidence has expired.
     source: PLATFORM
     tags: [platform, evaluation]
 

@@ -398,3 +398,18 @@ def test_new_version_can_change_artefact_type(client, bootstrap, upload):
     assert resp.status_code == 202
     new_id = resp.json()["evidence_id"]
     assert client.get(f"/evidence/{new_id}", headers=headers).json()["artefact_type"] == "CERTIFICATE"
+
+
+def test_each_evaluation_carries_what_it_was_checked_against(client, bootstrap, upload):
+    """With no extraction every requirement is silence — so every check is an unmet
+    presence check, and each names the attribute the verdict turned on."""
+    org_id, _ = bootstrap(client)
+    evidence_id = upload(client, org_id).json()["evidence_id"]
+
+    links = client.get(f"/evidence/{evidence_id}/evaluations",
+                       headers={"authorization": f"org:{org_id}"}).json()
+    assert links
+    for link in links:
+        assert link["checked"], (link["framework"], link["clause"])
+        assert {c["attribute"] for c in link["checked"]} == {g["attribute"] for g in link["gaps"]}
+        assert all(c["operator"] == "present" and c["met"] is False for c in link["checked"])

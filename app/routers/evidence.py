@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import asdict
 from datetime import date, datetime, timezone
 from typing import Iterator
 
@@ -13,6 +14,7 @@ from app import audit_log, authorization, events
 from app.auth import Actor, current_actor, deny_read_only
 from app.content.load import load as load_content
 from app.db import get_session, session_scope, set_tenant
+from app.evaluate import checks_for
 from app.ai import decision
 from app.ingest import available_models, extract_text, gateway_for
 from app.models import (
@@ -384,6 +386,14 @@ def _link_payload(db: Session, link, actor: Actor) -> dict:
     stale, reason = link_commitment_stale(db, CONTENT, actor.org_id, link)
     payload["commitment_stale"] = stale
     payload["stale_reason"] = reason
+    # What this verdict was judged on, met or not — rebuilt from the row's stored
+    # attributes by the same pure function the evaluator uses, so a PASS can show
+    # its working. Not persisted: a later content-pack edit shows in the list, the
+    # verdict and its `evaluated_at` stay as decided (same trade as commitment_stale).
+    evidence, requirement = db.get(Evidence, link.evidence_id), CONTENT.requirement(link.framework, link.clause)
+    payload["checked"] = [
+        asdict(c) for c in checks_for(requirement, evidence.attribute_values(), evidence.artefact_type)
+    ] if evidence and requirement else []
     return payload
 
 

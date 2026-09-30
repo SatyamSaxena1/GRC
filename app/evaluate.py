@@ -27,12 +27,27 @@ class Gap:
 
 
 @dataclass(frozen=True)
+class Check:
+    """One thing a requirement was judged against, and what the document gave.
+
+    `operator` is "present" for a plain does-the-document-state-it check, else the
+    DeltaCondition operator with its bound in `expected`. This is what lets a PASS
+    say *what* it passed on, not just that nothing was wrong."""
+    attribute: str
+    operator: str
+    expected: Any
+    actual: Any
+    met: bool
+
+
+@dataclass(frozen=True)
 class Link:
     framework: str
     clause: str
     verdict: Verdict
     ucos: tuple[str, ...]
     gaps: tuple[Gap, ...] = field(default=())
+    checked: tuple[Check, ...] = field(default=())
 
 
 def _norm(v: Any) -> Any:
@@ -181,6 +196,30 @@ def _freshness_gaps(
     return []
 
 
+def checks_for(req: Requirement, attributes: dict[str, Any], artefact_type: str) -> tuple[Check, ...]:
+    """Every attribute presence and delta condition this requirement is judged on.
+
+    Pure and independent of `as_of`/commitments (freshness is not an attribute
+    check), so the API can rebuild it at read time from an evidence row's stored
+    attributes — they are never edited in place, a correction is a new version.
+    A delta check subsumes the bare presence check for the same attribute.
+    """
+    required = _required_attributes(_matching_evidence_requirements(req, artefact_type)) or ()
+    deltas: dict[tuple, Check] = {}
+    for mapping in req.mappings:
+        for cond in mapping.delta_conditions:
+            value = attributes.get(cond.attribute)
+            if value is not None:
+                deltas.setdefault(
+                    (cond.attribute, cond.operator, repr(cond.value)),
+                    Check(cond.attribute, cond.operator, cond.value, value, check(cond, value)),
+                )
+    judged = {c.attribute for c in deltas.values()}
+    stated = [Check(a, "present", None, attributes.get(a), attributes.get(a) is not None)
+              for a in required if a not in judged]
+    return tuple(stated) + tuple(deltas.values())
+
+
 def evaluate_requirement(
     req: Requirement, framework: str, attributes: dict[str, Any], artefact_type: str,
     as_of: date | None = None, org_commitments: dict[str, Any] | None = None,
@@ -230,6 +269,7 @@ def evaluate_requirement(
         verdict=verdict,
         ucos=tuple(m.uco for m in req.mappings),
         gaps=tuple(gaps),
+        checked=checks_for(req, attributes, artefact_type),
     )
 
 
