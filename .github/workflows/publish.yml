@@ -26,7 +26,8 @@ jobs:
 
       - id: meta
         run: |
-          IMAGE="ghcr.io/${{ github.repository }}"
+          # Image names must be lowercase; the repo is SatyamSaxena1/GRC.
+          IMAGE="ghcr.io/${GITHUB_REPOSITORY,,}"
           TAGS="$IMAGE:latest"
           if [ "${{ github.ref_type }}" = "tag" ]; then
             TAGS="$IMAGE:${{ github.ref_name }}"
