@@ -5,7 +5,7 @@
 # no grc-db, no grc-config / grc-secrets groups, no OIDC.
 #
 # The existing service was created by hand, not from a Blueprint, so these
-# values are applied by hand in its Environment tab (see "Demo site" in
+# values are applied by hand in its Environment tab (see "Production and demo sites on Render" in
 # DEPLOYMENT.md for the order). Remove its DATABASE_URL, VITE_OIDC_* and env
 # group links BEFORE setting AUTH_STUB_ENABLED=true, so a stub-auth server
 # never runs against the production database.
