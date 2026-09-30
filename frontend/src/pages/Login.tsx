@@ -1,16 +1,169 @@
-import { useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { createAuditFirm, createEngagement, createFirmUser, createOrganization, submitOnboardingRequest } from "../api/client";
 import { useSession } from "../lib/session";
 import { Hint } from "../components/Hint";
 import { LoginTour } from "../components/LoginTour";
 import { oidcConfigured, startLogin } from "../lib/pkce";
+import { ROLES, type DemoWorld, type RoleDef } from "../lib/roles";
+import { ensureWorld } from "../lib/demoWorld";
+import { FEATURES, reachOf } from "../lib/nav";
+
+// three.js is only needed for the map, so it arrives in its own chunk.
+const FeatureConstellation = lazy(() => import("../components/FeatureConstellation"));
+const RoleSurface = lazy(() => import("../components/RoleSurface"));
 
 const FRAMEWORKS = ["ISO-27001", "PCI-DSS", "SOC-2", "NIST-CSF", "HIPAA", "CIS-CONTROLS", "GDPR"];
 
 export type Tab = "org" | "user" | "viewer" | "auditor" | "firm" | "request" | "quickstart" | "sso";
 
 export function LoginPage() {
+  // With an identity provider configured this is a real deployment: SSO and
+  // Request an audit only, exactly as before. Without one it is a demo, and
+  // the front door is the role deck.
+  return oidcConfigured() ? <ClassicLogin /> : <DemoGate />;
+}
+
+// Ids never reach the map — it only needs the shape of each role's identity to
+// work out which menu that role gets.
+const SHAPE: DemoWorld = {
+  orgId: "-", firmId: "-", engagementId: "-", ownerId: "-", viewerId: "-", firmAdminId: "-",
+  orgName: "Acme Corp", firmName: "Meridian Assurance",
+};
+
+function DemoGate() {
+  const { setIdentity } = useSession();
+  const navigate = useNavigate();
+  const [active, setActive] = useState<RoleDef>(ROLES[0]);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [manual, setManual] = useState(false);
+
+  const reach = useMemo(
+    () => Object.fromEntries(ROLES.map((r) => [r.id, reachOf(r.identity(SHAPE))])),
+    [],
+  );
+  const labelOf = (to: string) => FEATURES.find((f) => f.to === to)?.label ?? to;
+
+  const enter = async (role: RoleDef, to = role.home) => {
+    if (busy) return;
+    setActive(role);
+    setError(null);
+    try {
+      const world = await ensureWorld(setBusy);
+      setIdentity(role.identity(world));
+      navigate(to);
+    } catch (err) {
+      setError(`Could not reach the backend: ${(err as Error).message}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  // 1–5 signs straight in as that role, the same keys the in-app switcher uses.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (manual || e.metaKey || e.ctrlKey || e.altKey) return;
+      if ((e.target as HTMLElement).closest("input, textarea, select")) return;
+      const role = ROLES.find((r) => r.key === e.key);
+      if (role) void enter(role);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
+  const lit = reach[active.id];
+
+  return (
+    <div className="gate" style={{ "--role": active.color, "--role-dark": active.dark } as React.CSSProperties}>
+      <Suspense fallback={null}>
+        <RoleSurface color={active.color} />
+      </Suspense>
+      <header className="gate-bar">
+        <strong>GRC Workspace</strong>
+        <span className="gate-bar__demo">DEMO</span>
+        <span className="gate-bar__what">
+          Acme Corp is being audited by Meridian Assurance. Pick whose eyes to look through — one click, no password.
+        </span>
+        <Link to="/pitch">What is this?</Link>
+        <button type="button" className="gate-link" onClick={() => setManual((m) => !m)}>
+          {manual ? "Back to roles" : "Sign in by id / request an audit"}
+        </button>
+      </header>
+
+      {manual ? (
+        <div className="gate-manual"><ClassicLogin embedded /></div>
+      ) : (
+        <div className="gate-grid">
+          <section className="role-deck" aria-label="Choose a role">
+            {ROLES.map((role) => (
+              <button
+                key={role.id}
+                type="button"
+                className={`role-card${role.id === active.id ? " is-active" : ""}`}
+                style={{ "--c": role.color, "--cd": role.dark } as React.CSSProperties}
+                onMouseEnter={() => setActive(role)}
+                onFocus={() => setActive(role)}
+                onClick={() => void enter(role)}
+                disabled={Boolean(busy)}
+              >
+                <span className="role-card__swatch">
+                  <kbd>{role.key}</kbd>
+                  <small>{role.swatch}</small>
+                </span>
+                <span className="role-card__body">
+                  <span className="role-card__top">
+                    <strong>{role.name}</strong>
+                    <em>{role.side}</em>
+                  </span>
+                  <span className="role-card__who">{role.who}</span>
+                  <span className="role-card__does">
+                    {role.does.map((d) => <span key={d}>{d}</span>)}
+                  </span>
+                  <span className="role-card__foot">
+                    Lands on {labelOf(role.home)} · {reach[role.id].size} of {FEATURES.length} screens
+                  </span>
+                </span>
+                <span className="role-card__go" aria-hidden>→</span>
+              </button>
+            ))}
+            <p className="role-deck__status" role="status">
+              {error ? <span className="gate-error">{error}</span>
+                : busy ?? "First click seeds the demo tenant; switching after that is instant."}
+            </p>
+          </section>
+
+          <section className="gate-map">
+            <div className="gate-map__caption">
+              <span className="gate-map__dot" />
+              <strong>{active.name}</strong> can open <strong>{lit.size}</strong> of {FEATURES.length} screens.
+              <span className="muted"> Click a lit one to go straight there. Drag to turn.</span>
+            </div>
+            <Suspense fallback={<div className="constellation constellation--loading">Loading map…</div>}>
+              <FeatureConstellation
+                features={FEATURES}
+                reachable={lit}
+                color={active.color}
+                onPick={(to) => void enter(active, to)}
+              />
+            </Suspense>
+            <ul className="gate-map__list">
+              {FEATURES.map((f) => (
+                <li key={f.to} className={lit.has(f.to) ? "is-on" : ""}>
+                  {lit.has(f.to)
+                    ? <button type="button" onClick={() => void enter(active, f.to)}>{f.label}</button>
+                    : <span>{f.label}</span>}
+                </li>
+              ))}
+            </ul>
+          </section>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ClassicLogin({ embedded = false }: { embedded?: boolean }) {
   const { setIdentity } = useSession();
   const navigate = useNavigate();
   // Whenever an identity provider is configured — every real deployment,
@@ -26,8 +179,7 @@ export function LoginPage() {
   const production = oidcConfigured();
   const [tab, setTab] = useState<Tab>(production ? "sso" : "quickstart");
 
-  return (
-    <div className="login-shell">
+  const card = (
       <div className="card login-card">
         <h1>GRC Workspace</h1>
         {production ? (
@@ -138,8 +290,8 @@ export function LoginPage() {
           />
         )}
       </div>
-    </div>
   );
+  return embedded ? card : <div className="login-shell">{card}</div>;
 }
 
 function IdForm({ label, placeholder, onSubmit }: { label: string; placeholder: string; onSubmit: (id: string) => void }) {
@@ -260,7 +412,7 @@ function FirmStart({ onDone }: { onDone: () => void }) {
       const firm = await createAuditFirm(firmName);
       const admin = await createFirmUser(email, firm.id, "FIRM_ADMIN");
       setResult({ firmId: firm.id, adminId: admin.id });
-      setIdentity({ kind: "user", id: admin.id, label: `${firmName} (firm admin)` });
+      setIdentity({ kind: "user", id: admin.id, label: `${firmName} (firm admin)`, role: "FIRM_ADMIN" });
     } catch (err) {
       setError((err as Error).message);
     } finally {

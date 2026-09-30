@@ -20,6 +20,7 @@ import { AiCompliancePage } from "./pages/AiCompliance";
 import { DpdpPage } from "./pages/Dpdp";
 import { DpdpOperationsPage } from "./pages/DpdpOperations";
 import { CisoSyncPage } from "./pages/CisoSync";
+import { EvidenceMapPage } from "./pages/EvidenceMap";
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   const { identity } = useSession();
@@ -32,7 +33,9 @@ function RoleHome() {
   // A firm-side caller lands on its own console first: which clients am I on.
   // Only once it has opened one (engagementId set) is the auditee-shaped
   // review queue the right home.
-  if (identity?.kind === "firm") return <Navigate to="/firm" replace />;
+  if (identity?.kind === "firm" || (identity?.kind === "user" && identity.role === "FIRM_ADMIN" && !identity.engagementId)) {
+    return <Navigate to="/firm" replace />;
+  }
   const isAuditor = identity?.kind === "auditor" || (identity?.kind === "oidc" && Boolean(identity.engagementId));
   const target = identity?.kind === "user" ? "/tasks" : isAuditor ? "/controls" : "/overview";
   return <Navigate to={target} replace />;
@@ -68,6 +71,7 @@ export function App() {
         <Route path="/dpdp" element={<DpdpPage />} />
         <Route path="/dpdp/operations" element={<DpdpOperationsPage />} />
         <Route path="/ciso-sync" element={<CisoSyncPage />} />
+        <Route path="/map" element={<EvidenceMapPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
