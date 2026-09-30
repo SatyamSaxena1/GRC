@@ -96,7 +96,7 @@ requirements:
       Data is protected using encryption both while stored and while transmitted over
       untrusted networks.
     evidence_requirements:
-      - artefact_type: POLICY
+      - artefact_type: ENCRYPTION_POLICY
         required_attributes: [encryption_at_rest, encryption_in_transit]
     mappings:
       - uco: UCO-DATA-001

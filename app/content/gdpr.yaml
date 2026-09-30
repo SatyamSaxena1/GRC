@@ -85,7 +85,7 @@ requirements:
       Personal data is protected using encryption, both at rest and in transit,
       as an appropriate technical measure.
     evidence_requirements:
-      - artefact_type: POLICY
+      - artefact_type: ENCRYPTION_POLICY
         required_attributes: [encryption_at_rest, encryption_in_transit]
     mappings:
       - uco: UCO-DATA-001

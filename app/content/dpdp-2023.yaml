@@ -98,7 +98,7 @@ requirements:
       remediation and continuity are retained for at least one year unless law
       requires another period.
     evidence_requirements:
-      - artefact_type: POLICY
+      - artefact_type: LOGGING_POLICY
         required_attributes: [log_retention_days]
     mappings:
       - uco: UCO-LOG-001

@@ -50,7 +50,9 @@ def set_status(db: Session, evidence: Evidence, status: str, detail: str = "") -
 # until a framework pack maps them. The descriptions are what the model sees
 # in classify_artefact (same text as the form's ARTEFACT_HELP).
 ARTEFACT_TYPES = {
-    "POLICY": "A written policy or procedure document — access control, encryption, retention, and similar.",
+    "POLICY": "A written policy or procedure document — access control, passwords, data retention, and similar. Encryption and logging policies have their own types.",
+    "ENCRYPTION_POLICY": "An encryption policy — protection of data at rest and in transit, and key management.",
+    "LOGGING_POLICY": "A logging and monitoring policy — what is logged and how long audit logs are retained.",
     "SCAN_REPORT": "Output from a vulnerability or penetration test scan (e.g. an ASV report).",
     "REVIEW_RECORD": "A record that a periodic review happened — access reviews, log reviews.",
     "REPORT": "A narrative finding or audit report, distinct from an automated scan.",
@@ -60,6 +62,11 @@ ARTEFACT_TYPES = {
     "AI_INVENTORY": "A system/model inventory for AI systems.",
     "PRIVACY_NOTICE": "A public-facing notice describing personal data, purposes, rights, withdrawal, complaints, and the privacy contact.",
 }
+# Topic-specific policies split out of POLICY so an access-control policy is not failed for
+# saying nothing about encryption. They still state who approved them and when, which no
+# requirement asks of them — extract those too, for the quality score only (no gaps).
+TOPIC_POLICIES = {"ENCRYPTION_POLICY", "LOGGING_POLICY"}
+DOCUMENT_CONTROL = ("approval_date", "approver_role", "effective_date", "systems_covered")
 CLASSIFY_MAX_CHARS = 4000
 CLASSIFY_ORDERS = 3
 
@@ -160,6 +167,8 @@ def required_attribute_names(
     """
     del frameworks  # deliberately ignored; see docstring
     names: list[str] = []
+    if artefact_type in TOPIC_POLICIES:
+        names.extend(DOCUMENT_CONTROL)  # no requirement asks for these, but quality scoring reads them
     for pack in content.packs:
         for req in pack.requirements:
             for er in req.evidence_requirements:

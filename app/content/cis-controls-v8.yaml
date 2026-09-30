@@ -100,7 +100,7 @@ requirements:
       Sensitive data is encrypted in transit across networks and at rest on
       end-user devices and enterprise assets.
     evidence_requirements:
-      - artefact_type: POLICY
+      - artefact_type: ENCRYPTION_POLICY
         required_attributes: [encryption_at_rest, encryption_in_transit]
     mappings:
       - uco: UCO-DATA-001
@@ -153,7 +153,7 @@ requirements:
       Audit logs are retained for a period sufficient to support detection and
       investigation of incidents.
     evidence_requirements:
-      - artefact_type: POLICY
+      - artefact_type: LOGGING_POLICY
         required_attributes: [log_retention_days]
     mappings:
       - uco: UCO-LOG-001

@@ -37,12 +37,14 @@ const TOUR_STEPS = [
 // evidence_requirements mapped yet — they upload and classify but won't
 // produce any framework links until a content pack maps them to one.
 const ARTEFACT_TYPES = [
-  "POLICY", "SCAN_REPORT", "REVIEW_RECORD", "REPORT", "CERTIFICATE", "SCREENSHOT",
+  "POLICY", "ENCRYPTION_POLICY", "LOGGING_POLICY", "SCAN_REPORT", "REVIEW_RECORD", "REPORT", "CERTIFICATE", "SCREENSHOT",
   "AI_POLICY", "AI_INVENTORY", "PRIVACY_NOTICE",
 ];
 
 const ARTEFACT_LABELS: Record<string, string> = {
   POLICY: "Policies & procedures",
+  ENCRYPTION_POLICY: "Encryption policies",
+  LOGGING_POLICY: "Logging policies",
   SCAN_REPORT: "Scan reports",
   REVIEW_RECORD: "Review records",
   REPORT: "Reports",
@@ -56,7 +58,9 @@ const ARTEFACT_LABELS: Record<string, string> = {
 // What the type controls: which framework requirements this artefact can
 // evaluate against (app/evaluate.py matches on artefact_type exactly).
 const ARTEFACT_HELP: Record<string, string> = {
-  POLICY: "A written policy or procedure document — access control, encryption, retention, and similar.",
+  POLICY: "A written policy or procedure document — access control, passwords, data retention, and similar. Encryption and logging policies have their own types.",
+  ENCRYPTION_POLICY: "An encryption policy — protection of data at rest and in transit, and key management.",
+  LOGGING_POLICY: "A logging and monitoring policy — what is logged and how long audit logs are retained.",
   SCAN_REPORT: "Output from a vulnerability or penetration test scan (e.g. an ASV report).",
   REVIEW_RECORD: "A record that a periodic review happened — access reviews, log reviews.",
   REPORT: "A narrative finding or audit report, distinct from an automated scan.",

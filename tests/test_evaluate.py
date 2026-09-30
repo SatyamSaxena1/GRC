@@ -173,18 +173,21 @@ def test_strict_frameworks_reject_short_passwords_lenient_ones_accept():
 
 
 def test_encryption_and_logging_gaps_are_named_precisely():
-    """Neither attribute is in the base POLICY fixture, so every new-UCO clause
-    that needs them must report a precise missing-attribute gap, never a pass."""
-    links = links_by_clause(["SOC-2", "NIST-CSF"])
-    assert links["CC6.7"].verdict == "FAIL"
-    assert {g.attribute for g in links["CC6.7"].gaps} == {"encryption_at_rest", "encryption_in_transit"}
-    assert links["PR.PT-01"].verdict == "FAIL"
-    assert [g.attribute for g in links["PR.PT-01"].gaps] == ["log_retention_days"]
+    """An encryption or logging policy that says nothing must report precise
+    missing-attribute gaps, never a pass — and passes once it states the facts."""
+    enc = {l.clause: l for l in evaluate({}, "ENCRYPTION_POLICY", ["SOC-2"], CONTENT)}
+    assert enc["CC6.7"].verdict == "FAIL"
+    assert {g.attribute for g in enc["CC6.7"].gaps} == {"encryption_at_rest", "encryption_in_transit"}
+    log = {l.clause: l for l in evaluate({}, "LOGGING_POLICY", ["NIST-CSF"], CONTENT)}
+    assert log["PR.PT-01"].verdict == "FAIL"
+    assert [g.attribute for g in log["PR.PT-01"].gaps] == ["log_retention_days"]
 
-    encrypted = POLICY | {"encryption_at_rest": True, "encryption_in_transit": True, "log_retention_days": 120}
-    fixed = {l.clause: l for l in evaluate(encrypted, "POLICY", ["SOC-2", "NIST-CSF"], CONTENT)}
-    assert fixed["CC6.7"].verdict == "PASS"
-    assert fixed["PR.PT-01"].verdict == "PASS"
+    stated_enc = {l.clause: l for l in evaluate(
+        {"encryption_at_rest": True, "encryption_in_transit": True}, "ENCRYPTION_POLICY", ["SOC-2"], CONTENT)}
+    stated_log = {l.clause: l for l in evaluate(
+        {"log_retention_days": 120}, "LOGGING_POLICY", ["NIST-CSF"], CONTENT)}
+    assert stated_enc["CC6.7"].verdict == "PASS"
+    assert stated_log["PR.PT-01"].verdict == "PASS"
 
 
 def test_a_pass_shows_what_it_passed_on():
@@ -215,3 +218,42 @@ def test_checked_never_disagrees_with_gaps(attrs):
         assert unmet <= {g.attribute for g in link.gaps}, (link.framework, link.clause)
         if link.verdict == "PASS":
             assert all(c.met for c in link.checked), (link.framework, link.clause)
+
+
+ALL_FRAMEWORKS = ["ISO-27001", "PCI-DSS", "SOC-2", "NIST-CSF", "HIPAA", "CIS-CONTROLS", "GDPR"]
+TOPIC_ATTRS = {"encryption_at_rest", "encryption_in_transit", "log_retention_days"}
+
+
+def test_an_access_policy_is_not_judged_on_encryption_or_logging():
+    """Encryption and logging have their own artefact types, so an access-control policy
+    (POLICY) neither passes nor fails them — it is simply not evidence for them."""
+    for link in evaluate(POLICY, "POLICY", ALL_FRAMEWORKS, CONTENT):
+        assert not TOPIC_ATTRS & {c.attribute for c in link.checked}, (link.framework, link.clause)
+        assert not TOPIC_ATTRS & {g.attribute for g in link.gaps}, (link.framework, link.clause)
+
+
+@pytest.mark.parametrize("artefact_type,attrs", [
+    ("ENCRYPTION_POLICY", {"encryption_at_rest", "encryption_in_transit"}),
+    ("LOGGING_POLICY", {"log_retention_days"}),
+])
+def test_topic_policies_are_judged_only_on_their_topic(artefact_type, attrs):
+    links = evaluate({}, artefact_type, ALL_FRAMEWORKS, CONTENT)
+    assert links and all(l.verdict == "FAIL" for l in links)  # silence still fails, on-topic
+    assert {g.attribute for l in links for g in l.gaps} == attrs
+
+
+def test_topic_policies_also_extract_document_control_facts_for_quality():
+    from app.service import required_attribute_names
+    asked = required_attribute_names(CONTENT, ALL_FRAMEWORKS, "ENCRYPTION_POLICY")
+    assert {"encryption_at_rest", "approval_date", "approver_role"} <= set(asked)
+    assert "password_min_length" not in asked
+
+
+def test_extraction_prompt_names_the_yes_no_attributes_from_the_packs():
+    """A pack testing `encryption_at_rest == true` is what makes it a yes/no fact; the model
+    must be told, or it reports the method ("AES-256") and a correct policy stays PARTIAL."""
+    from app.ai.prompts import build_user_prompt
+    prompt = build_user_prompt("doc", ["encryption_at_rest", "password_min_length"])
+    assert "Yes/no attributes: ['encryption_at_rest']" in prompt
+    assert "password_min_length'] --" not in prompt
+    assert "Yes/no" not in build_user_prompt("doc", ["password_min_length"])

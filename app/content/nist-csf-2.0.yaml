@@ -90,7 +90,7 @@ requirements:
       The confidentiality of data is protected while stored and while in transit,
       commensurate with its sensitivity.
     evidence_requirements:
-      - artefact_type: POLICY
+      - artefact_type: ENCRYPTION_POLICY
         required_attributes: [encryption_at_rest, encryption_in_transit]
     mappings:
       - uco: UCO-DATA-001
@@ -134,7 +134,7 @@ requirements:
       Logs of security-relevant activity are generated and retained long enough to
       support detection and investigation.
     evidence_requirements:
-      - artefact_type: POLICY
+      - artefact_type: LOGGING_POLICY
         required_attributes: [log_retention_days]
     mappings:
       - uco: UCO-LOG-001

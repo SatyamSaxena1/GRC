@@ -81,7 +81,7 @@ requirements:
       ePHI is encrypted at rest and in transit, as an addressable implementation
       specification for access control and transmission security.
     evidence_requirements:
-      - artefact_type: POLICY
+      - artefact_type: ENCRYPTION_POLICY
         required_attributes: [encryption_at_rest, encryption_in_transit]
     mappings:
       - uco: UCO-DATA-001
@@ -102,7 +102,7 @@ requirements:
       Hardware, software and procedural mechanisms record and examine activity in
       systems that contain or use ePHI.
     evidence_requirements:
-      - artefact_type: POLICY
+      - artefact_type: LOGGING_POLICY
         required_attributes: [log_retention_days]
     mappings:
       # No specific retention period is stated for activity logs themselves
