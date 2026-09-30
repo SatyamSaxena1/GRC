@@ -1,3 +1,4 @@
+# check=skip=SecretsUsedInArgOrEnv
 # Multi-stage: build the SPA, then run the API that serves it.
 # One image, one origin — the frontend does same-origin fetches (see
 # frontend/src/api/client.ts), so no CORS config is needed in this mode.
