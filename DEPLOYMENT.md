@@ -126,6 +126,16 @@ first from `deploy/llm/` (Ollama behind a bearer-token proxy), then:
    page sends no key, so it does not work against a production deploy.
 5. Keep `numInstances: 1`: SSE and upload background tasks are in-process.
 
+## Demo site (a second Render service)
+
+`render-demo.yaml` describes `grc-demo`, a separate public demo that opens on the
+one-click role deck (stub auth, SQLite, local storage, no SSO, no admin key). It
+does not touch the production `grc` service or its database and env groups.
+Create it with New > Blueprint and the Blueprint path `render-demo.yaml`, or as a
+plain Docker web service with the env values listed in that file. Data resets
+whenever the free instance sleeps or redeploys; visitors' browsers reseed it.
+Anyone can sign in as any role there, so never load real data into it.
+
 ## Continuous integration / image publishing
 
 `.github/workflows/ci.yml` runs the backend test suite (`pytest`) and the

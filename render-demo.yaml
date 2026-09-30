@@ -1,0 +1,45 @@
+# Render Blueprint — PUBLIC DEMO SITE. A second, separate service that opens on
+# the one-click role deck instead of SSO. It shares nothing with the production
+# service in render.yaml: no grc-db, no grc-config / grc-secrets groups, no
+# OIDC. Applying this file creates `grc-demo` only and never edits `grc`.
+#
+# Apply it from the dashboard: New > Blueprint, pick this repo, and set the
+# Blueprint path to `render-demo.yaml` (Render reads render.yaml by default).
+#
+# What makes it a demo, and why each value matters:
+# - AUTH_STUB_ENABLED=true: the role deck signs in with stub tokens
+#   (org:/user:/auditor:/firm:), so ANYONE can act as ANY tenant. Never point
+#   this service at real data.
+# - No VITE_OIDC_* build args: the frontend shows the role deck, not SSO
+#   (frontend/src/pages/Login.tsx, oidcConfigured()).
+# - No ADMIN_API_KEY: the browser seeds its demo org/firm/engagement through
+#   /admin/* on first visit (frontend/src/lib/demoWorld.ts). With stub auth on,
+#   require_admin in app/auth.py leaves those routes open.
+# - SQLite + local disk: no database or bucket to provision. The free plan has
+#   no persistent disk, so everything resets whenever the service sleeps or
+#   redeploys; the next visitor's browser seeds a fresh world automatically.
+# - No OLLAMA_*: AI analysis is off; uploads still land and the readiness check
+#   reports the model as "unconfigured" without failing.
+
+services:
+  - type: web
+    name: grc-demo
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: singapore
+    numInstances: 1
+    healthCheckPath: /health/ready
+    envVars:
+      - key: PORT
+        value: "8000"
+      - key: AUTH_STUB_ENABLED
+        value: "true"
+      - key: DATABASE_URL
+        value: sqlite:////app/demo.db
+      - key: STORAGE_BACKEND
+        value: local
+      - key: EVIDENCE_STORAGE_DIR
+        value: /app/evidence_storage
+      - key: MALWARE_SCANNER
+        value: noop
