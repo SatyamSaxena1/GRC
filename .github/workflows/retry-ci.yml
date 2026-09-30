@@ -1,0 +1,46 @@
+name: Retry CI on runner failure
+
+# A CI job that GitHub never managed to start ("failed to be acquired") is not a code
+# failure, but it fails the run and skips the dependent deploy job, so a good commit
+# silently never ships. This re-runs the failed jobs, but only for that infrastructure
+# case: a real test or build failure is left failed, because retrying it would just
+# hide it. Capped at 2 retries (run_attempt < 3).
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+permissions:
+  actions: write   # re-run the workflow
+  contents: read
+
+jobs:
+  retry:
+    if: github.event.workflow_run.conclusion == 'failure' && github.event.workflow_run.run_attempt < 3
+    runs-on: ubuntu-latest
+    steps:
+      - name: Re-run if a job was never acquired
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          set -euo pipefail
+          infra=0
+          for job in $(gh api "repos/$REPO/actions/runs/$RUN_ID/jobs" --paginate \
+                         --jq '.jobs[] | select(.conclusion == "failure") | .id'); do
+            if gh api "repos/$REPO/check-runs/$job/annotations" --jq '.[].message' \
+                 | grep -q "failed to be acquired"; then
+              infra=1
+              echo "job $job was never acquired by a runner"
+            else
+              echo "job $job failed for a real reason; not retrying it"
+            fi
+          done
+          if [ "$infra" = 1 ]; then
+            gh run rerun "$RUN_ID" --failed
+            echo "::notice::re-ran failed jobs of run $RUN_ID (runner acquisition failure)"
+          else
+            echo "No runner-acquisition failure; leaving run $RUN_ID as failed."
+          fi
