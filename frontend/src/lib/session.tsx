@@ -1,5 +1,6 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { type Identity, loadIdentity, saveIdentity } from "../api/client";
+import { applyRoleTheme, roleOf } from "./roles";
 
 type SessionValue = {
   identity: Identity | null;
@@ -15,6 +16,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     saveIdentity(next);
     setIdentityState(next);
   };
+
+  // Whoever you are signed in as, the app wears their colour.
+  useEffect(() => applyRoleTheme(roleOf(identity)), [identity]);
 
   const value = useMemo(() => ({ identity, setIdentity }), [identity]);
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
