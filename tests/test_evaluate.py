@@ -257,3 +257,6 @@ def test_extraction_prompt_names_the_yes_no_attributes_from_the_packs():
     assert "Yes/no attributes: ['encryption_at_rest']" in prompt
     assert "password_min_length'] --" not in prompt
     assert "Yes/no" not in build_user_prompt("doc", ["password_min_length"])
+    # A model once reported affected_person_notification=true from the quote "No specific
+    # notification process ... is mentioned"; the hint must rule that reading out.
+    assert "affirmatively states" in prompt and "never true" in prompt

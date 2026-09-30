@@ -3,7 +3,7 @@ ai_run.prompt_template_version points at."""
 
 from functools import lru_cache
 
-EXTRACTION_PROMPT_VERSION = "evidence_attribute_extraction:v2"  # v2: names the yes/no attributes
+EXTRACTION_PROMPT_VERSION = "evidence_attribute_extraction:v3"  # v2: names the yes/no attributes; v3: true needs an affirmative statement
 OCR_PROMPT_VERSION = "evidence_page_transcription:v1"
 NUTSHELL_PROMPT_VERSION = "auditor_nutshell:v1"
 REMEDIATION_PROMPT_VERSION = "gap_remediation_draft:v1"
@@ -78,8 +78,10 @@ def _yes_no_attributes() -> frozenset[str]:
 def build_user_prompt(document_text: str, attribute_names: list[str]) -> str:
     yes_no = [n for n in attribute_names if n in _yes_no_attributes()]
     hint = (
-        f"Yes/no attributes: {yes_no} -- report true if the document states this is the case, false if it "
-        f"states it is not the case, null if it is silent; never the method or a description.\n"
+        f"Yes/no attributes: {yes_no} -- report true ONLY if the document affirmatively states it is in "
+        f"place or done; false only if it explicitly says it is not; null if the document is silent on it. "
+        f"A passage saying something is absent or not mentioned is never true. "
+        f"Never report the method or a description.\n"
         if yes_no else ""
     )
     return (
