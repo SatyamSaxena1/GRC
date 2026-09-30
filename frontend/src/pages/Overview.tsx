@@ -115,7 +115,7 @@ export function OverviewPage() {
         </div>
       )}
 
-      <div className="card-grid" data-tour="stat-cards">
+      <div className="card-grid card-grid-5" data-tour="stat-cards">
         <Link to="/controls" className="card stat-card action-card">
           <div className="stat-label">Controls tracked</div>
           <div className="stat-value">{data?.controls.total ?? "—"}</div>
@@ -149,14 +149,6 @@ export function OverviewPage() {
           <strong>Controls needing attention</strong>
           <div className="stat-value" style={{ marginTop: 8 }}>{needsAttention ?? "—"}</div>
           <div className="stat-sub">Partial, failed, or not-yet-evidenced controls.</div>
-        </Link>
-        <Link to="/gaps" className="card action-card">
-          <strong>Review exact fixes</strong>
-          <div className="stat-sub" style={{ marginTop: 8 }}>Every open gap shows the observed value and the required value.</div>
-        </Link>
-        <Link to="/evidence" className="card action-card">
-          <strong>Upload revised evidence</strong>
-          <div className="stat-sub" style={{ marginTop: 8 }}>A corrected version automatically re-evaluates the affected requirements.</div>
         </Link>
       </div>
 
@@ -213,22 +205,6 @@ export function OverviewPage() {
             </div>
           </div>
         ))}
-      </div>
-
-      {!empty && <div className="section-title">All workspace areas</div>}
-      <div className="card-grid" hidden={empty}>
-        <Link to="/evidence" className="card">
-          <strong>Upload evidence</strong>
-          <div className="stat-sub">Add a document and see it evaluated against every subscribed framework.</div>
-        </Link>
-        <Link to="/gaps" className="card">
-          <strong>Review open gaps</strong>
-          <div className="stat-sub">Every unmet requirement, with the exact fix needed.</div>
-        </Link>
-        <Link to="/controls" className="card">
-          <strong>Browse controls</strong>
-          <div className="stat-sub">See what's assigned, evidenced, and locked.</div>
-        </Link>
       </div>
     </div>
   );

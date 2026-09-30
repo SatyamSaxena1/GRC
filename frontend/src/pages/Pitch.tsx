@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   assignControl,
@@ -12,6 +12,8 @@ import {
   type Identity,
 } from "../api/client";
 import { useSession } from "../lib/session";
+
+const ParticleShield = lazy(() => import("../components/three/ParticleShield")); // its own chunk
 
 const FRAMEWORKS = ["ISO-27001", "PCI-DSS", "SOC-2", "NIST-CSF", "HIPAA", "CIS-CONTROLS", "GDPR"];
 
@@ -79,6 +81,7 @@ export function PitchPage() {
       </nav>
 
       <section className="slide slide-hero" id="thesis">
+        <Suspense fallback={null}><ParticleShield className="hero-shield" /></Suspense>
         <div className="slide-inner">
           <span className="deck-eyebrow">GRC evidence platform</span>
           <h1>

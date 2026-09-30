@@ -1232,3 +1232,24 @@ html.deck-mode body { background: #0e1120; }
 .checked cite { font-style: normal; color: var(--text); }
 .table-scroll { overflow-x: auto; }
 .gap-row .muted { white-space: pre-line; }
+
+/* Five KPI tiles fit one row at content width instead of orphaning the fifth. */
+.card-grid-5 { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+.btn-ghost { background: transparent; }
+
+/* ---- 3D backdrop: login side panel + pitch hero. Decorative, never over the working app. ---- */
+.login-visual { display: none; }
+.hero-shield { position: absolute; top: 0; right: 0; bottom: 0; width: 55%; opacity: .6; pointer-events: none; }
+.slide-hero { position: relative; overflow: hidden; }
+.slide-hero .slide-inner { position: relative; }
+@media (max-width: 899px) { .hero-shield { width: 100%; opacity: .22; } }
+@media (min-width: 900px) {
+  .login-shell { gap: 56px; }
+  .login-visual {
+    display: flex; position: relative; overflow: hidden; align-items: flex-end; justify-content: center;
+    width: 360px; height: 480px; padding-bottom: 28px; border-radius: 16px; color: #e8ebfa; font-size: 22px; font-weight: 700; text-align: center; line-height: 1.3;
+    background: radial-gradient(420px 260px at 50% 30%, #1e2a63 0%, transparent 70%), #0e1120;
+  }
+  .login-visual p { position: relative; margin: 0; }
+  .login-visual-canvas { position: absolute; inset: 0; }
+}

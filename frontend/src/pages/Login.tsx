@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { createAuditFirm, createEngagement, createFirmUser, createOrganization, submitOnboardingRequest } from "../api/client";
 import { useSession } from "../lib/session";
 import { Hint } from "../components/Hint";
 import { LoginTour } from "../components/LoginTour";
 import { oidcConfigured, startLogin } from "../lib/pkce";
+
+const ParticleShield = lazy(() => import("../components/three/ParticleShield")); // its own chunk; the app never pays for it
 
 const FRAMEWORKS = ["ISO-27001", "PCI-DSS", "SOC-2", "NIST-CSF", "HIPAA", "CIS-CONTROLS", "GDPR"];
 
@@ -33,6 +35,10 @@ export function LoginPage() {
 
   return (
     <div className="login-shell">
+      <div className="login-visual" aria-hidden="true">
+        <Suspense fallback={null}><ParticleShield className="login-visual-canvas" /></Suspense>
+        <p>One document.<br />Every framework.</p>
+      </div>
       <div className="card login-card">
         <h1>GRC Workspace</h1>
         {production ? (
