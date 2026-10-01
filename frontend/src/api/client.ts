@@ -824,6 +824,13 @@ export async function downloadFile(
   a.remove();
   URL.revokeObjectURL(objectUrl);
 }
+/** The uploaded file's bytes, for the in-page viewer (app/routers/evidence.py::get_evidence_file).
+ * Fetched with the Authorization header and shown from a blob URL for the same reason as downloads. */
+export async function getEvidenceFile(id: string): Promise<Blob> {
+  const res = await fetch(`/evidence/${id}/file`, { headers: authHeaders() });
+  if (!res.ok) throw new ApiError(res.status, await res.text());
+  return res.blob();
+}
 export const downloadComplianceExport = (format: "csv" | "xlsx" = "csv", params: Record<string, string | undefined> = {}) =>
   downloadFile(`/export/compliance.${format}`, `compliance-export.${format}`, params);
 export const downloadGapsExport = (params: Record<string, string | undefined> = {}) =>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   ApiError,
@@ -25,6 +25,7 @@ import { useSession } from "../lib/session";
 import { useApi } from "../lib/useApi";
 import { Badge } from "../components/Badge";
 import { PageTour } from "../components/PageTour";
+import { DocumentViewer } from "../components/DocumentViewer";
 import { GapFinding } from "../components/GapFinding";
 import { Spinner } from "../components/Spinner";
 import { describeBound, humanize, prettyValue } from "../lib/format";
@@ -125,6 +126,16 @@ export function EvidenceDetailPage() {
   const [explanation, setExplanation] = useState<string | null>(null);
   const [explaining, setExplaining] = useState(false);
   const [explainError, setExplainError] = useState<string | null>(null);
+  // What the viewer should show: a source quote's page and text, set by "show in document".
+  const [focus, setFocus] = useState<{ page?: number | null; quote?: string | null }>({});
+  const viewerRef = useRef<HTMLDetailsElement>(null);
+  const showInDocument = (page?: number | null, quote?: string | null) => {
+    setFocus({ page, quote });
+    if (viewerRef.current) {
+      viewerRef.current.open = true;
+      viewerRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
 
   useEffect(() => {
     setLiveAttributes([]);
@@ -450,7 +461,8 @@ export function EvidenceDetailPage() {
                 {a.sources.map((src, i) => (
                   <blockquote key={i}>
                     {src.quote && <>“{src.quote}”</>}
-                    {src.page ? <cite> — page {src.page}</cite> : null}
+                    {src.page ? <cite> — page {src.page}</cite> : null}{" "}
+                    <button type="button" className="btn-link" onClick={() => showInDocument(src.page, src.quote)}>show in document</button>
                   </blockquote>
                 ))}
               </div>
@@ -458,6 +470,11 @@ export function EvidenceDetailPage() {
           </div>
         ))}
       </div>
+
+      <details ref={viewerRef} className="card doc-viewer" open>
+        <summary>The document{filename ? ` — ${filename}` : ""}</summary>
+        <DocumentViewer evidenceId={id} filename={filename} page={focus.page} quote={focus.quote} />
+      </details>
 
       {evidence.quality?.dimensions && evidence.quality.dimensions.length > 0 && (
         <>

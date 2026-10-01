@@ -6,7 +6,7 @@ from datetime import date, datetime, timezone
 from typing import Iterator
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, UploadFile
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -478,6 +478,34 @@ def list_versions(evidence_id: str, actor: Actor = Depends(current_actor),
     return [{"id": e.id, "version": e.version, "lifecycle_status": e.lifecycle_status,
              "status": e.status, "sha256": e.sha256,
              "original_filename": e.original_filename} for e in lineage]
+
+
+# Types a browser renders inline without running anything the uploader wrote. Everything else is
+# sent as a download: a stored .html or .svg opened inline from our own origin would run its
+# scripts there, with the viewer's session.
+INLINE_TYPES = {"application/pdf", "text/plain", "image/png", "image/jpeg", "image/gif", "image/webp"}
+
+
+@router.get("/{evidence_id}/file")
+def get_evidence_file(evidence_id: str, actor: Actor = Depends(current_actor),
+                      db: Session = Depends(get_session)):
+    """The uploaded file itself, for the in-page viewer. Same access rule as the detail page
+    (a foreign or deleted row is a 404); the bytes come from whichever storage backend holds
+    them, so this works the same locally and on S3."""
+    evidence = _scoped_evidence(db, actor, evidence_id)
+    if not evidence.storage_key:
+        raise HTTPException(404)
+    inline = evidence.mime_type in INLINE_TYPES
+    name = (evidence.filename or "evidence").replace('"', "")
+    return Response(
+        content=get_storage().get(evidence.storage_key),
+        media_type=evidence.mime_type if inline else "application/octet-stream",
+        headers={
+            "Content-Disposition": f'{"inline" if inline else "attachment"}; filename="{name}"',
+            "X-Content-Type-Options": "nosniff",
+            "Cache-Control": "private, no-store",
+        },
+    )
 
 
 @router.get("/{evidence_id}")

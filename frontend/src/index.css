@@ -1402,3 +1402,11 @@ html.deck-mode body { background: #0e1120; }
   .constellation-node { font-size: 9.5px; padding: 1px 4px; }
   .constellation-stage { display: none; }
 }
+
+/* ---- Document viewer on the evidence page ---- */
+.doc-viewer { margin: 16px 0; }
+.doc-viewer > summary { cursor: pointer; font-weight: 600; margin-bottom: 10px; }
+.doc-frame { width: 100%; height: 70vh; border: 1px solid var(--border); border-radius: 8px; background: #fff; }
+.doc-image { max-width: 100%; border: 1px solid var(--border); border-radius: 8px; }
+.doc-text { max-height: 60vh; overflow: auto; margin: 0 0 6px; padding: 12px; white-space: pre-wrap; font-size: 12.5px; line-height: 1.55; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; }
+.doc-text mark { background: #fff3a3; color: inherit; padding: 0 1px; }

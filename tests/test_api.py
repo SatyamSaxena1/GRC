@@ -413,3 +413,34 @@ def test_each_evaluation_carries_what_it_was_checked_against(client, bootstrap, 
         assert link["checked"], (link["framework"], link["clause"])
         assert {c["attribute"] for c in link["checked"]} == {g["attribute"] for g in link["gaps"]}
         assert all(c["operator"] == "present" and c["met"] is False for c in link["checked"])
+
+
+def test_the_uploaded_file_can_be_fetched_back_for_the_viewer(client, bootstrap, upload):
+    org_id, _ = bootstrap(client)
+    other = client.post("/admin/organizations", json={"name": "Other", "frameworks": []}).json()["id"]
+    evidence_id = upload(client, org_id, content=b"a policy the viewer shows", name="p.txt").json()["evidence_id"]
+
+    mine = client.get(f"/evidence/{evidence_id}/file", headers={"authorization": f"org:{org_id}"})
+    assert mine.status_code == 200 and mine.content == b"a policy the viewer shows"
+    assert mine.headers["content-type"].startswith("text/plain")
+    assert mine.headers["content-disposition"].startswith("inline")
+    assert mine.headers["x-content-type-options"] == "nosniff"
+
+    # someone else's file answers like one that does not exist
+    assert client.get(f"/evidence/{evidence_id}/file", headers={"authorization": f"org:{other}"}).status_code == 404
+
+
+def test_a_type_a_browser_cannot_render_safely_is_sent_as_a_download(client, bootstrap, upload):
+    """Inline only for PDF, text and images. A DOCX (a zip) goes out as a download; the whitelist is
+    what keeps any future allowed type from being opened inline from our own origin."""
+    import io, zipfile
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        z.writestr("word/document.xml", "<w:document/>")
+    org_id, _ = bootstrap(client)
+    evidence_id = upload(client, org_id, content=buf.getvalue(), name="policy.docx",
+                         mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document").json()["evidence_id"]
+    res = client.get(f"/evidence/{evidence_id}/file", headers={"authorization": f"org:{org_id}"})
+    assert res.status_code == 200
+    assert res.headers["content-type"] == "application/octet-stream"
+    assert res.headers["content-disposition"].startswith("attachment")

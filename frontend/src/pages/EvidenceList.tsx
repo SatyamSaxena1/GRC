@@ -270,6 +270,9 @@ export function EvidenceListPage() {
             <div>
               <label>File</label>
               <input type="file" accept=".pdf,.docx,.xlsx,.png,.jpg,.jpeg,.txt,.csv" onChange={(e) => pickFile(e.target.files?.[0] ?? null)} />
+              <p className="muted" style={{ fontSize: 12, margin: "4px 0 0" }}>
+                No file handy? <a href="/demo/Asteron-Access-Control-Policy.pdf" download>Download a sample policy</a>, then upload it here.
+              </p>
             </div>
             <div>
               <label>Description (optional)</label>
