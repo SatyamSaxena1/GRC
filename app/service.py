@@ -15,7 +15,7 @@ from datetime import date, datetime, timezone
 from sqlalchemy.orm import Session
 
 from app import audit_log, ciso_sync
-from app import events
+from app import events, normalize
 from app.ai import decision
 from app.ai.prompts import NUTSHELL_PROMPT_VERSION
 from app.ai.schemas import ExtractedField, ExtractionRun, Source
@@ -123,6 +123,19 @@ SUPPORT_OPTIONS = {
 # right and >= 0.8 sure — but the wrong copies were blunt, real misreads are
 # subtler, so a flag asks a human to look rather than discarding the value.
 UNSUPPORTED_MIN = 0.8
+
+
+def _restore_cadence_words(run) -> None:
+    """Undo a model's own "quarterly" -> 90 on review-cadence attributes (see
+    normalize.cadence_word_for). Only *_frequency_days names: log_retention_days and the like
+    are periods, not cadences, and a number there means a number."""
+    for name, field in run.fields.items():
+        if "frequency" not in name or field.value is None:
+            continue
+        word = normalize.cadence_word_for(field.value, " ... ".join(s.quote for s in field.sources if s.quote))
+        if word:
+            logger.info("cadence_word_restored name=%s value=%r -> %r", name, field.value, word)
+            run.fields[name] = field.model_copy(update={"value": word})
 
 
 def _unsupported_values(db: Session, gateway, evidence: Evidence, run) -> list[str]:
@@ -479,6 +492,7 @@ def _run_pipeline(db: Session, content: Content, evidence: Evidence, actor_label
             )
         else:
             run = extract_attributes(text, attr_names, method, gateway=gateway)
+        _restore_cadence_words(run)
 
     set_status(db, evidence, "ANALYZING")
 

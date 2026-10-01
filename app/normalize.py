@@ -79,6 +79,30 @@ def to_days(value: Any) -> Any:
     return value
 
 
+def cadence_word_for(value: Any, quote: str) -> str | None:
+    """The cadence word a model turned into a number, recovered from its own quote.
+
+    A model asked for a review cadence sometimes reports 90 for "reviewed at least quarterly".
+    The document never says 90, so the support check rightly flags the value; but the word
+    it did write maps to exactly that number (CADENCE_DAYS), so restoring the word loses
+    nothing (to_days turns it straight back) and makes the value state what the quote states.
+    Returns None - leave the value alone - unless the quote does not contain the number itself
+    and contains a cadence word whose day count equals it. When the quote holds several
+    cadences ("quarterly ... annually") the number picks which one it was.
+    """
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or value != int(value):
+        return None
+    days = int(value)
+    if re.search(rf"(?<!\d){days}(?!\d)", quote):
+        return None  # the document wrote the number; it is a stated value, not a conversion
+    lowered = quote.lower()
+    hits = [
+        (lowered.find(word), word) for word, d in CADENCE_DAYS.items()
+        if d == days and re.search(rf"(?<![\w-]){re.escape(word)}(?![\w-])", lowered)
+    ]
+    return min(hits)[1] if hits else None
+
+
 def to_date(value: Any) -> date | None:
     """Parse the date formats real documents use. None when it is not a date."""
     if isinstance(value, datetime):

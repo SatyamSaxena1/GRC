@@ -113,3 +113,36 @@ def test_uninterpretable_value_fails_the_condition_rather_than_passing():
     condition = DeltaCondition(attribute="password_min_length", operator=">=", value=12)
     for value in (None, "", "twelve-ish", [], {}):
         assert check(condition, value) is False
+
+
+# --- a model's own "quarterly" -> 90 is undone from its quote -------------------------------
+
+def test_a_cadence_converted_to_days_gets_its_word_back():
+    from app.normalize import cadence_word_for
+    quote = "review user access at least quarterly for critical systems and at least annually for other systems"
+    assert cadence_word_for(90, quote) == "quarterly"   # the number picks which cadence
+    assert cadence_word_for(365, quote) == "annually"
+    assert cadence_word_for(90.0, quote) == "quarterly"
+
+
+def test_a_stated_number_or_unmatched_value_is_left_alone():
+    from app.normalize import cadence_word_for
+    assert cadence_word_for(90, "reviewed every 90 days, i.e. quarterly") is None   # document wrote 90
+    assert cadence_word_for(8, "at least 8 characters") is None                     # no cadence word
+    assert cadence_word_for(45, "reviewed quarterly") is None                       # 45 is not quarterly
+    assert cadence_word_for("quarterly", "reviewed quarterly") is None              # already a word
+    assert cadence_word_for(True, "reviewed daily") is None
+    assert cadence_word_for(90, "") is None
+
+
+def test_restoration_only_touches_review_cadences():
+    from app.ai.schemas import ExtractedField, ExtractionRun, Source
+    from app.service import _restore_cadence_words
+    quote = [Source(page=1, quote="Logs are reviewed quarterly and access is checked quarterly.")]
+    run = ExtractionRun(fields={
+        "access_review_frequency_days": ExtractedField(value=90, confidence=1.0, sources=quote),
+        "log_retention_days": ExtractedField(value=90, confidence=1.0, sources=quote),
+    })
+    _restore_cadence_words(run)
+    assert run.fields["access_review_frequency_days"].value == "quarterly"
+    assert run.fields["log_retention_days"].value == 90   # a retention period, not a cadence
