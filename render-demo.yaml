@@ -1,0 +1,49 @@
+# Render Blueprint — PUBLIC DEMO SITE at https://grc-8u6a.onrender.com.
+# This is the ORIGINAL `grc` service, repurposed: it opens on the one-click
+# role deck instead of SSO. Production moved to its own service (`grc-prod`,
+# grc.blinkedit.me) in render.yaml. The demo shares nothing with production:
+# no grc-db, no grc-config / grc-secrets groups, no OIDC.
+#
+# The existing service was created by hand, not from a Blueprint, so these
+# values are applied by hand in its Environment tab (see "Production and demo sites on Render" in
+# DEPLOYMENT.md for the order). Remove its DATABASE_URL, VITE_OIDC_* and env
+# group links BEFORE setting AUTH_STUB_ENABLED=true, so a stub-auth server
+# never runs against the production database.
+#
+# What makes it a demo, and why each value matters:
+# - AUTH_STUB_ENABLED=true: the role deck signs in with stub tokens
+#   (org:/user:/auditor:/firm:), so ANYONE can act as ANY tenant. Never point
+#   this service at real data.
+# - No VITE_OIDC_* build args: the frontend shows the role deck, not SSO
+#   (frontend/src/pages/Login.tsx, oidcConfigured()).
+# - No ADMIN_API_KEY: the browser seeds its demo org/firm/engagement through
+#   /admin/* on first visit (frontend/src/lib/demoWorld.ts). With stub auth on,
+#   require_admin in app/auth.py leaves those routes open.
+# - SQLite + local disk: no database or bucket to provision. The free plan has
+#   no persistent disk, so everything resets whenever the service sleeps or
+#   redeploys; the next visitor's browser seeds a fresh world automatically.
+# - No OLLAMA_*: AI analysis is off; uploads still land and the readiness check
+#   reports the model as "unconfigured" without failing.
+
+services:
+  - type: web
+    name: grc
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: singapore
+    numInstances: 1
+    healthCheckPath: /health/ready
+    envVars:
+      - key: PORT
+        value: "8000"
+      - key: AUTH_STUB_ENABLED
+        value: "true"
+      - key: DATABASE_URL
+        value: sqlite:////app/demo.db
+      - key: STORAGE_BACKEND
+        value: local
+      - key: EVIDENCE_STORAGE_DIR
+        value: /app/evidence_storage
+      - key: MALWARE_SCANNER
+        value: noop
