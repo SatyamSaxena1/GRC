@@ -71,3 +71,28 @@ extraction quality but cannot produce a false pass.
   in addition to the bearer token.
 - If this host is down the app degrades to null-field extraction and keeps
   serving; `app.monitor` retries damaged runs once it returns.
+
+## Use the Ollama already on your PC (no Docker)
+If Ollama is already installed and has the model, you do not need the Docker recipes above.
+`windows/ollama_gate.py` puts a token check in front of it, and Tailscale Funnel publishes
+the gate. Only Tailscale needs installing; the gate uses packages the repo already has.
+
+1. Install Tailscale for Windows and sign in (free plan, no card). Funnel must be enabled for
+   your tailnet once (the first `tailscale funnel` tells you how).
+2. In `deploy/llm/.env` set `OLLAMA_API_KEY` (`openssl rand -hex 32`). Keep Ollama on
+   loopback: turn **off** "Expose Ollama to the network" in its settings and restart it.
+3. Start the gate: `powershell -ExecutionPolicy Bypass -File deploy\llm\windows\start-gate.ps1`
+   (listens on `127.0.0.1:8088` only; it warns if Ollama is exposed on all interfaces).
+4. Publish it, once: `tailscale funnel --bg 8088`. It prints `https://<pc>.<tailnet>.ts.net`.
+5. Verify from anywhere: without the header `curl https://<that>/api/tags` must return 401;
+   with `-H "Authorization: Bearer $OLLAMA_API_KEY"` it lists the models. A `DELETE`/`pull`
+   must return 403 even with the token.
+6. In Render set `OLLAMA_BASE_URL=https://<that address>` and the same `OLLAMA_API_KEY`
+   (copy it from the file into Render directly; do not paste it into chat or commit it).
+
+What to expect: the PC must be on, awake and signed in with Ollama and the gate running.
+Ollama handles one request at a time per model by default, so visitors uploading together
+queue (Render waits up to `OLLAMA_TIMEOUT_S`, 180s). If the PC is off the site keeps serving
+and uploads read "analysis model was unavailable" until it is back, then Re-run analysis.
+Tailscale Funnel does not decrypt the traffic; TLS ends on your PC.
+
