@@ -139,6 +139,8 @@ orgs. That is acceptable only for data nobody cares about. So the demo gets its
 own database and its own settings, and never shares `grc-secrets` or the
 production database.
 
+0. `render.yaml` already defines this as the `grc-demo` service (SQLite, stub auth,
+   no secrets group). The steps below say what it sets and why.
 1. Create a separate Render web service (same repo and Dockerfile, e.g. `grc-demo`)
    and a separate database, or leave `DATABASE_URL` unset to use SQLite. SQLite
    on Render's free disk is wiped on every deploy and sleep, which suits a demo:

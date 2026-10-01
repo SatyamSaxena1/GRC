@@ -89,3 +89,29 @@ services:
         sync: false
       - fromGroup: grc-config
       - fromGroup: grc-secrets
+
+  # Public DEMO: stub auth so Quick start and the role switcher work (see
+  # DEPLOYMENT.md "Demo site with stub auth"). Deliberately isolated from the
+  # service above: no grc-config / grc-secrets, no database (SQLite on the
+  # ephemeral disk, re-seeded on the next visit), no ADMIN_API_KEY, no VITE_OIDC_*.
+  # Anyone with the URL can act as any org, so never put real data or the real
+  # OLLAMA_API_KEY here. Add OLLAMA_* by hand in the dashboard only if you accept that.
+  # Counts toward the free plan's monthly instance hours alongside `grc`.
+  - type: web
+    name: grc-demo
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: singapore
+    numInstances: 1
+    healthCheckPath: /health/live
+    autoDeploy: false
+    envVars:
+      - key: PORT
+        value: "8000"
+      - key: AUTH_STUB_ENABLED
+        value: "true"
+      - key: STORAGE_BACKEND
+        value: local
+      - key: MALWARE_SCANNER
+        value: noop
