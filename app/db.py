@@ -9,7 +9,26 @@ from app.models import Base
 # ponytail: create_all is the dev path; Alembic owns the schema for anything real
 # (see alembic/ and ADR-001). DATABASE_URL switches SQLite <-> PostgreSQL.
 DATABASE_URL = database_url()
-engine = create_engine(DATABASE_URL)
+def tune_sqlite(eng):
+    """SQLite allows one writer at a time and, by default, gives up after 5 s with
+    "database is locked". The evidence pipeline writes from a background thread
+    while pages poll and a second upload may be running (the public demo runs on
+    SQLite), so wait longer and use WAL so readers never block the writer.
+    A no-op on PostgreSQL."""
+    if eng.dialect.name != "sqlite":
+        return eng
+
+    @event.listens_for(eng, "connect")
+    def _pragmas(dbapi_conn, _record):
+        cur = dbapi_conn.cursor()
+        cur.execute("PRAGMA journal_mode=WAL")
+        cur.execute("PRAGMA busy_timeout=30000")
+        cur.close()
+
+    return eng
+
+
+engine = tune_sqlite(create_engine(DATABASE_URL))
 
 
 def is_postgres() -> bool:
