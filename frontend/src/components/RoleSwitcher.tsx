@@ -1,6 +1,6 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { cachedWorld } from "../lib/demoWorld";
+import { cachedWorld, ensureWorld } from "../lib/demoWorld";
 import { reachOf } from "../lib/nav";
 import { ROLES, roleOf, type RoleDef } from "../lib/roles";
 import { useSession } from "../lib/session";
@@ -15,6 +15,7 @@ export function RoleSwitcher() {
   const { identity, setIdentity } = useSession();
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const [busy, setBusy] = useState(false); // also re-renders once the world is cached
   const world = cachedWorld();
   const current = roleOf(identity);
 
@@ -42,6 +43,21 @@ export function RoleSwitcher() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   });
+
+  // Signed in by hand (or the browser lost the demo tenant): offer to build it
+  // so the swatches appear, instead of making people sign out and back in.
+  if (!world && identity && identity.kind !== "oidc") {
+    return (
+      <div className="role-switch">
+        <button type="button" disabled={busy} onClick={() => {
+          setBusy(true);
+          ensureWorld().then(() => setBusy(false)).catch(() => setBusy(false));
+        }}>
+          <span className="role-switch__name">{busy ? "Setting up demo roles…" : "Enable quick role switching"}</span>
+        </button>
+      </div>
+    );
+  }
 
   if (!world) {
     return current ? (
