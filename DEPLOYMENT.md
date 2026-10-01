@@ -126,6 +126,43 @@ first from `deploy/llm/` (Ollama behind a bearer-token proxy), then:
    page sends no key, so it does not work against a production deploy.
 5. Keep `numInstances: 1`: SSE and upload background tasks are in-process.
 
+## Demo site with stub auth (role switching, no SSO)
+
+The Path C service is SSO-only, so the login page's Quick start and the sidebar's
+role switcher (Alt+1-5) are unavailable there: they build a demo tenant through
+the open `/admin/*` routes, which only exist with `AUTH_STUB_ENABLED=true`. For a
+shareable demo, run a **second, separate** service in stub mode.
+
+**What stub mode means.** Tokens are unsigned: anyone who knows an org or user id
+can act as that org or user, and with `ADMIN_API_KEY` unset anyone can create
+orgs. That is acceptable only for data nobody cares about. So the demo gets its
+own database and its own settings, and never shares `grc-secrets` or the
+production database.
+
+1. Create a separate Render web service (same repo and Dockerfile, e.g. `grc-demo`)
+   and a separate database, or leave `DATABASE_URL` unset to use SQLite. SQLite
+   on Render's free disk is wiped on every deploy and sleep, which suits a demo:
+   the next visit re-seeds itself.
+2. Do **not** attach the `grc-secrets` group. Set only:
+   - `AUTH_STUB_ENABLED=true` (the default if unset)
+   - `ADMIN_API_KEY` unset. If it is set, Quick start's admin calls get `401`.
+   - `STORAGE_BACKEND=local` (the default) so uploads need no S3 bucket
+   - `OLLAMA_BASE_URL`, `OLLAMA_API_KEY`, `OLLAMA_MODEL=qwen2.5vl:7b` if you want
+     uploads analysed (see `deploy/llm/`); without them the app shows the
+     "model unavailable" notice and everything else still works.
+   - Leave the `VITE_OIDC_*` build args empty so the login page offers the stub
+     sign-in instead of "Continue with SSO".
+3. Deploy, open the site, click **Quick start**. It creates Acme Corp, an audit
+   firm, five people and a sample policy, caches them in that browser, and the
+   five role swatches appear in the sidebar. Signed in some other way, the sidebar's
+   **Enable quick role switching** button does the same.
+4. The tenant is cached per browser (localStorage); a fresh database makes the
+   next click re-create it.
+
+Do not put real documents on the demo service, and do not point it at the
+production Ollama key unless you accept that anyone with the demo URL can spend
+that model's time.
+
 ## Continuous integration / image publishing
 
 `.github/workflows/ci.yml` runs the backend test suite (`pytest`) and the
