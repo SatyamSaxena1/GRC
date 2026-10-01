@@ -72,6 +72,9 @@ services:
     region: singapore
     numInstances: 1
     healthCheckPath: /health/ready
+    # Deploys go through the GitHub Action's deploy hook (after CI passes), not Render's own
+    # push trigger; without this a Blueprint sync turns the trigger on.
+    autoDeploy: false
     envVars:
       - key: PORT
         value: "8000"
