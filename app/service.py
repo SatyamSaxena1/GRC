@@ -259,6 +259,40 @@ def _ensure_org_control(db: Session, org_id: str, framework: str, clause: str) -
     return control
 
 
+def _adopt_gap_from_earlier_version(db: Session, link: EvidenceControlLink, evidence: Evidence,
+                                    kind: str, attribute: str) -> GapRow | None:
+    """The still-OPEN gap this same requirement raised on an earlier version, moved onto `link`.
+
+    Each evidence version has its own links, so a requirement that kept failing was
+    raised again on every upload: the old gap stayed OPEN and a second gap and task
+    appeared beside it, which made a partial fix *raise* the open counts. Carrying
+    the row forward keeps one gap per requirement, with its task, owner, due date
+    and priority. A locked link belongs to the version the auditor reviewed, so its
+    gaps stay where they are.
+    """
+    ancestor_id = evidence.supersedes_id
+    while ancestor_id:
+        ancestor = db.get(Evidence, ancestor_id)
+        if ancestor is None:
+            return None
+        row = (
+            db.query(GapRow)
+            .join(EvidenceControlLink, GapRow.link_id == EvidenceControlLink.id)
+            .filter(EvidenceControlLink.evidence_id == ancestor.id,
+                    EvidenceControlLink.framework == link.framework,
+                    EvidenceControlLink.clause == link.clause,
+                    EvidenceControlLink.locked_by_engagement_id.is_(None),
+                    GapRow.kind == kind, GapRow.attribute == attribute,
+                    GapRow.status == "OPEN")
+            .first()
+        )
+        if row is not None:
+            row.link_id = link.id
+            return row
+        ancestor_id = ancestor.supersedes_id
+    return None
+
+
 def _reconcile_gaps(db: Session, link: EvidenceControlLink, new_gaps, evidence,
                     actor_label: str = "", request_id: str = "",
                     guidance: str = "") -> None:
@@ -280,7 +314,8 @@ def _reconcile_gaps(db: Session, link: EvidenceControlLink, new_gaps, evidence,
             ciso_sync.push_gap_resolution(db, actor_label, request_id, row, link.evidence.org_id)
 
     for key, gap in new_by_key.items():
-        row = existing_open.get(key)
+        row = existing_open.get(key) or _adopt_gap_from_earlier_version(
+            db, link, evidence, *key)
         actual = str(gap.actual) if gap.actual is not None else None
         required = str(gap.required) if gap.required is not None else None
         if row is not None:
