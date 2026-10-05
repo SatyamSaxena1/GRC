@@ -279,6 +279,8 @@ def staff_auditor(engagement_id: str, body: StaffIn,
     if existing:
         return {"id": existing.id, "user_id": existing.user_id}
 
+    # Firm session carries app.firm_id only; the audit row is the client's (RLS on org_id).
+    set_tenant(db, engagement.org_id)
     row = EngagementAuditor(engagement_id=engagement_id, user_id=body.user_id,
                             audit_firm_id=actor.audit_firm_id, assigned_by=actor.label())
     db.add(row)
@@ -303,6 +305,8 @@ def unstaff_auditor(engagement_id: str, user_id: str,
     if row is None:
         raise HTTPException(404)
     engagement = db.get(Engagement, engagement_id)
+    if engagement:
+        set_tenant(db, engagement.org_id)  # as in staff_auditor: audit row is the client's
     db.delete(row)
     audit_log.record(db, actor=actor.label(), action="AUDITOR_UNSTAFFED",
                      entity_type="engagement", entity=engagement_id,
