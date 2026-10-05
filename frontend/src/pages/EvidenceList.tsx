@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { openDemoPanel, useDemoEnabled } from "../demo/enabled";
 import { useNavigate } from "react-router-dom";
 import {
   ApiError, listAiModels, listEvidence, reprocessEvidence, suggestArtefactType, uploadEvidence,
@@ -76,6 +77,7 @@ const TERMINAL = new Set(["READY", "FAILED", "NEEDS_REVIEW"]);
 const STUCK_AFTER_MINUTES = 15;
 
 export function EvidenceListPage() {
+  const demoOn = useDemoEnabled();
   const { identity } = useSession();
   const navigate = useNavigate();
   const [file, setFile] = useState<File | null>(null);
@@ -271,7 +273,7 @@ export function EvidenceListPage() {
               <label>File</label>
               <input type="file" accept=".pdf,.docx,.xlsx,.png,.jpg,.jpeg,.txt,.csv" onChange={(e) => pickFile(e.target.files?.[0] ?? null)} />
               <p className="muted" style={{ fontSize: 12, margin: "4px 0 0" }}>
-                No file handy? <a href="/demo/Asteron-Access-Control-Policy.pdf" download>Download a sample policy</a>, then upload it here.
+                No file handy? <a href="/demo/Asteron-Access-Control-Policy.pdf" download>Download a sample policy</a>, then upload it here.{demoOn && <> Or <button type="button" className="link-btn" onClick={openDemoPanel}>browse the demo documents</button>.</>}
               </p>
             </div>
             <div>

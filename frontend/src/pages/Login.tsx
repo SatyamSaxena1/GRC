@@ -5,6 +5,7 @@ import { useSession } from "../lib/session";
 import { Hint } from "../components/Hint";
 import { LoginTour } from "../components/LoginTour";
 import { oidcConfigured, startLogin } from "../lib/pkce";
+import { setDemoEnabled, useDemoEnabled } from "../demo/enabled";
 import { ROLES, type DemoWorld, type RoleDef } from "../lib/roles";
 import { ensureWorld } from "../lib/demoWorld";
 import { FEATURES, reachOf } from "../lib/nav";
@@ -49,6 +50,7 @@ function RoleGate({ production }: { production: boolean }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [manual, setManual] = useState(false);
+  const demoOn = useDemoEnabled();
 
   const reach = useMemo(
     () => Object.fromEntries(ROLES.map((r) => [r.id, reachOf(r.identity(SHAPE))])),
@@ -103,6 +105,9 @@ function RoleGate({ production }: { production: boolean }) {
             : "Acme Corp is being audited by Meridian Assurance. Pick whose eyes to look through — one click, no password."}
         </span>
         <Link to="/pitch">What is this?</Link>
+        <button type="button" className="gate-link" aria-pressed={demoOn} onClick={() => setDemoEnabled(!demoOn)}>
+          Demo tools: {demoOn ? "on" : "off"}
+        </button>
         <button type="button" className="gate-link" onClick={() => setManual((m) => !m)}>
           {manual ? "Back to roles" : production ? "Request an audit / other account" : "Sign in by id / request an audit"}
         </button>

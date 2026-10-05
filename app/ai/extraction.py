@@ -69,6 +69,15 @@ def extract_attributes(
             break
 
     latency_ms = getattr(gateway, "last_latency_ms", 0)
+    # A cut prompt/output can still parse as JSON that is simply missing facts;
+    # trusting it would turn "the model never saw the document's end" into
+    # confident FAILs. Route it to review instead.
+    if raw is not None and getattr(gateway, "last_truncated", False) is True:
+        logger.error("extraction_truncated model=%s stats=%s — needs review",
+                     base.model, getattr(gateway, "last_stats", {}))
+        return base.model_copy(update={
+            "fields": _empty(attribute_names), "status": "INVALID_OUTPUT", "latency_ms": latency_ms,
+        })
     if raw is None:
         logger.error("extraction_unparseable model=%s — needs review", base.model)
         return base.model_copy(update={
@@ -132,6 +141,13 @@ def extract_attributes_streaming(
         logger.exception("extraction_stream_failed model=%s — falling back", base.model)
         return extract_attributes(gateway, text, attribute_names, extraction_method)
 
+    if raw and getattr(gateway, "last_truncated", False) is True:
+        logger.error("extraction_truncated model=%s stats=%s — needs review",
+                     base.model, getattr(gateway, "last_stats", {}))
+        return base.model_copy(update={
+            "fields": {n: ExtractedField(extraction_method="none") for n in attribute_names},
+            "status": "INVALID_OUTPUT", "latency_ms": getattr(gateway, "last_latency_ms", 0),
+        })
     if not raw:
         logger.warning("extraction_stream_empty model=%s — falling back", base.model)
         return extract_attributes(gateway, text, attribute_names, extraction_method)

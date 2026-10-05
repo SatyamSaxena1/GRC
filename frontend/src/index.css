@@ -205,7 +205,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .login-card .tour-launcher { margin-top: 0; margin-bottom: 18px; color: var(--primary); background: var(--neutral-bg); border-color: var(--border); }
 .login-card .tour-launcher:hover { background: var(--border); }
 .tour-list { display: grid; gap: 10px; margin-top: 20px; }
-.tour-list button { display: grid; gap: 4px; padding: 14px 16px; text-align: left; color: var(--text); background: var(--background); border: 1px solid var(--border); border-radius: 10px; cursor: pointer; }
+.tour-list button { display: grid; gap: 4px; padding: 14px 16px; text-align: left; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 10px; cursor: pointer; }
 .tour-list button:hover { border-color: var(--primary); transform: translateY(-1px); }
 .tour-list span { color: var(--text-muted); font-size: 13px; }
 .tour-list small { color: var(--primary); font-weight: 700; }
@@ -1410,3 +1410,45 @@ html.deck-mode body { background: #0e1120; }
 .doc-image { max-width: 100%; border: 1px solid var(--border); border-radius: 8px; }
 .doc-text { max-height: 60vh; overflow: auto; margin: 0 0 6px; padding: 12px; white-space: pre-wrap; font-size: 12.5px; line-height: 1.55; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; }
 .doc-text mark { background: #fff3a3; color: inherit; padding: 0 1px; }
+
+/* ---- Demo tools (sample library, later the guide) ---- */
+.link-btn { background: none; border: 0; padding: 0; color: var(--primary); cursor: pointer; font: inherit; text-decoration: underline; }
+.demo-pill { position: fixed; right: 16px; bottom: 16px; z-index: 300; display: flex; border-radius: 999px; overflow: hidden;
+  background: var(--role, var(--primary)); color: #fff; box-shadow: 0 6px 20px rgba(0, 0, 0, .28); }
+.demo-pill button { background: none; border: 0; color: inherit; cursor: pointer; font: inherit; font-weight: 600; font-size: 13px; }
+.demo-pill__main { padding: 9px 8px 9px 16px; }
+.demo-pill__off { padding: 9px 14px 9px 6px; opacity: .75; font-size: 16px !important; }
+.demo-pill button:hover { background: rgba(255, 255, 255, .16); }
+.demo-backdrop { position: fixed; inset: 0; z-index: 310; background: rgba(10, 12, 24, .55); display: grid; place-items: center; padding: 16px; }
+.demo-panel { width: min(980px, 100%); max-height: min(88vh, 780px); display: flex; flex-direction: column; overflow: hidden;
+  background: var(--panel); border-radius: 14px; box-shadow: 0 24px 60px rgba(0, 0, 0, .4); }
+.demo-panel__head { display: flex; justify-content: space-between; gap: 16px; padding: 18px 22px 12px; border-bottom: 1px solid var(--border);
+  border-top: 4px solid var(--role, var(--primary)); }
+.demo-panel__head h2 { margin: 0 0 2px; font-size: 20px; }
+.demo-panel__head p { margin: 0; color: var(--text-muted); font-size: 13px; }
+.demo-x { background: none; border: 0; font-size: 26px; line-height: 1; cursor: pointer; color: var(--text-muted); align-self: flex-start; }
+.demo-warn { margin: 12px 22px 0; padding: 9px 12px; border-radius: 8px; background: #fff4e0; color: #7a4b00; font-size: 13px; }
+.demo-body { display: grid; grid-template-columns: 290px 1fr; min-height: 0; flex: 1; }
+.demo-list { list-style: none; margin: 0; padding: 10px; overflow: auto; border-right: 1px solid var(--border); background: var(--bg); display: flex; flex-direction: column; gap: 4px; }
+.demo-list button { width: 100%; display: flex; gap: 10px; align-items: flex-start; text-align: left; padding: 9px 10px; border: 1px solid transparent;
+  border-radius: 8px; background: none; cursor: pointer; font: inherit; color: var(--text); }
+.demo-list button:hover { background: var(--neutral-bg); }
+.demo-list button.is-on { background: var(--panel); border-color: var(--role, var(--primary)); box-shadow: 0 1px 4px rgba(0, 0, 0, .08); }
+.demo-list strong { display: block; font-size: 13px; line-height: 1.3; }
+.demo-list small { color: var(--text-muted); font-size: 11.5px; }
+.demo-list__n { flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--role, var(--primary)); color: #fff; font-size: 12px; font-weight: 700; display: grid; place-items: center; }
+.demo-card { padding: 18px 24px 22px; overflow: auto; }
+.demo-card h3 { margin: 0 0 8px; font-size: 18px; }
+.demo-card h4 { margin: 16px 0 4px; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-muted); }
+.demo-card p { margin: 0 0 4px; line-height: 1.55; }
+.demo-card ul { margin: 0; padding-left: 20px; line-height: 1.6; }
+.demo-note { margin-top: 12px !important; padding: 8px 12px; border-radius: 8px; background: var(--neutral-bg); font-size: 13px; }
+.demo-fine { margin-top: 12px !important; color: var(--text-muted); font-size: 12px; }
+.demo-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.demo-text { margin: 14px 0 0; padding: 12px; max-height: 240px; overflow: auto; white-space: pre-wrap; font-size: 12px; line-height: 1.5; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; }
+@media (max-width: 760px) {
+  .demo-body { grid-template-columns: 1fr; }
+  .demo-list { flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--border); }
+  .demo-list li { flex: none; width: 220px; }
+  .demo-pill { right: 10px; bottom: 10px; }
+}

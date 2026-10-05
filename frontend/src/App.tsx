@@ -21,6 +21,7 @@ import { DpdpPage } from "./pages/Dpdp";
 import { DpdpOperationsPage } from "./pages/DpdpOperations";
 import { CisoSyncPage } from "./pages/CisoSync";
 import { EvidenceMapPage } from "./pages/EvidenceMap";
+import { DemoGate } from "./demo/DemoGate";
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   const { identity } = useSession();
@@ -43,6 +44,8 @@ function RoleHome() {
 
 export function App() {
   return (
+    <>
+    <DemoGate />
     <Routes>
       <Route path="/pitch" element={<PitchPage />} />
       <Route path="/login" element={<LoginPage />} />
@@ -75,5 +78,6 @@ export function App() {
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </>
   );
 }

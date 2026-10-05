@@ -18,6 +18,19 @@ VISION_MODEL = os.environ.get("OLLAMA_VISION_MODEL", MODEL)
 TIMEOUT_S = float(os.environ.get("OLLAMA_TIMEOUT_S", "60"))
 API_KEY = os.environ.get("OLLAMA_API_KEY", "")
 MAX_RETRIES = 1
+# Pinned on every call. The model's own default is already ~0 temperature, so
+# `seed` and `num_ctx` matter more: Ollama's default context (4096 here) silently
+# drops tokens from the middle of a long prompt, and a per-call `num_ctx` that
+# differs between calls makes it reload the model. One value, everywhere.
+NUM_CTX = int(os.environ.get("OLLAMA_NUM_CTX", "16384"))
+SEED = int(os.environ.get("OLLAMA_SEED", "42"))
+# A prompt this close to the window was almost certainly cut (Ollama reports the
+# *truncated* prompt token count, so a full window is the tell).
+TRUNCATION_MARGIN = 32
+
+
+def _options(**extra) -> dict:
+    return {"temperature": 0, "seed": SEED, "num_ctx": NUM_CTX, **extra}
 
 
 def _headers() -> dict[str, str]:
@@ -37,6 +50,10 @@ class OllamaGateway:
         # per-instance override (app/ingest.py::gateway_for) takes priority.
         self.vision_model = vision_model
         self.last_latency_ms = 0
+        # Token accounting of the latest call; `last_truncated` is True when the
+        # prompt filled the context window or generation stopped on the length cap.
+        self.last_stats: dict = {}
+        self.last_truncated = False
         self._available: bool | None = None
 
     def available(self) -> bool:
@@ -63,6 +80,7 @@ class OllamaGateway:
             ],
             "format": "json",
             "stream": False,
+            "options": _options(),
         })
 
     def stream_json(self, system: str, user: str):
@@ -82,7 +100,9 @@ class OllamaGateway:
             ],
             "format": "json",
             "stream": True,
+            "options": _options(),
         }
+        self.last_truncated = False
         start = time.monotonic()
         with requests.post(f"{self.base_url}/api/chat", json=payload, headers=_headers(),
                            timeout=TIMEOUT_S, stream=True) as resp:
@@ -98,6 +118,7 @@ class OllamaGateway:
                 if piece:
                     yield piece
                 if message.get("done"):
+                    self._record_stats(message)
                     break
         self.last_latency_ms = int((time.monotonic() - start) * 1000)
         logger.info("ollama_stream model=%s latency_ms=%d", self.model, self.last_latency_ms)
@@ -113,6 +134,7 @@ class OllamaGateway:
                  "images": [base64.b64encode(img).decode() for img in images]},
             ],
             "stream": False,
+            "options": _options(),
         })
 
     def next_token_logprobs(self, system: str, user: str, top: int = 20) -> dict[str, float]:
@@ -127,7 +149,7 @@ class OllamaGateway:
             "stream": False,
             "logprobs": True,
             "top_logprobs": top,
-            "options": {"num_predict": 1, "temperature": 0},
+            "options": _options(num_predict=1),
         }
         start = time.monotonic()
         try:
@@ -141,15 +163,29 @@ class OllamaGateway:
         self.last_latency_ms = int((time.monotonic() - start) * 1000)
         return {a["token"]: a["logprob"] for a in alternatives if "token" in a and "logprob" in a}
 
+    def _record_stats(self, body: dict) -> None:
+        """Keep Ollama's own token accounting instead of discarding it, so a
+        silently truncated prompt (or output) is visible rather than a mystery."""
+        prompt_tokens = body.get("prompt_eval_count") or 0
+        reason = body.get("done_reason") or ""
+        self.last_stats = {"prompt_tokens": prompt_tokens, "output_tokens": body.get("eval_count") or 0,
+                           "done_reason": reason, "num_ctx": NUM_CTX}
+        self.last_truncated = reason == "length" or prompt_tokens >= NUM_CTX - TRUNCATION_MARGIN
+        if self.last_truncated:
+            logger.error("ollama_truncated model=%s %s", self.model, self.last_stats)
+
     def _chat(self, payload: dict) -> str:
         last_error: Exception | None = None
+        self.last_truncated = False
         for attempt in range(MAX_RETRIES + 1):
             start = time.monotonic()
             try:
                 resp = requests.post(f"{self.base_url}/api/chat", json=payload,
                                      headers=_headers(), timeout=TIMEOUT_S)
                 resp.raise_for_status()
-                content = resp.json()["message"]["content"]
+                body = resp.json()
+                content = body["message"]["content"]
+                self._record_stats(body)
                 self.last_latency_ms = int((time.monotonic() - start) * 1000)
                 logger.info("ollama_call model=%s latency_ms=%d attempt=%d",
                             self.model, self.last_latency_ms, attempt)

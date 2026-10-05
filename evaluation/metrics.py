@@ -51,6 +51,25 @@ class Report:
     stale_detection: Counter = field(default_factory=Counter)
     documents: int = 0
     failures: list[str] = field(default_factory=list)
+    # Where the errors are, not just how many: accuracy per attribute, whether a
+    # miss was "said nothing" or "said something wrong" (the latter is worse - a
+    # wrong value looks like a fact), and whether repeated runs of the same
+    # document agreed with each other.
+    per_attribute: dict[str, Counter] = field(default_factory=dict)
+    missed: Counter = field(default_factory=Counter)
+    wrong: Counter = field(default_factory=Counter)
+    unstable: list[str] = field(default_factory=list)
+    unstable_total: int = 0
+    runs: int = 0
+    invalid_runs: int = 0
+    latencies_ms: list[int] = field(default_factory=list)
+
+    def add_attribute(self, name: str, expected, actual) -> bool:
+        ok = values_match(expected, actual)
+        self.per_attribute.setdefault(name, Counter()).add(ok)
+        if not ok:
+            (self.missed if actual is None else self.wrong).add(True)
+        return ok
 
     GATES = {
         "auto_accept_precision": 0.95,
@@ -69,6 +88,11 @@ class Report:
             "auto_accept_precision": round(self.auto_accept.score, 4),
             "stale_detection_recall": round(self.stale_detection.score, 4),
         }
+
+    def attribute_table(self) -> list[tuple[str, float, int, int]]:
+        """(attribute, accuracy, hits, total), worst first."""
+        rows = [(n, c.score, c.hits, c.total) for n, c in self.per_attribute.items()]
+        return sorted(rows, key=lambda r: (r[1], r[0]))
 
     def gate_results(self) -> dict[str, bool]:
         summary = self.summary()
