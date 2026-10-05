@@ -20,7 +20,7 @@ from sqlalchemy.orm import Session
 
 from app import audit_log
 from app.auth import Actor, current_actor
-from app.db import get_session, set_firm
+from app.db import get_session, set_firm, set_tenant
 from app.models import (
     AuditFirm, Engagement, EngagementAllocation, EngagementAuditor, EvidenceControlLink,
     GapRow, OnboardingRequest, OrgControl, Organization, User,
@@ -127,6 +127,9 @@ def approve_onboarding_request(request_id: str, body: ApprovalIn,
     org = Organization(name=req.org_name, frameworks=frameworks)
     db.add(org)
     db.flush()
+    # The firm's session carries only app.firm_id; the tenant being created has
+    # no GUC yet, so its first tenant-scoped rows (audit_events) would fail RLS.
+    set_tenant(db, org.id)
 
     engagement = Engagement(audit_firm_id=req.audit_firm_id, org_id=org.id)
     db.add(engagement)
