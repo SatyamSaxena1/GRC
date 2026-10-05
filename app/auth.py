@@ -213,6 +213,9 @@ def _firm_user_actor(db: Session, user: User, engagement_header: str | None) -> 
         return Actor(org_id="", audit_firm_id=user.audit_firm_id,
                      user_id=user.id, role=user.role)
 
+    # Engagement and EngagementAuditor are RLS'd on app.firm_id; without it the
+    # lookups below see nothing and every staffed auditor gets a 404 on Postgres.
+    set_firm(db, user.audit_firm_id)
     engagement = db.get(Engagement, engagement_header)
     if (engagement is None or not engagement.active
             or engagement.audit_firm_id != user.audit_firm_id):
