@@ -1,19 +1,28 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { completeLogin, ENGAGEMENT_HINT_KEY } from "../lib/pkce";
+import { ApiError, listFirmEngagements, type FirmEngagement, type Identity } from "../api/client";
+import { completeLogin } from "../lib/pkce";
 import { useSession } from "../lib/session";
 
-/** Landing point for the Authentik redirect (VITE_OIDC_REDIRECT_URI). Exchanges
- * the code for a token, then asks for an engagement id only if this identity
- * turns out to be an auditor — the backend is the one that actually knows the
- * role (see app/oidc.py); this page just gives the auditor a place to enter it. */
+type Oidc = Extract<Identity, { kind: "oidc" }>;
+
+/** Landing point for the IdP redirect (VITE_OIDC_REDIRECT_URI). Exchanges the
+ * code for a token, then asks the backend who this is — nobody types an id:
+ *   - an auditee-side user goes straight in (the firm console answers 403);
+ *   - a firm admin goes to the firm console;
+ *   - an auditor is put into their one client, or picks among the clients they
+ *     are staffed on (the backend only ever lists those). */
 export function OidcCallbackPage() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const { setIdentity } = useSession();
   const [error, setError] = useState<string | null>(null);
-  const [pendingToken, setPendingToken] = useState<{ token: string; email: string | null } | null>(null);
-  const [engagementId, setEngagementId] = useState(sessionStorage.getItem(ENGAGEMENT_HINT_KEY) ?? "");
+  const [choice, setChoice] = useState<{ base: Oidc; engagements: FirmEngagement[] } | null>(null);
+
+  const finish = (identity: Oidc, to: string) => {
+    setIdentity(identity);
+    navigate(to);
+  };
 
   useEffect(() => {
     const code = params.get("code");
@@ -21,9 +30,23 @@ export function OidcCallbackPage() {
       setError("no authorization code in callback URL");
       return;
     }
-    completeLogin(code)
-      .then(({ accessToken, email }) => setPendingToken({ token: accessToken, email }))
-      .catch((err) => setError((err as Error).message));
+    (async () => {
+      const { accessToken, email } = await completeLogin(code);
+      const base: Oidc = { kind: "oidc", token: accessToken, label: email ?? "SSO user" };
+      let firmView: Awaited<ReturnType<typeof listFirmEngagements>>;
+      try {
+        firmView = await listFirmEngagements(base);
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 403) return finish(base, "/overview");
+        throw err;
+      }
+      const signedIn: Oidc = { ...base, role: firmView.role };
+      if (firmView.role === "FIRM_ADMIN") return finish(signedIn, "/firm");
+      const open = firmView.engagements.filter((e) => e.status === "ACTIVE");
+      if (open.length === 1) return finish({ ...signedIn, engagementId: open[0].id }, "/controls");
+      setChoice({ base: signedIn, engagements: open });
+    })().catch((err) => setError((err as Error).message));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params]);
 
   if (error) {
@@ -37,39 +60,31 @@ export function OidcCallbackPage() {
     );
   }
 
-  if (!pendingToken) {
+  if (!choice) {
     return <div className="login-shell"><div className="card login-card">Signing you in…</div></div>;
   }
-
-  const enter = (asAuditor: boolean) => {
-    setIdentity({
-      kind: "oidc", token: pendingToken.token,
-      label: pendingToken.email ?? "SSO user",
-      engagementId: asAuditor ? engagementId.trim() : undefined,
-    });
-    navigate(asAuditor ? "/controls" : "/overview");
-  };
 
   return (
     <div className="login-shell">
       <div className="card login-card">
-        <h1>Signed in as {pendingToken.email ?? "unknown"}</h1>
-        <p className="muted">
-          If this identity is an auditor, an engagement id is required — the backend rejects
-          an auditor request without one (see docs/adr/011-oidc-auth.md).
-        </p>
-        <div className="form-grid">
-          <div>
-            <label>Engagement id (auditors only)</label>
-            <input value={engagementId} onChange={(e) => setEngagementId(e.target.value)}
-                  placeholder="leave blank if you are not an auditor" />
+        <h1>Which client are you reviewing?</h1>
+        {choice.engagements.length === 0 ? (
+          <p className="muted">
+            You are not staffed on any client yet. Ask your firm admin to add you to an engagement,
+            then sign in again.
+          </p>
+        ) : (
+          <div className="form-grid">
+            {choice.engagements.map((e) => (
+              <button key={e.id} className="btn btn-primary"
+                      onClick={() => finish({ ...choice.base, engagementId: e.id }, "/controls")}>
+                {e.org_name}
+                <span className="muted"> — {e.frameworks.join(", ")} · {e.progress.open_gaps} open gaps</span>
+              </button>
+            ))}
           </div>
-          {engagementId.trim() ? (
-            <button className="btn btn-primary" onClick={() => enter(true)}>Continue as auditor</button>
-          ) : (
-            <button className="btn btn-primary" onClick={() => enter(false)}>Continue</button>
-          )}
-        </div>
+        )}
+        <button className="btn" style={{ marginTop: 12 }} onClick={() => navigate("/login")}>Back to sign in</button>
       </div>
     </div>
   );

@@ -14,7 +14,7 @@ export type Identity =
   // `persona` names the demo role this identity was picked as (src/lib/roles.ts)
   // — it only chooses the colour scheme; the backend never sees it.
   | { kind: "org" | "user" | "auditor" | "firm"; id: string; label: string; engagementId?: string; role?: string; persona?: string }
-  | { kind: "oidc"; token: string; label: string; engagementId?: string };
+  | { kind: "oidc"; token: string; label: string; engagementId?: string; role?: string };
 
 const STORAGE_KEY = "grc.identity";
 
@@ -187,8 +187,8 @@ export type FirmEngagement = {
   progress: { controls: number; evaluated: number; locked: number; open_gaps: number };
 };
 
-export const listFirmEngagements = () =>
-  request<{ engagements: FirmEngagement[] }>("GET", "/firm/engagements");
+export const listFirmEngagements = (as?: Identity) =>
+  request<{ role?: string; engagements: FirmEngagement[] }>("GET", "/firm/engagements", { as });
 
 export const listFirmAuditors = () =>
   request<{ auditors: { id: string; email: string; role: string }[] }>("GET", "/firm/auditors");

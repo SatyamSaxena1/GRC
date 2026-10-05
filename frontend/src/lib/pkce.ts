@@ -21,13 +21,10 @@ export function oidcConfigured(): boolean {
 }
 
 /** Redirects the browser to the IdP. Never returns. */
-export const ENGAGEMENT_HINT_KEY = "grc.oidc.engagement_hint";
-
-export async function startLogin(hint?: { email: string; engagementId?: string }): Promise<void> {
+export async function startLogin(hint?: { email: string }): Promise<void> {
   const env = import.meta.env;
   const verifier = base64url(crypto.getRandomValues(new Uint8Array(32)).buffer);
   sessionStorage.setItem(VERIFIER_KEY, verifier);
-  sessionStorage.removeItem(ENGAGEMENT_HINT_KEY); // a stale hint must not leak into another role's sign-in
 
   const redirectUri = env.VITE_OIDC_REDIRECT_URI || `${window.location.origin}/oidc-callback`;
   const url = new URL(env.VITE_OIDC_AUTHORIZE_URL as string);
@@ -40,7 +37,6 @@ export async function startLogin(hint?: { email: string; engagementId?: string }
   if (hint) {
     // Prefills the IdP's email box; the password is still typed by the person.
     url.searchParams.set("login_hint", hint.email);
-    if (hint.engagementId) sessionStorage.setItem(ENGAGEMENT_HINT_KEY, hint.engagementId);
   }
   window.location.assign(url.toString());
 }

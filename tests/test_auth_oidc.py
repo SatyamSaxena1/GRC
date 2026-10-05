@@ -57,8 +57,12 @@ def test_control_owner_only_sees_assigned_controls_via_oidc(client, bootstrap, u
     assert resp.status_code == 200
 
 
-def test_auditor_requires_engagement_header(client, bootstrap, monkeypatch):
+def test_auditor_without_engagement_header_reaches_no_client_data(client, bootstrap, upload, monkeypatch):
+    """No engagement selected = the firm-console actor: it is let in (the SPA uses
+    that to list its clients) but is bound to no client, so there is nothing to read."""
     org_id, engagement_id = bootstrap(client)
+    upload(client, org_id)
+    assert client.get("/controls", headers={"authorization": f"org:{org_id}"}).json()  # the client does have data
     firm_id = client.post("/admin/audit-firms", json={"name": "Second Firm"}).json()["id"]
     client.post("/admin/users", json={
         "email": "auditor@bigfour.test", "audit_firm_id": firm_id, "role": "AUDITOR",
@@ -66,7 +70,7 @@ def test_auditor_requires_engagement_header(client, bootstrap, monkeypatch):
     monkeypatch.setattr(oidc, "decode", lambda token: {"email": "auditor@bigfour.test"})
 
     without_header = client.get("/controls", headers={"authorization": f"Bearer {FAKE_JWT}"})
-    assert without_header.status_code == 401
+    assert without_header.status_code == 200 and without_header.json() == []
 
 
 def test_auditor_engagement_must_belong_to_their_firm(client, bootstrap, monkeypatch):

@@ -33,7 +33,7 @@ function RoleHome() {
   // A firm-side caller lands on its own console first: which clients am I on.
   // Only once it has opened one (engagementId set) is the auditee-shaped
   // review queue the right home.
-  if (identity?.kind === "firm" || (identity?.kind === "user" && identity.role === "FIRM_ADMIN" && !identity.engagementId)) {
+  if (identity?.kind === "firm" || ((identity?.kind === "user" || identity?.kind === "oidc") && identity.role === "FIRM_ADMIN" && !identity.engagementId)) {
     return <Navigate to="/firm" replace />;
   }
   const isAuditor = identity?.kind === "auditor" || (identity?.kind === "oidc" && Boolean(identity.engagementId));

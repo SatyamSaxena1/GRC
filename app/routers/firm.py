@@ -248,7 +248,7 @@ def list_engagements(actor: Actor = Depends(firm_actor), db: Session = Depends(g
             "progress": _progress(db, engagement.org_id, frameworks),
         })
     out.sort(key=lambda e: (e["status"] != "ACTIVE", e["org_name"].lower()))
-    return {"engagements": out}
+    return {"role": actor.role, "engagements": out}
 
 
 # --------------------------------------------------------------------------- staffing

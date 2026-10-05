@@ -85,7 +85,7 @@ export function roleOf(identity: Identity | null): RoleDef | null {
   if (identity.kind === "org") return roleById("admin");
   if (identity.kind === "auditor") return roleById("auditor");
   if (identity.kind === "firm") return roleById("firm");
-  if (identity.kind === "oidc") return roleById(identity.engagementId ? "auditor" : "admin");
+  if (identity.kind === "oidc") return roleById(identity.role === "FIRM_ADMIN" ? "firm" : identity.engagementId ? "auditor" : "admin");
   if (identity.role === "COMPLIANCE_VIEWER") return roleById("viewer");
   if (identity.role === "FIRM_ADMIN") return roleById("firm");
   if (identity.engagementId) return roleById("auditor");

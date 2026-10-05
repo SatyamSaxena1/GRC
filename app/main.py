@@ -164,6 +164,10 @@ def ready():
 # frontend/dist). In dev the frontend runs on :5173 and this directory does
 # not exist, so the whole block is a no-op.
 _SPA_DIR = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+# index.html names the hashed asset bundle, so it must be revalidated on every load
+# or a browser keeps serving the previous deploy's UI (the assets themselves are hashed).
+_NO_CACHE = {"Cache-Control": "no-cache"}
+
 if (_SPA_DIR / "index.html").is_file():
     # Several frontend routes share a path with a real API route (GET
     # /evidence, /controls, /gaps, /tasks, /activity, /notifications,
@@ -189,7 +193,7 @@ if (_SPA_DIR / "index.html").is_file():
             candidate = _SPA_DIR / path.lstrip("/")
             if path != "/" and candidate.is_file():
                 return FileResponse(candidate)
-            return FileResponse(_SPA_DIR / "index.html")
+            return FileResponse(_SPA_DIR / "index.html", headers=_NO_CACHE)
         return await call_next(request)
 
     if (_SPA_DIR / "assets").is_dir():
@@ -200,4 +204,4 @@ if (_SPA_DIR / "index.html").is_file():
         candidate = _SPA_DIR / full_path
         if full_path and candidate.is_file():
             return FileResponse(candidate)
-        return FileResponse(_SPA_DIR / "index.html")
+        return FileResponse(_SPA_DIR / "index.html", headers=_NO_CACHE)

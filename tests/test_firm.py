@@ -214,3 +214,29 @@ def test_dashboard_reports_progress_per_client(client, upload):
     row = client.get("/firm/engagements", headers=as_user(admin_id)).json()["engagements"][0]
     assert row["progress"]["controls"] > 0
     assert set(row["progress"]) == {"controls", "evaluated", "locked", "open_gaps"}
+
+
+def test_sso_auditor_needs_no_engagement_id_to_find_their_clients(client, monkeypatch):
+    """The SPA no longer asks an auditor to paste an engagement id: with none
+    selected the auditor is the firm-console actor, listing only what they are
+    staffed on, and still cannot read any client's data."""
+    from app import oidc
+
+    firm_id, admin_id = firm_with_admin(client)
+    auditor_id = auditor(client, firm_id)
+    eng_ids = []
+    for org_name in ("Client A", "Client B"):
+        request_id = request_onboarding(client, firm_id, org_name=org_name)
+        eng_ids.append(client.post(f"/firm/onboarding-requests/{request_id}/approve",
+                                   headers=as_user(admin_id), json={}).json()["engagement_id"])
+    client.post(f"/firm/engagements/{eng_ids[0]}/auditors",
+                headers=as_user(admin_id), json={"user_id": auditor_id})
+
+    monkeypatch.setattr(oidc, "decode", lambda t: {"email": "krishna@gemba.test"})
+    hdr = {"authorization": "Bearer header.payload.signature"}
+
+    listing = client.get("/firm/engagements", headers=hdr)
+    assert listing.status_code == 200
+    assert listing.json()["role"] == "AUDITOR"
+    assert [e["id"] for e in listing.json()["engagements"]] == [eng_ids[0]]
+    assert client.get("/controls", headers=hdr).json() == []  # no client selected, nothing to read

@@ -16,23 +16,23 @@ const RoleSurface = lazy(() => import("../components/RoleSurface"));
 
 const FRAMEWORKS = ["ISO-27001", "PCI-DSS", "SOC-2", "NIST-CSF", "HIPAA", "CIS-CONTROLS", "GDPR"];
 
-// Role shortcuts: they only prefill the email at the IdP (login_hint). Each role is a
-// real provisioned account; whoever you give its password to can sign in as it.
-const DEMO_ROLES = [
-  { label: "Organisation admin", hint: "the audited company", email: "monkeybaat610+client@gmail.com" },
-  { label: "Firm admin", hint: "the audit firm", email: "monkeybaat610+firm@gmail.com" },
-  { label: "Auditor", hint: "reviews one client", email: "monkeybaat610+auditor@gmail.com",
-    engagementId: "b58395d9-18f6-4a24-b2a7-5a68fa88c675" },
-];
-
 export type Tab = "org" | "user" | "viewer" | "auditor" | "firm" | "request" | "quickstart" | "sso";
 
 export function LoginPage() {
-  // With an identity provider configured this is a real deployment: SSO and
-  // Request an audit only, exactly as before. Without one it is a demo, and
-  // the front door is the role deck.
-  return oidcConfigured() ? <ClassicLogin /> : <DemoGate />;
+  // The front door is the role deck either way. With an identity provider
+  // configured (a real deployment) a card signs in as that role's real account
+  // - the email is filled in at the IdP, the person types the password - and
+  // only roles that have such an account are offered. Without one it is a demo.
+  return <RoleGate production={oidcConfigured()} />;
 }
+
+// Real, provisioned accounts behind the deck's cards. Not secrets: only the
+// email is prefilled (login_hint); the password is whatever the IdP holds.
+const PRODUCTION_LOGINS: Record<string, { email: string }> = {
+  admin: { email: "monkeybaat610+client@gmail.com" },
+  auditor: { email: "monkeybaat610+auditor@gmail.com" },
+  firm: { email: "monkeybaat610+firm@gmail.com" },
+};
 
 // Ids never reach the map — it only needs the shape of each role's identity to
 // work out which menu that role gets.
@@ -41,10 +41,11 @@ const SHAPE: DemoWorld = {
   orgName: "Acme Corp", firmName: "Meridian Assurance",
 };
 
-function DemoGate() {
+function RoleGate({ production }: { production: boolean }) {
   const { setIdentity } = useSession();
   const navigate = useNavigate();
-  const [active, setActive] = useState<RoleDef>(ROLES[0]);
+  const roles = production ? ROLES.filter((r) => r.id in PRODUCTION_LOGINS) : ROLES;
+  const [active, setActive] = useState<RoleDef>(roles[0]);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [manual, setManual] = useState(false);
@@ -58,6 +59,10 @@ function DemoGate() {
   const enter = async (role: RoleDef, to = role.home) => {
     if (busy) return;
     setActive(role);
+    if (production) {
+      void startLogin({ email: PRODUCTION_LOGINS[role.id].email });
+      return;
+    }
     setError(null);
     try {
       const world = await ensureWorld(setBusy);
@@ -75,7 +80,7 @@ function DemoGate() {
     const onKey = (e: KeyboardEvent) => {
       if (manual || e.metaKey || e.ctrlKey || e.altKey) return;
       if ((e.target as HTMLElement).closest("input, textarea, select")) return;
-      const role = ROLES.find((r) => r.key === e.key);
+      const role = roles.find((r) => r.key === e.key);
       if (role) void enter(role);
     };
     window.addEventListener("keydown", onKey);
@@ -91,13 +96,15 @@ function DemoGate() {
       </Suspense>
       <header className="gate-bar">
         <strong>GRC Workspace</strong>
-        <span className="gate-bar__demo">DEMO</span>
+        {!production && <span className="gate-bar__demo">DEMO</span>}
         <span className="gate-bar__what">
-          Acme Corp is being audited by Meridian Assurance. Pick whose eyes to look through — one click, no password.
+          {production
+            ? "Pick your role - your email is filled in at sign-in, you only type the password."
+            : "Acme Corp is being audited by Meridian Assurance. Pick whose eyes to look through — one click, no password."}
         </span>
         <Link to="/pitch">What is this?</Link>
         <button type="button" className="gate-link" onClick={() => setManual((m) => !m)}>
-          {manual ? "Back to roles" : "Sign in by id / request an audit"}
+          {manual ? "Back to roles" : production ? "Request an audit / other account" : "Sign in by id / request an audit"}
         </button>
       </header>
 
@@ -106,7 +113,7 @@ function DemoGate() {
       ) : (
         <div className="gate-grid">
           <section className="role-deck" aria-label="Choose a role">
-            {ROLES.map((role) => (
+            {roles.map((role) => (
               <button
                 key={role.id}
                 type="button"
@@ -139,7 +146,7 @@ function DemoGate() {
             ))}
             <p className="role-deck__status" role="status">
               {error ? <span className="gate-error">{error}</span>
-                : busy ?? "First click seeds the demo tenant; switching after that is instant."}
+                : busy ?? (production ? "You will be sent to the sign-in page." : "First click seeds the demo tenant; switching after that is instant.")}
             </p>
           </section>
 
@@ -267,13 +274,8 @@ function ClassicLogin({ embedded = false }: { embedded?: boolean }) {
         {tab === "request" && <RequestAudit />}
         {tab === "sso" && (
           <div className="form-grid">
-            <p className="muted">Pick a role to sign in with its account — the email is filled in for you.</p>
-            {DEMO_ROLES.map((r) => (
-              <button key={r.label} className="btn" onClick={() => void startLogin(r)}>
-                {r.label}<span className="muted"> — {r.hint}</span>
-              </button>
-            ))}
-            <button className="btn btn-primary" onClick={() => void startLogin()}>Another account</button>
+            <p className="muted">Redirects to the configured identity provider.</p>
+            <button className="btn btn-primary" onClick={() => void startLogin()}>Continue with SSO</button>
           </div>
         )}
         {!production && tab === "org" && (

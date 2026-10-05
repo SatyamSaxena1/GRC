@@ -190,8 +190,8 @@ def _resolve_oidc(token: str, db: Session, engagement_header: str | None) -> Act
         raise HTTPException(401, "no user provisioned for this identity")
 
     if user.audit_firm_id:
-        if user.role == "AUDITOR" and not engagement_header:
-            raise HTTPException(401, "x-engagement-id header required for an auditor")
+        # An auditor with no engagement selected is just the firm console actor
+        # (sees only the clients it is staffed on); the SPA lists them to pick one.
         return _firm_user_actor(db, user, engagement_header)
 
     if user.org_id is None:
