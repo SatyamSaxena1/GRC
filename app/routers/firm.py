@@ -209,7 +209,10 @@ def _progress(db: Session, org_id: str, frameworks: set[str]) -> dict:
     """Enough for a dashboard row: how much of this client is settled, and how
     much is still open work. Counted over the engagement's allocated frameworks
     only, so a partially-allocated client does not read as half-finished."""
-    controls = [c for c in db.query(OrgControl).filter_by(org_id=org_id)
+    # The caller was already authorised for this engagement; org-scoped tables
+    # are RLS'd on app.tenant_id, which a firm session lacks (reads would be 0).
+    set_tenant(db, org_id)
+    controls =[c for c in db.query(OrgControl).filter_by(org_id=org_id)
                 if c.framework in frameworks]
     clauses = {(c.framework, c.clause) for c in controls}
     links = [link for link in db.query(EvidenceControlLink)
