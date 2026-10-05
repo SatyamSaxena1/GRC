@@ -16,6 +16,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app import audit_log
@@ -77,6 +78,16 @@ def submit_onboarding_request(body: OnboardingIn, db: Session = Depends(get_sess
     if db.get(AuditFirm, body.audit_firm_id) is None:
         raise HTTPException(404, "no such audit firm")
     set_firm(db, body.audit_firm_id)
+    # Idempotent: the same prospect re-submitting (double click, retry) gets their
+    # pending request back rather than a second row for the firm to sort out.
+    same = db.query(OnboardingRequest).filter(
+        OnboardingRequest.audit_firm_id == body.audit_firm_id,
+        OnboardingRequest.status == "PENDING",
+        func.lower(OnboardingRequest.org_name) == body.org_name.strip().lower(),
+        func.lower(OnboardingRequest.contact_email) == body.contact_email.strip().lower(),
+    ).first()
+    if same is not None:
+        return {"id": same.id, "status": same.status}
     req = OnboardingRequest(**body.model_dump())
     db.add(req)
     audit_log.record(db, actor="anonymous", action="ONBOARDING_REQUESTED",

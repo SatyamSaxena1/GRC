@@ -240,3 +240,28 @@ def test_sso_auditor_needs_no_engagement_id_to_find_their_clients(client, monkey
     assert listing.json()["role"] == "AUDITOR"
     assert [e["id"] for e in listing.json()["engagements"]] == [eng_ids[0]]
     assert client.get("/controls", headers=hdr).json() == []  # no client selected, nothing to read
+
+
+def test_resubmitting_a_pending_request_returns_the_same_request(client):
+    firm_id, admin_id = firm_with_admin(client)
+    first = request_onboarding(client, firm_id)
+    again = client.post("/firm/onboarding-requests", json={
+        "audit_firm_id": firm_id, "org_name": "  acme corp ", "contact_email": "CISO@acme.test",
+        "frameworks": ["ISO-27001"],
+    })
+    assert again.status_code == 201 and again.json()["id"] == first  # same shape, no new row
+
+    other = client.post("/firm/onboarding-requests", json={
+        "audit_firm_id": firm_id, "org_name": "Different Co", "contact_email": "ciso@acme.test",
+        "frameworks": ["ISO-27001"],
+    }).json()["id"]
+    assert other != first  # a different org from the same contact is a real second request
+
+    pending = client.get("/firm/onboarding-requests", headers=as_user(admin_id),
+                         params={"status": "PENDING"}).json()["requests"]
+    assert len(pending) == 2
+
+    # once decided, the same prospect may ask again
+    client.post(f"/firm/onboarding-requests/{first}/reject", headers=as_user(admin_id), json={"note": "no"})
+    redo = request_onboarding(client, firm_id)
+    assert redo != first
