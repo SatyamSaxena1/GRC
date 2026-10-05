@@ -68,7 +68,10 @@ export async function completeLogin(code: string): Promise<{ accessToken: string
 function emailFromToken(token: string): string | null {
   try {
     const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
-    return payload.email ?? null;
+    // Auth0 only emits a namespaced claim (e.g. https://grc-api/email, the one the
+    // backend reads via OIDC_EMAIL_CLAIM); other IdPs use plain `email`.
+    const namespaced = Object.keys(payload).find((k) => k.endsWith("/email"));
+    return payload.email ?? (namespaced ? payload[namespaced] : null) ?? null;
   } catch {
     return null;
   }
