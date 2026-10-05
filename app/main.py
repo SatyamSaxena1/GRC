@@ -8,6 +8,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -89,6 +90,19 @@ async def request_context(request: Request, call_next):
         logger.debug("access_log_write_failed: %s", e)  # Log errors for debugging
 
     return response
+
+
+@app.middleware("http")
+async def canonical_host(request: Request, call_next):
+    """CANONICAL_HOST (e.g. grc.blinkedit.me) makes the platform's own *.onrender.com
+    hostname redirect to it. Only that suffix is touched, so health checks and
+    custom domains are never redirected."""
+    canonical = os.environ.get("CANONICAL_HOST", "")
+    host = request.headers.get("host", "").split(":")[0]
+    if canonical and host != canonical and host.endswith(".onrender.com"):
+        return RedirectResponse(f"https://{canonical}{request.url.path}"
+                                + (f"?{request.url.query}" if request.url.query else ""), 308)
+    return await call_next(request)
 
 
 @app.exception_handler(Exception)

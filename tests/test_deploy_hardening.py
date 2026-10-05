@@ -87,3 +87,13 @@ def test_admin_fails_closed_in_prod_without_key(client, monkeypatch):
 def test_database_url_normalised(monkeypatch, given, expected):
     monkeypatch.setenv("DATABASE_URL", given)
     assert database_url() == expected
+
+
+def test_onrender_host_redirects_to_canonical_host(client, monkeypatch):
+    monkeypatch.setenv("CANONICAL_HOST", "grc.example.test")
+    r = client.get("/health?x=1", headers={"host": "grc-abc.onrender.com"}, follow_redirects=False)
+    assert r.status_code == 308
+    assert r.headers["location"] == "https://grc.example.test/health?x=1"
+    # the canonical host itself, and an internal health-check host, are left alone
+    assert client.get("/health/ready", headers={"host": "grc.example.test"}).status_code == 200
+    assert client.get("/health/ready", headers={"host": "10.1.2.3:8000"}).status_code == 200
