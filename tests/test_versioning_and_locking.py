@@ -94,10 +94,45 @@ def test_gap_still_failing_in_v2_stays_open(client, bootstrap, upload, stub_extr
     client.post(f"/evidence/{v1}/versions", headers=headers,
                 files={"file": ("v2.txt", b"v2", "text/plain")})
 
-    v1_gaps = {g["attribute"]: g for g in client.get("/gaps", headers=headers).json()
-               if g["evidence_id"] == v1}
-    assert v1_gaps["password_min_length"]["status"] == "RESOLVED_BY_EVIDENCE"
-    assert v1_gaps["systems_covered"]["status"] == "OPEN"  # never fixed, stays open
+    by_attribute: dict[str, list[dict]] = {}
+    for g in client.get("/gaps", headers=headers).json():
+        by_attribute.setdefault(g["attribute"], []).append(g)
+    assert {g["status"] for g in by_attribute["password_min_length"]} == {"RESOLVED_BY_EVIDENCE"}
+    assert {g["status"] for g in by_attribute["systems_covered"]} == {"OPEN"}  # never fixed, stays open
+
+
+def test_gap_still_failing_in_v2_is_carried_forward_not_duplicated(client, bootstrap, upload,
+                                                                    stub_extraction):
+    """A requirement that keeps failing across versions is ONE gap with ONE task.
+
+    Regression: V2 used to leave V1's gap OPEN and raise a second gap (plus a
+    second task) on its own link, so a partial fix made the open-gap and open-task
+    counters go *up*. The same gap now continues on the newest version's link,
+    and whatever a person set on its task survives the re-upload."""
+    stub_extraction({b"v1": NON_COMPLIANT, b"v2": NON_COMPLIANT | {"password_min_length": 14}})
+    org_id, _ = bootstrap(client)
+    headers = {"authorization": f"org:{org_id}"}
+
+    v1 = upload(client, org_id, content=b"v1").json()["evidence_id"]
+    scope_gap = next(g for g in client.get("/gaps", headers=headers).json()
+                     if g["framework"] == "PCI-DSS" and g["attribute"] == "systems_covered")
+    scope_task = next(t for t in client.get("/tasks", headers=headers).json()
+                      if t["gap_id"] == scope_gap["id"])
+    client.patch(f"/tasks/{scope_task['id']}", headers=headers, json={"priority": "CRITICAL"})
+
+    v2 = client.post(f"/evidence/{v1}/versions", headers=headers,
+                     files={"file": ("v2.txt", b"v2", "text/plain")}).json()["evidence_id"]
+
+    open_gaps = [g for g in client.get("/gaps", headers=headers).json() if g["status"] == "OPEN"]
+    keys = [(g["framework"], g["clause"], g["kind"], g["attribute"]) for g in open_gaps]
+    assert len(keys) == len(set(keys)), "a still-failing requirement must not be raised twice"
+
+    carried = next(g for g in open_gaps if g["id"] == scope_gap["id"])  # same gap, not a copy
+    assert carried["evidence_id"] == v2
+
+    tasks = client.get("/tasks", headers=headers).json()
+    assert len([t for t in tasks if t["status"] == "OPEN"]) == len(open_gaps)
+    assert next(t for t in tasks if t["id"] == scope_task["id"])["priority"] == "CRITICAL"
 
 
 def test_reevaluating_same_version_resolves_gap_and_closes_task(client, bootstrap, upload,
