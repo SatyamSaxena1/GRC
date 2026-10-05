@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { completeLogin } from "../lib/pkce";
+import { completeLogin, ENGAGEMENT_HINT_KEY } from "../lib/pkce";
 import { useSession } from "../lib/session";
 
 /** Landing point for the Authentik redirect (VITE_OIDC_REDIRECT_URI). Exchanges
@@ -13,7 +13,7 @@ export function OidcCallbackPage() {
   const { setIdentity } = useSession();
   const [error, setError] = useState<string | null>(null);
   const [pendingToken, setPendingToken] = useState<{ token: string; email: string | null } | null>(null);
-  const [engagementId, setEngagementId] = useState("");
+  const [engagementId, setEngagementId] = useState(sessionStorage.getItem(ENGAGEMENT_HINT_KEY) ?? "");
 
   useEffect(() => {
     const code = params.get("code");

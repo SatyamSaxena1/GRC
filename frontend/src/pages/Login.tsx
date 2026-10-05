@@ -16,6 +16,15 @@ const RoleSurface = lazy(() => import("../components/RoleSurface"));
 
 const FRAMEWORKS = ["ISO-27001", "PCI-DSS", "SOC-2", "NIST-CSF", "HIPAA", "CIS-CONTROLS", "GDPR"];
 
+// Role shortcuts: they only prefill the email at the IdP (login_hint). Each role is a
+// real provisioned account; whoever you give its password to can sign in as it.
+const DEMO_ROLES = [
+  { label: "Organisation admin", hint: "the audited company", email: "monkeybaat610+client@gmail.com" },
+  { label: "Firm admin", hint: "the audit firm", email: "monkeybaat610+firm@gmail.com" },
+  { label: "Auditor", hint: "reviews one client", email: "monkeybaat610+auditor@gmail.com",
+    engagementId: "b58395d9-18f6-4a24-b2a7-5a68fa88c675" },
+];
+
 export type Tab = "org" | "user" | "viewer" | "auditor" | "firm" | "request" | "quickstart" | "sso";
 
 export function LoginPage() {
@@ -258,8 +267,13 @@ function ClassicLogin({ embedded = false }: { embedded?: boolean }) {
         {tab === "request" && <RequestAudit />}
         {tab === "sso" && (
           <div className="form-grid">
-            <p className="muted">Redirects to the configured identity provider.</p>
-            <button className="btn btn-primary" onClick={() => void startLogin()}>Continue with SSO</button>
+            <p className="muted">Pick a role to sign in with its account — the email is filled in for you.</p>
+            {DEMO_ROLES.map((r) => (
+              <button key={r.label} className="btn" onClick={() => void startLogin(r)}>
+                {r.label}<span className="muted"> — {r.hint}</span>
+              </button>
+            ))}
+            <button className="btn btn-primary" onClick={() => void startLogin()}>Another account</button>
           </div>
         )}
         {!production && tab === "org" && (
