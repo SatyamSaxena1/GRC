@@ -28,6 +28,7 @@ import { PageTour } from "../components/PageTour";
 import { DocumentViewer } from "../components/DocumentViewer";
 import { GapFinding } from "../components/GapFinding";
 import { Spinner } from "../components/Spinner";
+import { ARTEFACT_LABELS, ARTEFACT_TYPES } from "../lib/artefacts";
 import { describeBound, humanize, prettyValue } from "../lib/format";
 
 // Persisted gaps carry an id/status/required_action; streamed ones don't yet.
@@ -513,7 +514,9 @@ export function EvidenceDetailPage() {
         </dl>
       </details>
 
-      <VersionsAndUpload evidenceId={id} data={versions.data} reload={versions.reload} />
+      <VersionsAndUpload evidenceId={id} data={versions.data} reload={versions.reload}
+                       currentType={evidence.artefact_type}
+                       suggestedType={suggestedTypeFrom(evidence.status, status.data?.detail)} />
 
       <div className="section-title">History</div>
       <ul className="timeline">
@@ -775,16 +778,31 @@ function FixRow({ fix }: { fix: Fix }) {
   );
 }
 
+/** The wrong-document check words its finding "uploaded as X, but reads like a Y (NN%)"
+ *  (app/service.py::_type_mismatch); Y is what the revised version should most likely be filed as. */
+function suggestedTypeFrom(status: string, detail?: string | null): string | null {
+  if (status !== "NEEDS_REVIEW" || !detail) return null;
+  const m = /reads like an? ([A-Z_]+)/.exec(detail);
+  return m && ARTEFACT_TYPES.includes(m[1]) ? m[1] : null;
+}
+
 function VersionsAndUpload({
   evidenceId,
   data,
   reload,
+  currentType,
+  suggestedType,
 }: {
   evidenceId: string;
   data: EvidenceVersion[] | null;
   reload: () => void;
+  currentType: string;
+  suggestedType: string | null;
 }) {
   const navigate = useNavigate();
+  // Pre-set to what the mismatch check suggested, else to the type already on file; the person
+  // chooses. The server re-uses the prior type only when none is sent.
+  const [type, setType] = useState(suggestedType ?? currentType);
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -794,7 +812,7 @@ function VersionsAndUpload({
     setBusy(true);
     setError(null);
     try {
-      const result = await uploadEvidenceVersion(evidenceId, file);
+      const result = await uploadEvidenceVersion(evidenceId, file, type !== currentType ? type : undefined);
       // A client-side route change, not a full page reload — a real browser
       // navigation to /evidence/:id hits the Vite proxy's raw backend route
       // (see vite.config.ts bypass), which has no Authorization header to give it.
@@ -820,6 +838,25 @@ function VersionsAndUpload({
         ))}
         <div style={{ marginTop: 14, borderTop: "1px solid var(--border)", paddingTop: 12 }}>
           {error && <div className="alert alert-error">{error}</div>}
+          <div className="form-row">
+            <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span>File this version as</span>
+              <select value={type} onChange={(e) => setType(e.target.value)} aria-label="Artefact type of the revised version">
+                {ARTEFACT_TYPES.map((t) => <option key={t} value={t}>{ARTEFACT_LABELS[t] ?? t}</option>)}
+              </select>
+            </label>
+          </div>
+          {suggestedType && (
+            <p className="muted" style={{ fontSize: 12, margin: "2px 0 8px" }}>
+              Pre-selected from the check on this file: it reads like {ARTEFACT_LABELS[suggestedType] ?? suggestedType}.
+            </p>
+          )}
+          {type !== currentType && (
+            <p className="muted" style={{ fontSize: 12, margin: "2px 0 8px" }}>
+              This version will be read against {ARTEFACT_LABELS[type] ?? type} requirements, not{" "}
+              {ARTEFACT_LABELS[currentType] ?? currentType}.
+            </p>
+          )}
           <div className="form-row">
             <input type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
             <button className="btn btn-primary" disabled={!file || busy} onClick={submit}>
