@@ -46,7 +46,8 @@ def wait_until_cool(start_below: int = 70, max_wait_s: int = 900) -> bool:
         time.sleep(5)
 
 
-def start_watchdog(trip_at: int = 88, container: str | None = None, poll_s: float = 0.25) -> None:
+def start_watchdog(trip_at: int = 88, container: str | None = None, poll_s: float = 0.25,
+                   stop_cmd: list[str] | None = None, log_path: str | None = None) -> None:
     if gpu_temp() is None:
         return
 
@@ -55,9 +56,17 @@ def start_watchdog(trip_at: int = 88, container: str | None = None, poll_s: floa
             temp = gpu_temp()
             if temp is not None and temp >= trip_at:
                 print(f"\n!! GPU {temp}C >= {trip_at}C - stopping the model and exiting", flush=True)
+                # stop *generation on the server*: exiting this process would leave the GPU
+                # grinding on the in-flight request. Ollama in Docker: restart its container;
+                # LM Studio: unload the model (stop_cmd, e.g. ["lms", "unload", "--all"]).
+                if stop_cmd:
+                    subprocess.run(stop_cmd, capture_output=True, timeout=60)
                 if container:
                     subprocess.run(["docker", "restart", container], capture_output=True, timeout=60)
                 os._exit(3)
+            if log_path and temp is not None:
+                with open(log_path, "a", encoding="utf-8") as f:
+                    f.write(f"{time.strftime('%H:%M:%S')} {temp}\n")
             time.sleep(poll_s)
 
     threading.Thread(target=watch, daemon=True).start()

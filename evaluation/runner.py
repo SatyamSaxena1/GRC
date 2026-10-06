@@ -199,16 +199,23 @@ def main() -> int:
     parser.add_argument("--save", action="store_true", help="write a JSON result to evaluation/results/")
     parser.add_argument("--no-thermal", action="store_true",
                         help="disable the GPU thermal guard (start <=70C, trip at 88C)")
+    parser.add_argument("--no-cooldown", action="store_true",
+                        help="do not wait for the GPU to cool between extractions (the watchdog stays on): "
+                             "the worst case a busy upload produces, for measuring sustained heat")
     parser.add_argument("--trip-at", type=int, default=88)
     parser.add_argument("--guard-container", default="llm-ollama-1",
-                        help="container restarted when the watchdog trips, to stop generation")
+                        help="container restarted when the watchdog trips, to stop generation ('' for none)")
+    parser.add_argument("--guard-stop", default="",
+                        help="command run when the watchdog trips, e.g. 'lms unload --all' for LM Studio")
+    parser.add_argument("--temp-log", default="", help="append a GPU temperature sample every 0.25 s to this file")
     args = parser.parse_args()
 
     guard = not args.no_model and not args.no_thermal and thermal.gpu_temp() is not None
     if not args.no_model:
         if guard:
             print(f"thermal guard on: start <=70C, trip at {args.trip_at}C (restarts {args.guard_container})")
-            thermal.start_watchdog(args.trip_at, args.guard_container)
+            thermal.start_watchdog(args.trip_at, args.guard_container or None, 0.25,
+                                   args.guard_stop.split() or None, args.temp_log or None)
         else:
             print("NOTE: running without the thermal guard (no NVIDIA GPU visible, or --no-thermal)")
     gateway = gateway_for(args.model) if args.model else None
@@ -223,7 +230,7 @@ def main() -> int:
     for case in cases:
         started = time.monotonic()
         run_case(case, content, report, use_model=not args.no_model, gateway=gateway,
-                 repeats=args.repeats, guard=guard)
+                 repeats=args.repeats, guard=guard and not args.no_cooldown)
         print(f"  ran {case['name']} ({time.monotonic() - started:.0f}s)", flush=True)
 
     mode = "labels only (rule engine)" if args.no_model else "live extraction"

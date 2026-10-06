@@ -59,3 +59,34 @@ def test_every_sample_case_has_ground_truth():
     cases = runner.sample_cases()
     assert cases and all(c["attributes"] and c["verdicts"] for c in cases)
     assert all(c["name"] != "scan-misfiled" for c in cases)   # meant to be misread; measured by the guard
+
+
+def test_watchdog_can_stop_an_lm_studio_model_and_log_temperatures(monkeypatch, tmp_path):
+    calls = []
+    temps = iter([70, 80, 91])
+    monkeypatch.setattr(thermal, "gpu_temp", lambda: next(temps))
+    monkeypatch.setattr(thermal.subprocess, "run", lambda cmd, **kw: calls.append(cmd))
+    exited = []
+    monkeypatch.setattr(thermal.os, "_exit", lambda code: exited.append(code))
+    import threading
+    started = []
+    monkeypatch.setattr(threading.Thread, "start", lambda self: started.append(self))
+    log = tmp_path / "temps.log"
+    thermal.start_watchdog(trip_at=88, container=None, stop_cmd=["lms", "unload", "--all"], log_path=str(log))
+    monkeypatch.setattr(thermal.time, "sleep", lambda s: None)
+
+    class _Stop(Exception):
+        pass
+
+    n = {"i": 0}
+    def sleep_then_stop(_s):
+        n["i"] += 1
+        if n["i"] > 5:
+            raise _Stop
+    monkeypatch.setattr(thermal.time, "sleep", sleep_then_stop)
+    monkeypatch.setattr(thermal.os, "_exit", lambda code: (exited.append(code), (_ for _ in ()).throw(_Stop()))[0])
+    with pytest.raises(_Stop):
+        started[0].run()
+    assert ["lms", "unload", "--all"] in calls and exited == [3] and ["docker", "restart", "llm-ollama-1"] not in calls
+    # the first reading (70) is the "is there a GPU at all" probe; 80 is logged; 91 trips and is not
+    assert [l.split()[1] for l in log.read_text().splitlines()] == ["80"]
