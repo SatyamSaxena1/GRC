@@ -131,5 +131,11 @@ peer is reachable again; with the peer down it backs off and stays quiet.
     powershell -ExecutionPolicy Bypass -File deploy\llm\windows\install-keep-model-loaded.ps1          # run at every login
     powershell -ExecutionPolicy Bypass -File deploy\llm\windows\install-keep-model-loaded.ps1 -Remove
 
+The installer uses the per-user login **Run key** (no admin rights, and a hidden launcher so no window
+flashes), not Task Scheduler: on at least one locked-down Windows PC even a trivial scheduled task
+refused to run any program (exit 1, nothing written) and its log was switched off, while the Run key
+worked. It copies the script to `%LOCALAPPDATA%\grc` so it does not depend on where this repo lives;
+log: `%LOCALAPPDATA%\grc\keep-model-loaded.log`. Measured: unload the model and it is back in ~20 s.
+
 It cannot bring back a peer that is off. A model that has to be up should be hosted on a machine that is.
 
