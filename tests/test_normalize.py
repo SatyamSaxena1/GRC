@@ -146,3 +146,19 @@ def test_restoration_only_touches_review_cadences():
     _restore_cadence_words(run)
     assert run.fields["access_review_frequency_days"].value == "quarterly"
     assert run.fields["log_retention_days"].value == 90   # a retention period, not a cadence
+
+
+def test_every_n_days_is_a_cadence_of_n_days():
+    from app.normalize import to_days
+    assert to_days("every 90 days") == 90.0
+    assert to_days("90-day") == 90.0 and to_days("every 30 days") == 30.0
+    assert to_days("every few days") == "every few days"   # not a number: left alone
+
+
+def test_a_cadence_stated_twice_is_one_cadence_but_a_tiered_one_is_not():
+    from app.normalize import to_days
+    assert to_days("quarterly, every 90 days") == 90.0
+    assert to_days("reviewed quarterly (every three months)") == 90.0
+    # two different cadences describe tiers, not one cadence: stay unparsed so no rule passes by accident
+    assert to_days("quarterly for critical systems, annually for all others") == "quarterly for critical systems, annually for all others"
+    assert to_days("whenever someone remembers") == "whenever someone remembers"

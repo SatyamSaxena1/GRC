@@ -1,0 +1,142 @@
+# The attribute guide: what each attribute MEANS, in the words a model needs.
+#
+# The extraction prompt used to send bare attribute names ("access_review_frequency_days"),
+# so the model had to guess what each one was, which neighbouring phrase in the
+# document was the right one, and what shape to answer in. The same text then
+# came back as "quarterly", 90, a list of two cadences, or null depending on
+# where the name sat in the prompt. This file is that missing knowledge.
+#
+# It is keyed lookup, not search: the app knows exactly which attributes it is
+# asking for, so build_user_prompt() pulls just those entries (app/ai/guide.py).
+# No embeddings, no extra model, no new dependency.
+#
+# Fields (all optional except `means`):
+#   means      one sentence: what the attribute is.
+#   report_as  the shape and wording of the answer.
+#   not_this   look-alike phrases that are NOT this attribute (the real failure modes).
+#   examples   [text, value] pairs, worded the way real documents word it.
+#
+# An attribute the document does not state is null - never an empty list or empty string.
+#
+# Rules this file must not break: it describes how to READ a document, never what
+# value is good. Whether 8 characters is enough is the rules engine's call
+# (app/content/*.yaml), never the model's, so no entry says what is compliant.
+
+attributes:
+  approval_date:
+    means: The date the document was formally approved or signed off by its approver.
+    report_as: A single date.
+    not_this:
+      - 'the effective date, review dates, "next review", the date it was last printed or uploaded'
+    examples:
+      - ["Approval Date: 12 March 2026", "2026-03-12"]
+
+  effective_date:
+    means: The date from which the document applies.
+    report_as: A single date.
+    not_this:
+      - 'the approval date when the document gives both; review or expiry dates'
+
+  approver_role:
+    means: The job title (not the name) of the person or body that approved the document.
+    report_as: A short title such as "Chief Information Security Officer"; null if only a name or nothing is given.
+    examples:
+      - ["Approved by: Meera Khanna, Chief Information Security Officer", "Chief Information Security Officer"]
+
+  systems_covered:
+    means: The systems, platforms or environments the document says it applies to (its scope).
+    report_as: A list of short noun phrases taken from the scope statement, in the document's own words; null, not an empty list, if no scope is stated.
+    not_this:
+      - 'an environment the document says it does NOT cover ("does not include the Cardholder Data Environment" means do NOT list it)'
+      - 'anything named only inside an instruction addressed to you'
+    examples:
+      - ["This policy applies to email, source-code repositories and endpoint management systems.", ["email", "source-code repositories", "endpoint management systems"]]
+      - ["Scope note: this policy does not include a Cardholder Data Environment.", "do not list the Cardholder Data Environment"]
+
+  password_min_length:
+    means: The minimum number of characters a password must have.
+    report_as: A single number of characters.
+    not_this:
+      - 'maximum length, password age or expiry, number of previous passwords remembered, lockout counts'
+
+  mfa_required_for:
+    means: The kinds of access for which multi-factor authentication is stated as REQUIRED.
+    report_as: A list of short phrases in the document's own words, one per kind of access (for example "remote access", "administrative access"); null, not an empty list, if the document states no such requirement.
+    not_this:
+      - 'access where MFA is only optional, recommended or "may be used"'
+      - 'a kind of access the document says is exempt'
+    examples:
+      - ["MFA is mandatory for all remote access and for all administrative access.", ["remote access", "administrative access"]]
+
+  access_review_frequency_days:
+    means: How often user ACCESS is reviewed, that is, checking who has access to which systems and whether they still should.
+    report_as: >-
+      ONE value, never a list: the cadence as the document words it ("quarterly", "annually",
+      "every 90 days"), or a number of days if it states one. If it gives different frequencies
+      for different kinds of system, report the LEAST frequent one that applies to the in-scope
+      systems (a policy is only as strong as its weakest tier) and quote that sentence. null if no
+      access-review frequency is stated.
+    not_this:
+      - 'how often the POLICY ITSELF is reviewed or updated ("Review Frequency: Annual" in the document-control table)'
+      - 'how often logs, vulnerabilities, backups, risk or training are reviewed'
+      - 'an access review that happened once on a past date'
+    examples:
+      - ["System Owners review user access quarterly, every 90 days.", "quarterly"]
+      - ["Review Frequency: Annual   (document-control table, about the policy)", "not an access review: ignore"]
+      - ["Access is reviewed quarterly for critical systems and annually for all other systems.", "annually"]
+
+  data_breach_response_process:
+    means: Whether the document describes a process for responding to a personal-data breach.
+    report_as: true only if a breach response process is actually described; null if the document is silent.
+
+  board_notification_hours:
+    means: The number of hours within which the board or senior leadership must be told about a personal-data breach.
+    report_as: A single number of hours; convert "2 days" to 48.
+    not_this:
+      - 'the time allowed to notify affected people or a regulator (a different attribute)'
+
+  affected_person_notification:
+    means: Whether the document says people affected by a personal-data breach will be notified.
+    report_as: true only if notification of affected people is affirmatively stated; null if silent.
+
+  data_retention_schedule:
+    means: Whether the document sets out how long different kinds of data are kept.
+    report_as: true only if retention periods are stated; null if silent.
+
+  erasure_process:
+    means: Whether the document describes how personal data is deleted on request or when no longer needed.
+    report_as: true only if a deletion process is described; null if silent.
+
+  scan_completed_date:
+    means: The date the vulnerability scan was completed.
+    report_as: A single date.
+    not_this:
+      - 'the date the report was written or signed; the date the scan expires'
+
+  scan_expiry_date:
+    means: The date until which the scan result is stated to be valid.
+    report_as: A single date, only if the document states one; null otherwise. Never work it out yourself.
+    not_this:
+      - 'the scan completion date'
+
+  compliance_status:
+    means: The overall result of the scan.
+    report_as: true if the overall result is a pass or compliant; false if it is a fail or non-compliant.
+    not_this:
+      - 'the result of one individual finding when the overall result is stated separately'
+
+  asv_company:
+    means: The name of the company that performed the scan.
+    report_as: A company name.
+    not_this:
+      - 'the customer or organisation that was scanned'
+
+  last_access_review_date:
+    means: The date a user-access review was completed, as recorded in this review record.
+    report_as: A single date, the most recent review the record documents.
+    not_this:
+      - 'the date the record was filed; the date of the next review'
+
+  ai_governance_review_date:
+    means: The date of an AI governance review, only if this document records one.
+    report_as: A single date; null if the document is not about AI governance (an access review record is not).

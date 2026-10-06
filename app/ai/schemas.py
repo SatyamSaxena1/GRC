@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 class Source(BaseModel):
@@ -18,6 +18,21 @@ class ExtractedField(BaseModel):
     confidence: float | None = None
     sources: list[Source] = []
     extraction_method: str = "none"  # native_text | vlm | none
+
+    @field_validator("value")
+    @classmethod
+    def _empty_means_not_stated(cls, v: Any) -> Any:
+        """[] / "" / {} are how a model says "I found nothing" when it feels it must
+        answer in the requested shape. The rules read a present value as a *stated*
+        one (and judge it), so an empty list for MFA scope would turn "silent" into
+        "stated, and wrong" - PARTIAL instead of FAIL. Silence is null."""
+        if v is None:
+            return None
+        if isinstance(v, (list, tuple, dict, str)) and len(v) == 0:
+            return None
+        if isinstance(v, str) and not v.strip():
+            return None
+        return v
 
 
 class ExtractionRun(BaseModel):

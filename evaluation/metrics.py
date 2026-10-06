@@ -59,6 +59,8 @@ class Report:
     missed: Counter = field(default_factory=Counter)
     wrong: Counter = field(default_factory=Counter)
     unstable: list[str] = field(default_factory=list)
+    spurious: Counter = field(default_factory=Counter)
+    spurious_list: list[str] = field(default_factory=list)
     unstable_total: int = 0
     runs: int = 0
     invalid_runs: int = 0

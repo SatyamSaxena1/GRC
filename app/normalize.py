@@ -73,10 +73,23 @@ def to_days(value: Any) -> Any:
         key = value.strip().lower()
         if key in CADENCE_DAYS:
             return float(CADENCE_DAYS[key])
-        match = re.fullmatch(r"(\d+)\s*(?:days?)?", key)
+        match = re.fullmatch(r"(?:every\s+)?(\d+)\s*(?:-?\s*days?)?", key)
         if match:
             return float(match.group(1))
+        found = _cadences_in(key)
+        if len(found) == 1:        # "quarterly, every 90 days" says one thing twice
+            return float(found.pop())
+        # several different cadences ("quarterly ... annually") is a statement about
+        # tiers, not one cadence: left unparsed so the rule cannot pass by accident
     return value
+
+
+def _cadences_in(phrase: str) -> set[int]:
+    """The distinct day-counts a phrase states, by cadence word or by 'N days'."""
+    days = {d for w, d in CADENCE_DAYS.items()
+            if re.search(rf"(?<![\w-]){re.escape(w)}(?![\w-])", phrase)}
+    days |= {int(n) for n in re.findall(r"(?<!\d)(\d{1,4})\s*-?\s*days?", phrase)}
+    return days
 
 
 def cadence_word_for(value: Any, quote: str) -> str | None:

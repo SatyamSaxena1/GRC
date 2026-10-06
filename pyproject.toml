@@ -40,6 +40,7 @@ packages = ["app", "app.ai", "app.content", "app.routers", "evaluation", "demo"]
 
 [tool.setuptools.package-data]
 "app.content" = ["*.yaml"]
+"app.ai" = ["*.yaml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

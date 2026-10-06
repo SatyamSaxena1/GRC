@@ -69,7 +69,7 @@ def sample_cases(only: str | None = None) -> list[dict]:
             "artefact_type": r["artefact_type"], "frameworks": demo_samples.load()["frameworks"],
             "as_of": today.isoformat(), "commitments": r.get("commitments"),
             "attributes": {k: {"value": v} for k, v in r["attrs"].items()},
-            "verdicts": r["expect"],
+            "verdicts": r["expect"], "closed_world": True,
         })
     return cases
 
@@ -107,6 +107,16 @@ def run_case(case: dict, content, report: Report, use_model: bool, gateway=None,
             for name in expected_attributes:
                 field = run.fields.get(name)
                 seen.setdefault(name, []).append(field.value if field else None)
+            if case.get("closed_world"):
+                # A sample's label lists every fact its text states, so any other
+                # attribute the model fills in was invented (the label cannot say
+                # "absent" for a real document it only partly annotates).
+                for name, field in run.fields.items():
+                    if name not in expected_attributes and field.value is not None:
+                        report.spurious.add(True)
+                        report.spurious_list.append(f"{case['name']}.{name}: {field.value!r}")
+                    elif name not in expected_attributes:
+                        report.spurious.add(False)
             last = run
         actual = {name: field.value for name, field in last.fields.items()}
         pages = {name: [s.page for s in field.sources] for name, field in last.fields.items()}
@@ -124,7 +134,9 @@ def run_case(case: dict, content, report: Report, use_model: bool, gateway=None,
                 report.critical_attribute.add(ok_run)
             if name in DATE_FIELDS:
                 report.dates.add(ok_run)
-        if len({repr(v) for v in seen.get(name, [])}) > 1:
+        runs_seen = seen.get(name, [])
+        # "quarterly", 90 and "every 90 days" are one answer: only a real disagreement is unstable.
+        if any(not values_match(runs_seen[0], v) for v in runs_seen[1:]):
             report.unstable.append(f"{case['name']}.{name}: {seen[name]!r}")
         report.unstable_total += 1 if seen.get(name) else 0
         ok = values_match(expectation["value"], actual.get(name))
@@ -225,6 +237,11 @@ def main() -> int:
         print(f"\n  model {model} | {report.runs} extraction run(s) | invalid/truncated {report.invalid_runs}"
               f" | mean {mean_ms / 1000:.1f}s | missed {report.missed.hits} (said nothing)"
               f" vs wrong {report.wrong.hits} (said something false)")
+        if report.spurious.total:
+            print(f"  invented (stated nowhere in the sample): {report.spurious.hits} of {report.spurious.total} "
+                  f"attribute answers that should have been null")
+            for line in report.spurious_list[:12]:
+                print(f"    ! {line}")
         print("\n  per attribute (worst first)")
         for name, acc, hits, total in report.attribute_table():
             print(f"    {acc:5.0%}  {hits:>3}/{total:<3} {name}")
@@ -260,6 +277,8 @@ def main() -> int:
             "per_attribute": {n: {"accuracy": round(a, 4), "hits": h, "total": t}
                               for n, a, h, t in report.attribute_table()},
             "unstable": report.unstable, "failures": report.failures,
+            "invented": report.spurious.hits, "invented_of": report.spurious.total,
+            "invented_list": report.spurious_list,
         }, indent=1), encoding="utf-8")
         print(f"\n  saved {out}")
 

@@ -523,7 +523,8 @@
     ],
     "access_review_frequency_days": "quarterly",
     "board_notification_hours": 24,
-    "affected_person_notification": true
+    "affected_person_notification": true,
+    "data_breach_response_process": true
    },
    "base_of": "policy-asteron",
    "expect": {
