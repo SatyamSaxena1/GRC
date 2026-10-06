@@ -96,3 +96,40 @@ queue (Render waits up to `OLLAMA_TIMEOUT_S`, 180s). If the PC is off the site k
 and uploads read "analysis model was unavailable" until it is back, then Re-run analysis.
 Tailscale Funnel does not decrypt the traffic; TLS ends on your PC.
 
+## Serving a model from LM Studio (and LM Link), with failover
+
+The app can use any OpenAI-compatible server instead of Ollama (`app/ai/openai_compat.py`).
+Selected entirely by environment, so switching - or switching back - needs no deploy:
+
+| variable | meaning |
+|---|---|
+| `LLM_PROVIDER` | `ollama` (default) or `openai` |
+| `LLM_BASE_URL`, `LLM_MODEL`, `LLM_VISION_MODEL`, `LLM_API_KEY` | the OpenAI-style server and model (LM Studio: `http://127.0.0.1:1234`) |
+| `LLM_CONTEXT` | the server's loaded context window; lets the app recognise a truncated prompt |
+| `LLM_REASONING_EFFORT` | default `none` (see below); empty sends nothing |
+| `LLM_FALLBACK` | optional second provider (`ollama` or `openai`) used when the first is down |
+| `EXTRACTION_GUIDE` | `0` turns the attribute guide off |
+
+Two settings matter and were measured, not guessed: **thinking must be off** (`reasoning_effort: none`;
+a reasoning model otherwise answers the one-letter classification prompts with an empty reply, which
+silently disables the wrong-document guard) and **JSON goes through `json_schema`** (LM Studio rejects
+`json_object`). Results: `evaluation/results/README.md`.
+
+### Failover
+`LLM_PROVIDER=openai LLM_FALLBACK=ollama` makes an outage of the first server fall through to the
+second for that call (`app/ai/failover.py`). The AI run on each document records the model that
+**actually answered**, and `/health/ready` reports `model_degraded` while running on the fallback.
+If both are down, uploads land in review exactly as before. Note the fallback to a large model on a
+laptop GPU is slow and hot, which is why it is the fallback and not the default.
+
+### Keeping an LM Link model loaded
+A model served from another PC over LM Link disappears whenever that PC sleeps, crashes or loses the
+link, and LM Studio's just-in-time loading does **not** reload remote models (the API just answers
+"No models loaded"). `windows/keep-model-loaded.ps1` checks every 30 s and runs `lms load` as soon as the
+peer is reachable again; with the peer down it backs off and stays quiet.
+
+    powershell -ExecutionPolicy Bypass -File deploy\llm\windows\install-keep-model-loaded.ps1          # run at every login
+    powershell -ExecutionPolicy Bypass -File deploy\llm\windows\install-keep-model-loaded.ps1 -Remove
+
+It cannot bring back a peer that is off. A model that has to be up should be hosted on a machine that is.
+

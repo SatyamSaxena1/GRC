@@ -69,6 +69,10 @@ def extract_attributes(
             break
 
     latency_ms = getattr(gateway, "last_latency_ms", 0)
+    # With a failover wrapper the model that answered may not be the one asked first: record
+    # the one that actually produced these facts.
+    base = base.model_copy(update={"model": getattr(gateway, "model", base.model),
+                                   "provider": getattr(gateway, "provider", base.provider)})
     # A cut prompt/output can still parse as JSON that is simply missing facts;
     # trusting it would turn "the model never saw the document's end" into
     # confident FAILs. Route it to review instead.
@@ -155,6 +159,7 @@ def extract_attributes_streaming(
     fields = {name: _field_from(raw.get(name), extraction_method) for name in attribute_names}
     return base.model_copy(update={
         "fields": fields, "latency_ms": getattr(gateway, "last_latency_ms", 0),
+        "model": getattr(gateway, "model", base.model), "provider": getattr(gateway, "provider", base.provider),
     })
 
 

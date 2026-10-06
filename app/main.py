@@ -154,6 +154,8 @@ def ready():
     gateway = make_gateway()
     checks["model"] = "ok" if gateway.available() else "unavailable"
     checks["model_name"] = gateway.model or "unconfigured"
+    if getattr(gateway, "failed_over", False):
+        checks["model_degraded"] = "primary model server is down; serving from the fallback"
 
     ready_ = checks["database"] == "ok"
     return JSONResponse(status_code=200 if ready_ else 503,
