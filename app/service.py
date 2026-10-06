@@ -70,10 +70,18 @@ DOCUMENT_CONTROL = ("approval_date", "approver_role", "effective_date", "systems
 CLASSIFY_MAX_CHARS = 4000
 CLASSIFY_ORDERS = 3
 
-# Wrong-document guard: flag only when the model is sure the file is some
+# Wrong-document guard: flag only when the model clearly thinks the file is some
 # *other* type and gives the declared one next to nothing. Near-neighbours
 # (POLICY vs AI_POLICY) split their probability and so stay unflagged.
-MISMATCH_TOP = 0.8
+#
+# MISMATCH_TOP was 0.8 and let two of three scan reports filed as a policy through
+# (qwen2.5vl:7b, measured 2026-10-06 over the demo documents): a vendor attestation
+# reads partly like a CERTIFICATE, so the top answer lands at 0.67-0.87 even though the
+# declared type gets ~0.0001. Every document's true type was the top answer (9 of 9), so
+# the declared-type condition is what protects correct filings; the top share only needs to
+# be a clear majority. 0.6 catches all three scans and still leaves a document that fits no
+# type (an invoice: top 0.43) alone. Re-measure with evaluation/ if the model changes.
+MISMATCH_TOP = 0.6
 MISMATCH_DECLARED_MAX = 0.05
 
 

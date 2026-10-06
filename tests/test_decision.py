@@ -157,6 +157,22 @@ def test_confident_type_mismatch_needs_review(client, bootstrap, upload, monkeyp
     assert "uploaded as POLICY" in status["detail"] and "SCAN_REPORT" in status["detail"]
 
 
+def test_a_scan_that_partly_reads_like_a_certificate_is_still_caught(client, bootstrap, upload, monkeypatch):
+    """The measured qwen2.5vl:7b distribution for a vendor scan attestation filed as a policy:
+    SCAN_REPORT 0.69, CERTIFICATE 0.31, POLICY ~0. The old 0.8 threshold waved it through."""
+    status = _status_after_upload(client, bootstrap, upload, monkeypatch,
+                                  {"SCAN_REPORT": 0.685, "CERTIFICATE": 0.313, "POLICY": 0.0001, "REPORT": 0.0019})
+    assert status["status"] == "NEEDS_REVIEW"
+    assert "uploaded as POLICY" in status["detail"] and "SCAN_REPORT" in status["detail"]
+
+
+def test_a_document_that_fits_no_type_is_not_flagged(client, bootstrap, upload, monkeypatch):
+    """Measured: an invoice (no such artefact type) tops out at REPORT 0.43. Unsure is not 'wrong'."""
+    status = _status_after_upload(client, bootstrap, upload, monkeypatch,
+                                  {"REPORT": 0.431, "SCREENSHOT": 0.277, "POLICY": 0.03, "CERTIFICATE": 0.2})
+    assert status["status"] != "NEEDS_REVIEW" or "uploaded as" not in status["detail"]
+
+
 def test_near_neighbour_or_plausible_type_is_not_flagged(client, bootstrap, upload, monkeypatch):
     # AI_POLICY vs POLICY: confident top, but the declared type keeps real weight.
     status = _status_after_upload(client, bootstrap, upload, monkeypatch,
