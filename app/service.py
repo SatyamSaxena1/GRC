@@ -139,7 +139,8 @@ UNSUPPORTED_MIN = 0.8
 SUPPORT_QUESTION = (
     "Does the quoted passage state this value for this attribute? The value may be a normalised form of "
     "the words: a date written as 2026-06-18 for '18 June 2026', true for 'Pass', 'Yes' or 'Compliant', "
-    "false for 'Fail' or 'No', 90 for 'every 90 days'. Answer NO only if the passage says something "
+    "false for 'Fail' or 'No', 90 for 'every 90 days'. The passage need not repeat the attribute's name: "
+    "'Review completed: 20 March 2026' states a last review date of 2026-03-20. Answer NO only if the passage says something "
     "different, or says nothing about it."
 )
 
@@ -179,7 +180,7 @@ def _unsupported_values(db: Session, gateway, evidence: Evidence, run) -> list[s
         db.add(AiRun(
             org_id=evidence.org_id, evidence_id=evidence.id, operation="quote_support_check",
             provider=getattr(gateway, "provider", ""), model=getattr(gateway, "model", ""),
-            prompt_template_version="quote_support:v2", requested_attributes=list(checked),
+            prompt_template_version="quote_support:v3", requested_attributes=list(checked),
             validated_output=checked, latency_ms=getattr(gateway, "last_latency_ms", 0),
         ))
     return unsupported
