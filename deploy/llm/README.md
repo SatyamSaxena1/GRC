@@ -139,3 +139,21 @@ log: `%LOCALAPPDATA%\grc\keep-model-loaded.log`. Measured: unload the model and 
 
 It cannot bring back a peer that is off. A model that has to be up should be hosted on a machine that is.
 
+
+## One click, no Docker: connect this PC's GPU to the website
+`windows/install-gpu-launcher.ps1` puts **Start GRC GPU** and **Stop GRC GPU** on your Desktop (and copies the
+scripts to `%LOCALAPPDATA%\grc`). Start does, in order, and stops with a plain message at the first thing missing:
+
+1. starts Ollama bound to this PC only. The Ollama tray app has an *Expose Ollama to the network* setting that
+   binds every interface and ignores `OLLAMA_HOST`; if it is on, Start replaces that instance with a loopback one
+   (Ollama has no login, so anyone on your network could otherwise use it and skip the gate);
+2. checks the model is pulled; 3. starts the token gate on `127.0.0.1:8088` (`ollama_gate.py`: 401 without the key,
+   only the two calls the app makes get through) and checks 401/200 itself;
+4. starts `gpu-thermal-guard.ps1`: at 90 C it unloads the model, and ends Ollama's runner if the card is still hot
+   (the owner's ceiling is 93 C and a poll can overshoot);
+5. turns on the Tailscale Funnel to the gate and tests the public address end to end with the key.
+
+Nothing is loaded onto the GPU until the website sends work, so connecting is cool. Stop disconnects (funnel off,
+gate and guard stopped, model unloaded). One-time prerequisite: Tailscale for Windows, signed in
+(`winget install --id Tailscale.Tailscale`). A Windows Firewall that is turned off removes the last line of defence
+if anything ever listens on the network, so keep it on.
