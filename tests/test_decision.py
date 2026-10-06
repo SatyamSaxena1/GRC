@@ -260,3 +260,11 @@ def test_task_queue_puts_deadlines_before_priority(client, bootstrap):
     titles = [t["title"] for t in client.get("/tasks", headers=headers).json()]
     assert titles == ["low, overdue", "low, due tomorrow", "low, due next week",
                       "critical, no deadline", "low, no deadline"]
+
+
+def test_the_quote_check_tells_the_model_a_normalised_value_counts_as_stated():
+    """Pass -> true is a *normalisation*, not a disagreement. qwen2.5vl:7b answered NO at 0.95+ without
+    this sentence, sending every scan report with a pass/fail status to review on a correct fact."""
+    from app.service import SUPPORT_QUESTION
+    for needle in ("normalised", "'Pass'", "2026-06-18", "different, or says nothing"):
+        assert needle in SUPPORT_QUESTION

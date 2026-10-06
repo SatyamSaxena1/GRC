@@ -131,6 +131,17 @@ SUPPORT_OPTIONS = {
 # right and >= 0.8 sure — but the wrong copies were blunt, real misreads are
 # subtler, so a flag asks a human to look rather than discarding the value.
 UNSUPPORTED_MIN = 0.8
+# The question must say that a normalised value counts as stated. Without that, qwen2.5vl:7b
+# answered NO (0.95-0.996) for true/"Overall Compliance Status: Pass" and false/"...: Fail",
+# so every scan report with a pass/fail status went to review on a correct fact (found live,
+# 2026-10-06). Measured on 16 value/quote pairs: false alarms 2 of 10 -> 0 of 10, wrong values
+# caught 5 of 6 -> 5 of 6 (the miss is a subtle scope narrowing, out of reach either way).
+SUPPORT_QUESTION = (
+    "Does the quoted passage state this value for this attribute? The value may be a normalised form of "
+    "the words: a date written as 2026-06-18 for '18 June 2026', true for 'Pass', 'Yes' or 'Compliant', "
+    "false for 'Fail' or 'No', 90 for 'every 90 days'. Answer NO only if the passage says something "
+    "different, or says nothing about it."
+)
 
 
 def _restore_cadence_words(run) -> None:
@@ -156,7 +167,7 @@ def _unsupported_values(db: Session, gateway, evidence: Evidence, run) -> list[s
         if field.value is None or not quote:
             continue  # nothing claimed, or nothing cited to check it against
         probabilities = decision.choose(
-            gateway, "Does the quoted passage state this value for this attribute?",
+            gateway, SUPPORT_QUESTION,
             f"Attribute: {name}\nValue: {field.value!r}\nQuoted passage: {quote}", SUPPORT_OPTIONS,
         )
         if not probabilities:
@@ -168,7 +179,7 @@ def _unsupported_values(db: Session, gateway, evidence: Evidence, run) -> list[s
         db.add(AiRun(
             org_id=evidence.org_id, evidence_id=evidence.id, operation="quote_support_check",
             provider=getattr(gateway, "provider", ""), model=getattr(gateway, "model", ""),
-            prompt_template_version="quote_support:v1", requested_attributes=list(checked),
+            prompt_template_version="quote_support:v2", requested_attributes=list(checked),
             validated_output=checked, latency_ms=getattr(gateway, "last_latency_ms", 0),
         ))
     return unsupported
