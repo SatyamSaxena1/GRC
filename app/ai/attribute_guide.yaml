@@ -25,7 +25,7 @@
 attributes:
   approval_date:
     means: The date the document was formally approved or signed off by its approver.
-    report_as: A single date.
+    report_as: 'A single date written YYYY-MM-DD (convert it, so "Wed Jun 14 2023" becomes 2023-06-14).'
     not_this:
       - 'the effective date, review dates, "next review", the date it was last printed or uploaded'
     examples:
@@ -33,7 +33,7 @@ attributes:
 
   effective_date:
     means: The date from which the document applies.
-    report_as: A single date.
+    report_as: 'A single date written YYYY-MM-DD (convert it, so "Wed Jun 14 2023" becomes 2023-06-14).'
     not_this:
       - 'the approval date when the document gives both; review or expiry dates'
 
@@ -109,13 +109,13 @@ attributes:
 
   scan_completed_date:
     means: The date the vulnerability scan was completed.
-    report_as: A single date.
+    report_as: 'A single date written YYYY-MM-DD (convert it, so "Wed Jun 14 2023" becomes 2023-06-14).'
     not_this:
       - 'the date the report was written or signed; the date the scan expires'
 
   scan_expiry_date:
     means: The date until which the scan result is stated to be valid.
-    report_as: A single date, only if the document states one; null otherwise. Never work it out yourself.
+    report_as: A single date written YYYY-MM-DD, only if the document states one; null otherwise. Never work it out yourself.
     not_this:
       - 'the scan completion date'
 
@@ -133,10 +133,10 @@ attributes:
 
   last_access_review_date:
     means: The date a user-access review was completed, as recorded in this review record.
-    report_as: A single date, the most recent review the record documents.
+    report_as: A single date written YYYY-MM-DD, the most recent review the record documents.
     not_this:
       - 'the date the record was filed; the date of the next review'
 
   ai_governance_review_date:
     means: The date of an AI governance review, only if this document records one.
-    report_as: A single date; null if the document is not about AI governance (an access review record is not).
+    report_as: A single date written YYYY-MM-DD; null if the document is not about AI governance (an access review record is not).

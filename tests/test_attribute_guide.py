@@ -98,3 +98,14 @@ def test_empty_mfa_list_no_longer_turns_a_missing_fact_into_a_partial_verdict():
 
     run = extract_attributes(G(), "text", ["mfa_required_for"])
     assert run.fields["mfa_required_for"].value is None
+
+
+def test_the_guide_can_be_switched_off_without_a_deploy(monkeypatch):
+    names = ["password_min_length"]
+    assert "password_min_length:" in build_user_prompt("DOC", names)
+    for off in ("0", "off", "false", "No"):
+        monkeypatch.setenv("EXTRACTION_GUIDE", off)
+        assert render_guide(names) == ""
+        assert "What each attribute means" not in build_user_prompt("DOC", names)
+    monkeypatch.setenv("EXTRACTION_GUIDE", "1")
+    assert render_guide(names) != ""

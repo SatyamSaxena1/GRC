@@ -14,7 +14,7 @@ from app.ai.extraction import extract_attributes_streaming as _extract_attribute
 from app.ai.extraction import draft_remediation as _draft_remediation
 from app.ai.extraction import generate_nutshell as _generate_nutshell
 from app.ai.lmstudio import LMStudioGateway
-from app.ai.ollama import OllamaGateway
+from app.ai.provider import default_model, default_vision_model, list_models, make_gateway
 from app.ai.prompts import EXTRACTION_PROMPT_VERSION
 from app.ai.schemas import ExtractionRun
 from app.ai.vision import read_page_image
@@ -25,8 +25,10 @@ logger = logging.getLogger("app.ingest")
 PROMPT_VERSION = EXTRACTION_PROMPT_VERSION
 
 
-def _gateway() -> OllamaGateway:
-    return OllamaGateway()
+def _gateway():
+    """The configured extraction/OCR gateway (app/ai/provider.py): Ollama by default,
+    or any OpenAI-compatible server with LLM_PROVIDER=openai."""
+    return make_gateway()
 
 
 def _tool_gateway() -> LMStudioGateway:
@@ -37,35 +39,31 @@ def _tool_gateway() -> LMStudioGateway:
 
 
 def current_model_name() -> str:
-    return _gateway().model or "ollama:unconfigured"
+    return _gateway().model or "model:unconfigured"
 
 
-def gateway_for(model: str | None, vision_model: str | None = None) -> OllamaGateway:
+def gateway_for(model: str | None, vision_model: str | None = None):
     """The per-evidence model choice (Evidence.ai_model/ai_vision_model),
     falling back to the server's env-configured default for whichever half
-    is unset — the same OllamaGateway the rest of the pipeline already uses,
+    is unset — the same gateway the rest of the pipeline already uses,
     just pointed at a different model name."""
-    from app.ai.ollama import MODEL as _DEFAULT_MODEL
-
-    return OllamaGateway(model=model or _DEFAULT_MODEL, vision_model=vision_model)
+    return make_gateway(model=model, vision_model=vision_model)
 
 
 def available_models() -> dict:
-    """What this server can actually offer a model picker: the Ollama models
-    currently pulled, or an empty list with available=False if Ollama isn't
-    reachable — a picker with nothing in it degrades to "use default", it
-    never blocks the upload."""
+    """What this server can actually offer a model picker: the models the configured
+    server has available (pulled in Ollama, loaded in LM Studio), or an empty list with
+    available=False if it isn't reachable — a picker with nothing in it degrades to
+    "use default", it never blocks the upload."""
     import requests
 
-    from app.ai.ollama import BASE_URL, MODEL, VISION_MODEL, list_models
-
     try:
-        models = list_models(BASE_URL)
-        return {"available": True, "models": models, "default_model": MODEL,
-                "default_vision_model": VISION_MODEL}
+        models = list_models()
+        return {"available": True, "models": models, "default_model": default_model(),
+                "default_vision_model": default_vision_model()}
     except requests.RequestException:
-        return {"available": False, "models": [], "default_model": MODEL,
-                "default_vision_model": VISION_MODEL}
+        return {"available": False, "models": [], "default_model": default_model(),
+                "default_vision_model": default_vision_model()}
 
 
 def extract_text(filename: str, content: bytes) -> str:

@@ -1,0 +1,111 @@
+{
+ "summary": {
+  "documents": 11,
+  "attribute_accuracy": 0.9434,
+  "critical_attribute_accuracy": 0.9211,
+  "date_accuracy": 0.8824,
+  "verdict_accuracy": 0.9845,
+  "gap_reason_accuracy": 0.75,
+  "auto_accept_precision": 1.0,
+  "stale_detection_recall": 1.0
+ },
+ "repeats": 3,
+ "runs": 33,
+ "invalid_runs": 0,
+ "missed": 0,
+ "wrong": 9,
+ "per_attribute": {
+  "scan_expiry_date": {
+   "accuracy": 0.5,
+   "hits": 6,
+   "total": 12
+  },
+  "access_review_frequency_days": {
+   "accuracy": 0.75,
+   "hits": 9,
+   "total": 12
+  },
+  "affected_person_notification": {
+   "accuracy": 1.0,
+   "hits": 3,
+   "total": 3
+  },
+  "ai_governance_review_date": {
+   "accuracy": 1.0,
+   "hits": 6,
+   "total": 6
+  },
+  "approval_date": {
+   "accuracy": 1.0,
+   "hits": 12,
+   "total": 12
+  },
+  "approver_role": {
+   "accuracy": 1.0,
+   "hits": 12,
+   "total": 12
+  },
+  "asv_company": {
+   "accuracy": 1.0,
+   "hits": 12,
+   "total": 12
+  },
+  "board_notification_hours": {
+   "accuracy": 1.0,
+   "hits": 3,
+   "total": 3
+  },
+  "compliance_status": {
+   "accuracy": 1.0,
+   "hits": 12,
+   "total": 12
+  },
+  "data_breach_response_process": {
+   "accuracy": 1.0,
+   "hits": 3,
+   "total": 3
+  },
+  "effective_date": {
+   "accuracy": 1.0,
+   "hits": 15,
+   "total": 15
+  },
+  "last_access_review_date": {
+   "accuracy": 1.0,
+   "hits": 6,
+   "total": 6
+  },
+  "mfa_required_for": {
+   "accuracy": 1.0,
+   "hits": 12,
+   "total": 12
+  },
+  "password_min_length": {
+   "accuracy": 1.0,
+   "hits": 15,
+   "total": 15
+  },
+  "scan_completed_date": {
+   "accuracy": 1.0,
+   "hits": 12,
+   "total": 12
+  },
+  "systems_covered": {
+   "accuracy": 1.0,
+   "hits": 12,
+   "total": 12
+  }
+ },
+ "unstable": [],
+ "failures": [
+  "access_control_policy_v1.access_review_frequency_days: expected 'quarterly', got 'annually'",
+  "access_control_policy_v1: PCI-DSS 7.2.4 expected PASS, got PARTIAL",
+  "pci_asv_attestation_2023.scan_expiry_date: expected '2023-06-14', got 'Wed Jun 14 2023'",
+  "pci_asv_attestation_2023_in_period.scan_expiry_date: expected '2023-06-14', got 'Wed Jun 14 2023'",
+  "pci_asv_attestation_2023_in_period: PCI-DSS 11.3.2 expected PASS, got FAIL",
+  "pci_asv_attestation_2023_in_period: PCI-DSS 11.3.2 gaps expected [], got ['scan_expiry_date']"
+ ],
+ "invented": 0,
+ "invented_of": 66,
+ "invented_list": []
+}

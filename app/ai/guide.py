@@ -9,6 +9,7 @@ property this exists to protect.
 
 from __future__ import annotations
 
+import os
 from functools import lru_cache
 from pathlib import Path
 
@@ -32,6 +33,8 @@ def render_guide(attribute_names: list[str]) -> str:
     """One compact block per requested attribute that has an entry, in the order
     asked (a stable order keeps the prompt, and so the model's behaviour, stable).
     Attributes without an entry are simply not described; they behave as before."""
+    if os.environ.get("EXTRACTION_GUIDE", "1").strip().lower() in ("0", "off", "false", "no"):
+        return ""  # kill switch: back to bare attribute names without a code deploy
     guide = load_guide()
     lines: list[str] = []
     for name in attribute_names:

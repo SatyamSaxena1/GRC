@@ -126,6 +126,9 @@ def to_date(value: Any) -> date | None:
         return None
     cleaned = re.sub(r"(\d+)(st|nd|rd|th)", r"\1", value.strip(), flags=re.IGNORECASE)
     cleaned = cleaned.replace(",", "")
+    # A leading weekday ("Wed Jun 14 2023", "Thursday, 16 March 2023") is how scanners and
+    # report generators print dates; it adds nothing the date does not already say.
+    cleaned = re.sub(r"^(?:mon|tue|tues|wed|thu|thur|thurs|fri|sat|sun)[a-z]*\.?\s+", "", cleaned, flags=re.IGNORECASE)
     for fmt in _DATE_FORMATS:
         try:
             return datetime.strptime(cleaned, fmt).date()

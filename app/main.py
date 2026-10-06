@@ -13,7 +13,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app import auth, oidc
-from app.ai.ollama import OllamaGateway
+from app.ai.provider import make_gateway
 from app.db import engine, init_db
 from app.routers import (
     activity, admin, analytics, audit, breach, ciso, connectors, controls, evidence, export, firm,
@@ -151,7 +151,7 @@ def ready():
     except Exception as exc:  # noqa: BLE001
         checks["database"] = f"error: {type(exc).__name__}"
 
-    gateway = OllamaGateway()
+    gateway = make_gateway()
     checks["model"] = "ok" if gateway.available() else "unavailable"
     checks["model_name"] = gateway.model or "unconfigured"
 

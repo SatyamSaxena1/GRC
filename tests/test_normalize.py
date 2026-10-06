@@ -162,3 +162,13 @@ def test_a_cadence_stated_twice_is_one_cadence_but_a_tiered_one_is_not():
     # two different cadences describe tiers, not one cadence: stay unparsed so no rule passes by accident
     assert to_days("quarterly for critical systems, annually for all others") == "quarterly for critical systems, annually for all others"
     assert to_days("whenever someone remembers") == "whenever someone remembers"
+
+
+def test_dates_printed_with_a_leading_weekday_are_dates():
+    from datetime import date
+    from app.normalize import to_date
+    for text in ("Wed Jun 14 2023", "Wednesday, June 14, 2023", "Thu Mar 16 2023 17:19:42"[:15], "Thursday, 16 March 2023", "wed. 14 jun 2023"):
+        assert to_date(text) is not None, text
+    assert to_date("Wed Jun 14 2023") == date(2023, 6, 14)
+    assert to_date("Thursday, 16 March 2023") == date(2023, 3, 16)
+    assert to_date("Someday soon") is None

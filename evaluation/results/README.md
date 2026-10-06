@@ -26,6 +26,34 @@ rules read as "stated, and wrong" (PARTIAL) instead of "missing" (FAIL). Fixed i
 (`ExtractedField` turns an empty answer into null) and in the guide wording.
 `20261006-141835-*` is the final guide run.
 
+## Real gateway, thinking off (app/ai/openai_compat.py)
+
+Through the production gateway class itself (no translator), `reasoning_effort: none`,
+`json_schema` response format, LM Studio serving Gemma over LM Link:
+
+| | translator, thinking on | real gateway, thinking off |
+|---|---|---|
+| verdict accuracy | 99.2% | **99.2%** |
+| attribute accuracy | 98.1% | 98.1% |
+| left out / invented / unstable | 0 / 0 / 0 | **0 / 0 / 0** |
+| mean extraction time | 10.8 s | **4.6 s** |
+| quality gates | pass | **pass** |
+
+`20261006-144427-*` is the first thinking-off run **before** the date fix and is kept on purpose:
+critical accuracy fell to 92% (gate FAIL) because a thinking model had been converting the
+`Wed Jun 14 2023` dates printed by ASV reports to ISO form and the non-thinking one copied them
+verbatim, which the normaliser could not read, so a valid scan became a false FAIL. Fixed in code
+(`normalize.to_date` accepts a leading weekday) plus the guide asking for `YYYY-MM-DD`.
+`20261006-145741-*` is the run after the fix.
+
+## Hosting finding: LM Link is not a dependable transport
+
+Three times the remote model dropped out ("No models loaded"), once mid-run. The server's own
+message, captured once the gateway logged it: `LM Link connection entered error state
+peer_keepalive_timeout`. The link flaps (the remote machine, `Gemperts-In`, later showed
+*disconnected* after its GPU shut off). A production path that goes Render -> Funnel -> laptop
+-> LM Link -> remote model inherits that. Serve the model on the machine that holds it instead.
+
 ## Known, unresolved
 
 `access_review_frequency_days` still shows 75% on the real Asteron policy, which says access is
