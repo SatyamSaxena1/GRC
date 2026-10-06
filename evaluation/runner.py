@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from datetime import date
 from pathlib import Path
@@ -95,6 +96,11 @@ def run_case(case: dict, content, report: Report, use_model: bool, gateway=None,
             _restore_cadence_words(run)  # the production pipeline does this before evaluating
             report.runs += 1
             report.latencies_ms.append(run.latency_ms)
+            if run.status in ("UNAVAILABLE", "ERROR"):
+                # The model never answered: scoring the resulting nulls would print a
+                # plausible-looking accuracy for a run that measured nothing.
+                raise SystemExit(f"model unreachable ({run.status}) on {case['name']} - aborting, "
+                                 f"nothing was measured. Check the host / tunnel / loaded model.")
             if run.status != "OK":
                 report.invalid_runs += run.status == "INVALID_OUTPUT"
                 report.failures.append(f"{case['name']}: extraction status {run.status}")
@@ -246,7 +252,7 @@ def main() -> int:
 
     if args.save:
         RESULTS.mkdir(exist_ok=True)
-        tag = (gateway.model if gateway else "default").replace(":", "_")
+        tag = re.sub(r"[^A-Za-z0-9._-]+", "_", gateway.model if gateway else "default")  # model names contain : and /
         out = RESULTS / f"{time.strftime('%Y%m%d-%H%M%S')}-{tag}.json"
         out.write_text(json.dumps({
             "summary": report.summary(), "repeats": args.repeats, "runs": report.runs,
