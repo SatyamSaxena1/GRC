@@ -36,11 +36,15 @@ def test_watchdog_stops_the_model_and_exits_when_hot(monkeypatch):
     started = []
     monkeypatch.setattr(threading.Thread, "start", lambda self: started.append(self))
     thermal.start_watchdog(trip_at=88, container="llm-ollama-1")
-    monkeypatch.setattr(thermal.time, "sleep", lambda s: (_ for _ in ()).throw(StopIteration))
-    try:
-        started[0].run()
-    except StopIteration:
+    class _Stop(Exception):
         pass
+
+    def stop(_seconds):
+        raise _Stop    # end the watch loop after one pass (a StopIteration would be rewritten by PEP 479 on 3.11)
+
+    monkeypatch.setattr(thermal.time, "sleep", stop)
+    with pytest.raises(_Stop):
+        started[0].run()
     assert ["docker", "restart", "llm-ollama-1"] in calls and exited == [3]
 
 
