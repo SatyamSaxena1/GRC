@@ -83,6 +83,11 @@ that is a breach question, not a test-coverage one.
 caught and an owner; a phase-2 rule not adopted within a year of its trigger, or a phase-1 rule
 that has caught nothing and costs more than it saves, is removed by amending this ADR.
 
+**Progress.** Rule 1's first concrete item has landed: the CI `rls` job runs
+`tests/test_rls_postgres.py` on real Postgres as a non-superuser role, fails if the role could
+bypass RLS or if the tests are skipped, and fails when the ed57e9e fix is reverted. `deploy` now
+needs it. The look-back of rule 4 (production logs for the SQLite-only period) is still open.
+
 ## Alternatives considered
 - **Replace Git** (Mercurial, Pijul, Fossil, an operation-log system such as Zed's DeltaDB).
   None of the three failures was a storage or history problem; each was a check that could not
