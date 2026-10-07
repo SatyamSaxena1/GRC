@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session
 
 from app import audit_log
 from app.auth import Actor, current_actor
-from app.db import get_session, set_firm, set_tenant
+from app.db import get_session, identity_lookup, set_firm, set_tenant
 from app.models import (
     AuditFirm, Engagement, EngagementAllocation, EngagementAuditor, EvidenceControlLink,
     GapRow, OnboardingRequest, OrgControl, Organization, User,
@@ -153,7 +153,8 @@ def approve_onboarding_request(request_id: str, body: ApprovalIn,
     # User row — see app/auth.py::_resolve_oidc, ADR-011). One admin, from the
     # email the prospect gave us; they invite the rest from the in-app Admin
     # page once signed in.
-    first_user = db.query(User).filter_by(email=req.contact_email).one_or_none()
+    with identity_lookup(db):  # emails are unique across tenants, not within one
+        first_user = db.query(User).filter_by(email=req.contact_email).one_or_none()
     if first_user is None:
         first_user = User(email=req.contact_email, org_id=org.id, role="ORG_ADMIN")
         db.add(first_user)

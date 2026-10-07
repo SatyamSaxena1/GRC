@@ -65,6 +65,10 @@ def create_user(body: UserIn, actor: Actor | None = Depends(admin_or_actor),
                          and actor.role == "FIRM_ADMIN")
         if not (into_own_org or into_own_firm):
             raise HTTPException(403, "you may only invite users into your own organisation or firm")
+    # The operator key binds no tenant, and users is under RLS: write the row inside the
+    # org or firm it belongs to (a signed-in caller is already bound to that same one).
+    set_tenant(db, body.org_id)
+    set_firm(db, body.audit_firm_id)
     user = User(**body.model_dump())
     db.add(user)
     db.commit()
