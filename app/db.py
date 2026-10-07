@@ -55,6 +55,23 @@ def _rebind_scope(session, transaction, connection):
                                {"guc": guc, "v": value})
 
 
+@contextmanager
+def identity_lookup(db: Session):
+    """Let the enclosed queries read users across tenants, for the one job that needs it:
+    finding who is signing in before any tenant is known (and the onboarding check that an
+    email is not already taken). Read-only by policy (alembic a7b8c9d0e1f2), switched off
+    again on exit, and deliberately not in _GUCS, so a later transaction never inherits it.
+    A no-op on SQLite."""
+    on = db.bind is not None and db.bind.dialect.name == "postgresql"
+    if on:
+        db.execute(text("SELECT set_config('app.identity_lookup', 'on', true)"))
+    try:
+        yield
+    finally:
+        if on:
+            db.execute(text("SELECT set_config('app.identity_lookup', 'off', true)"))
+
+
 def set_tenant(db: Session, org_id: str | None) -> None:
     """Bind the tenant to the session so Postgres RLS can enforce isolation
     in the database, not only in application WHERE clauses. A no-op on SQLite,

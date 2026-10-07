@@ -18,7 +18,7 @@ from fastapi import Depends, Header, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app import oidc
-from app.db import get_session, set_firm, set_tenant
+from app.db import get_session, identity_lookup, set_firm, set_tenant
 from app.models import AuditFirm, Engagement, EngagementAuditor, User
 
 # The stub tokens carry no signature: anyone who knows an org/user id can be
@@ -153,7 +153,8 @@ def _resolve(authorization: str, db: Session, engagement_header: str | None = No
         return Actor(org_id="", audit_firm_id=firm_id, role="FIRM_ADMIN")
 
     if authorization.startswith("user:"):
-        user = db.get(User, authorization.removeprefix("user:"))
+        with identity_lookup(db):
+            user = db.get(User, authorization.removeprefix("user:"))
         if user is None:
             raise HTTPException(401)
         if user.audit_firm_id:
@@ -185,7 +186,8 @@ def _resolve_oidc(token: str, db: Session, engagement_header: str | None) -> Act
     if not email:
         raise HTTPException(401, f"token has no {oidc.EMAIL_CLAIM} claim")
 
-    user = db.query(User).filter_by(email=email).one_or_none()
+    with identity_lookup(db):
+        user = db.query(User).filter_by(email=email).one_or_none()
     if user is None:
         raise HTTPException(401, "no user provisioned for this identity")
 

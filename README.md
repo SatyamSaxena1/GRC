@@ -250,8 +250,10 @@ Honest list, kept current:
 - **RLS is tested on real Postgres in CI, but narrowly.** The `rls` job migrates a fresh
   Postgres schema with Alembic and runs `tests/test_rls_postgres.py` as a role that is neither
   superuser nor BYPASSRLS (cross-tenant read and write canaries, plus the onboarding regression).
-  The rest of the suite still runs on SQLite, where RLS does not exist, so a new tenant-scoped
-  write path is only proven under RLS once a test for it is added there. Deploys wait on this job.
+  A catalog check also fails the job if any table with an `org_id` or `audit_firm_id` column lacks
+  forced RLS, so a new tenant table cannot ship without its policy. The rest of the suite still
+  runs on SQLite, where RLS does not exist; about 27 of its tests read rows directly without
+  binding a tenant and fail on Postgres for that reason alone, which is a test-harness gap. Deploys wait on this job.
   Locally: `RLS_TEST_DATABASE_URL=postgresql+psycopg://<app role>@localhost/<db> pytest tests/test_rls_postgres.py`.
 - **Scanned PDFs need PyMuPDF** for page rasterization. Without it, unreadable pages
   degrade to missing attributes with a logged warning.

@@ -126,3 +126,62 @@ def test_dropping_the_tenant_binding_turns_this_suite_red(client, monkeypatch):
     monkeypatch.setattr(firm_router, "set_tenant", lambda db, org_id: None)
     with pytest.raises(Exception, match="row-level security"):
         _approve_onboarding(client)
+
+
+def test_every_tenant_owned_table_has_forced_rls(engine):
+    """The catalog check (borrowed from the earlier Trishul attempt): a single table proves
+    little, so assert that every table carrying a tenant column is behind enabled AND forced
+    RLS. A new tenant table shipped without its policy migration fails here, not in
+    production."""
+    with engine.connect() as conn:
+        rows = conn.execute(text("""
+            SELECT c.relname, bool_and(c.relrowsecurity AND c.relforcerowsecurity)
+            FROM pg_class c
+            JOIN pg_namespace n ON n.oid = c.relnamespace
+            JOIN pg_attribute a ON a.attrelid = c.oid AND NOT a.attisdropped
+                               AND a.attname IN ('org_id', 'audit_firm_id')
+            WHERE n.nspname = 'public' AND c.relkind = 'r'
+            GROUP BY c.relname ORDER BY c.relname
+        """)).all()
+    assert rows, "no tenant-owned tables found: is this the migrated schema?"
+    unforced = [name for name, forced in rows if not forced]
+    assert not unforced, f"tenant tables without enabled and forced RLS: {unforced}"
+
+
+def _user(client, org_id, email):
+    return client.post("/admin/users", json={"email": email, "org_id": org_id,
+                                             "role": "ORG_ADMIN"}).json()["id"]
+
+
+def test_one_tenant_cannot_read_another_tenants_users(client, engine):
+    org_a, org_b = _org(client, "Acme"), _org(client, "Beta")
+    alice = _user(client, org_a, "alice@acme.test")
+
+    def visible(tenant):
+        with engine.begin() as conn:
+            conn.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": tenant})
+            return conn.execute(text("SELECT count(*) FROM users WHERE id = :id"), {"id": alice}).scalar_one()
+
+    assert visible(org_a) == 1
+    assert visible(org_b) == 0
+
+
+def test_the_identity_lookup_is_read_only_and_switches_off(client, engine):
+    from sqlalchemy.orm import Session
+
+    from app.db import identity_lookup
+    org_a = _org(client, "Acme")
+    alice = _user(client, org_a, "alice@acme.test")
+    with Session(engine) as db, db.begin():
+        with identity_lookup(db):
+            assert db.execute(text("SELECT count(*) FROM users WHERE id = :id"), {"id": alice}).scalar_one() == 1
+            changed = db.execute(text("UPDATE users SET role = 'X' WHERE id = :id"), {"id": alice}).rowcount
+            assert changed == 0   # lookup grants reading, never writing
+        assert db.execute(text("SELECT count(*) FROM users WHERE id = :id"), {"id": alice}).scalar_one() == 0
+
+
+def test_signing_in_as_a_user_still_works_under_rls(client):
+    org_a = _org(client, "Acme")
+    alice = _user(client, org_a, "alice@acme.test")
+    assert client.get("/controls", headers={"authorization": f"user:{alice}"}).status_code == 200
+    assert client.get("/controls", headers={"authorization": "user:nobody"}).status_code == 401
