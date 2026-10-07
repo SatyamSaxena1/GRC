@@ -71,7 +71,7 @@ Next, roughly in order of value:
    decoration (ADR-019 rule 1).
 3. **Gate-path changes**: merges that touched CI workflows, tests or CODEOWNERS get stricter rules
    (two approvers, or a code owner).
-4. **Rulesets** alongside classic branch protection.
+4. ~~**Rulesets**~~: built. Classic protection and active rulesets are combined, strictest wins.
 5. **Deploy reconciliation**: was what ran in production what was merged and approved?
 6. **GitLab and Bitbucket** collectors, reusing `summarize()` unchanged.
 

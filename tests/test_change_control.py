@@ -219,6 +219,7 @@ class _FakeGitHub:
         self.routes = {
             r: {"default_branch": "main"},
             r + "/branches/main/protection": _FakeResponse({"message": "Not Found"}, 404),
+            r + "/rules/branches/main": [],
             r + "/pulls": [
                 {"number": 7, "updated_at": "2026-10-02T00:00:00Z", "merged_at": "2026-10-02T00:00:00Z",
                  "html_url": "https://github.com/acme/app/pull/7",
@@ -438,3 +439,89 @@ def test_fetch_reads_required_checks_and_earlier_pushes():
     assert repo["protection"]["required_checks"] == ["ci", "lint"]
     assert gcc.gate_liveness(repo) == [{"check": "ci", "runs": 2, "failures": 1},
                                        {"check": "lint", "runs": 0, "failures": 0}]
+
+
+# --- rulesets: classic protection and rulesets together, strictest wins ----------
+
+def _ruleset(rules, bypass=(), name="main-guard", rid=1):
+    return {"id": rid, "name": name, "rules": rules, "bypass_actors": None if bypass is None else list(bypass)}
+
+
+PR_RULE = {"pull_request": {"required_approving_review_count": 2, "dismiss_stale_reviews_on_push": True}}
+
+
+def test_a_branch_guarded_only_by_a_ruleset_is_protected():
+    p = gcc.effective_protection({"enabled": False}, [_ruleset({**PR_RULE, "non_fast_forward": {}})])
+    assert p["enabled"] and p["required_approving_reviews"] == 2 and p["dismiss_stale_reviews"]
+    assert p["allow_force_pushes"] is False and p["enforce_admins"] is True
+    assert p["sources"] == ["ruleset:main-guard"]
+    out = gcc.summarize([{"protection": p, "pulls": [], "default_commits": []}])
+    assert out["default_branch_protected"] and not out["admins_can_bypass"]
+    assert not out["force_push_allowed_on_default"]
+
+
+def test_the_strictest_layer_wins():
+    classic = dict(PROTECTED, required_approving_reviews=1, dismiss_stale_reviews=False,
+                   allow_force_pushes=True, required_checks=["ci"])
+    rules = {**PR_RULE, "non_fast_forward": {},
+             "required_status_checks": {"required_status_checks": [{"context": "lint"}]}}
+    p = gcc.effective_protection(classic, [_ruleset(rules)])
+    assert p["required_approving_reviews"] == 2
+    assert p["dismiss_stale_reviews"] is True
+    assert p["allow_force_pushes"] is False
+    assert p["required_checks"] == ["ci", "lint"]
+    assert p["sources"] == ["classic", "ruleset:main-guard"]
+
+
+def test_a_ruleset_with_bypass_actors_does_not_bind_admins():
+    p = gcc.effective_protection({"enabled": False}, [_ruleset(PR_RULE, bypass=[{"actor_type": "RepositoryRole"}])])
+    assert p["enforce_admins"] is False
+
+
+def test_hidden_bypass_actors_count_as_bypassable():
+    """Visible only to callers who can edit the ruleset; unknown is never a pass."""
+    p = gcc.effective_protection({"enabled": False}, [_ruleset(PR_RULE, bypass=None)])
+    assert p["enforce_admins"] is False
+
+
+def test_admins_are_bound_if_any_reviewing_layer_binds_them():
+    lax_classic = dict(PROTECTED, enforce_admins=False)
+    assert gcc.effective_protection(lax_classic, [_ruleset(PR_RULE, bypass=[])])["enforce_admins"] is True
+    assert gcc.effective_protection(lax_classic, [_ruleset(PR_RULE, bypass=None)])["enforce_admins"] is False
+
+
+def test_a_ruleset_without_a_review_rule_does_not_bind_admins_to_review():
+    p = gcc.effective_protection({"enabled": False}, [_ruleset({"deletion": {}}, bypass=[])])
+    assert p["enabled"] is True and p["enforce_admins"] is False and p["required_approving_reviews"] == 0
+
+
+def test_no_classic_protection_and_no_rulesets_is_unprotected():
+    p = gcc.effective_protection({"enabled": False}, [])
+    assert not p["enabled"] and p["allow_force_pushes"] and p["sources"] == []
+
+
+def test_classic_settings_are_ignored_when_classic_protection_is_off():
+    stale = {"enabled": False, "required_approving_reviews": 3, "dismiss_stale_reviews": True}
+    p = gcc.effective_protection(stale, [])
+    assert p["required_approving_reviews"] == 0 and p["dismiss_stale_reviews"] is False
+
+
+def test_fetch_reads_rulesets_and_their_bypass_lists():
+    from datetime import datetime, timezone
+
+    api = _FakeGitHub()
+    r = gcc.API + "/repos/acme/app"
+    api.routes[r + "/rules/branches/main"] = [
+        {"type": "pull_request", "ruleset_id": 42,
+         "parameters": {"required_approving_review_count": 1, "dismiss_stale_reviews_on_push": True}},
+        {"type": "non_fast_forward", "ruleset_id": 42},
+        {"type": "required_status_checks", "ruleset_id": 43,
+         "parameters": {"required_status_checks": [{"context": "ci"}]}},
+    ]
+    api.routes[r + "/rulesets/42"] = {"name": "main-guard", "bypass_actors": []}
+    api.routes[r + "/rulesets/43"] = _FakeResponse({"message": "Not Found"}, 404)
+
+    p = gcc.fetch(api, "acme/app", datetime(2026, 9, 1, tzinfo=timezone.utc))["protection"]
+    assert p["enabled"] and p["enforce_admins"] and not p["allow_force_pushes"]
+    assert p["required_checks"] == ["ci"]
+    assert p["sources"] == ["ruleset:main-guard", "ruleset:43"]

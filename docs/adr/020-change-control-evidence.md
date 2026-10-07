@@ -68,15 +68,21 @@ it is reported as its own gap.
   "never failed" is unproven, not broken. Cancelled runs prove nothing either way. Two API calls
   per push, capped at the newest 30 pushes per PR. Without required checks the gate includes
   non-gate jobs (deploys, review bots), which is one more reason to require checks.
-- Branch *rulesets* are not yet read, only classic branch protection. A repository protected only
-  by rulesets will read as unprotected, which is a false gap but never a false pass.
-- GitHub answers the branch-protection endpoint with 404 to any token without administration
-  read access, so an under-scoped token also reads as "unprotected". First run against this
-  repository (2026-10-07, unauthenticated) showed exactly that. Protection facts need either
-  that scope or the rulesets endpoint, which plain read access can see.
+- **Protection is the combination of classic branch protection and every active ruleset**
+  (repository and organisation level), combined the way GitHub enforces them: all layers apply,
+  so the strictest setting wins. That means the most required approvals, stale approvals dismissed
+  if any layer says so, force pushes blocked if any layer blocks them, and the union of required
+  checks. Administrators count as bound if any layer that requires review binds them: classic
+  protection with "include administrators", or a ruleset known to have no bypass list. The
+  snapshot's protection names its sources (`classic`, `ruleset:<name>`).
+- The rulesets endpoint needs only read access, so a ruleset-protected branch now reads correctly
+  with a plain token. Two unknowns stay conservative, giving possible false gaps but never false
+  passes: classic protection answers 404 to a token without administration read, and a ruleset's
+  bypass list is shown only to callers who can edit it, so a hidden list counts as bypassable.
 - The connector's environment-variable names carry the historical `DPDP_` prefix
   (`DPDP_GITHUB_COLLECTOR_URL`); renaming it is a separate change.
 - GitLab and Bitbucket need their own `fetch()`; `summarize()` and the packs are reused unchanged.
 - The collector's token must be fine-grained and read-only: metadata, pull requests, contents
-  read for commit metadata, and checks. A token that can write would make the platform a
+  read for commit metadata, and checks, plus administration read if classic branch protection
+  is used (rulesets need none). A token that can write would make the platform a
   supply-chain target.

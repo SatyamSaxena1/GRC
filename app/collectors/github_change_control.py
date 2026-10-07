@@ -298,13 +298,17 @@ def _user(raw: dict | None) -> dict | None:
     return {"login": raw.get("login"), "is_bot": raw.get("type") == "Bot"}
 
 
-def _protection(session, repo: str, branch: str) -> dict:
+def _classic_protection(session, repo: str, branch: str) -> dict:
+    """Classic branch protection. GitHub answers 404 both for "none" and for a token
+    without administration read, so a 404 reads as unprotected: a possible false gap,
+    never a false pass (ADR-020)."""
     response = session.get(f"{API}/repos/{repo}/branches/{branch}/protection", timeout=30)
     if response.status_code == 404:
         return {"enabled": False}
     response.raise_for_status()
     raw = response.json()
     reviews = raw.get("required_pull_request_reviews") or {}
+    checks = raw.get("required_status_checks") or {}
     return {
         "enabled": True,
         "required_approving_reviews": reviews.get("required_approving_review_count", 0),
@@ -312,8 +316,74 @@ def _protection(session, repo: str, branch: str) -> dict:
         "enforce_admins": bool((raw.get("enforce_admins") or {}).get("enabled")),
         "allow_force_pushes": bool((raw.get("allow_force_pushes") or {}).get("enabled")),
         "required_checks": sorted(
-            {c.get("context") for c in (raw.get("required_status_checks") or {}).get("checks", [])}
-            | set((raw.get("required_status_checks") or {}).get("contexts", [])) - {None}),
+            {c.get("context") for c in checks.get("checks", [])}
+            | set(checks.get("contexts", [])) - {None}),
+    }
+
+
+def _rulesets(session, repo: str, branch: str) -> list[dict]:
+    """Active rulesets that apply to the branch, repository- and organisation-level,
+    as [{"id", "name", "rules": {type: parameters}, "bypass_actors": list | None}].
+
+    The rules endpoint needs only read access. Bypass actors live on the ruleset itself
+    and GitHub shows them only to callers who can edit it; when they are hidden,
+    `bypass_actors` is None and the ruleset is treated as bypassable."""
+    rulesets: dict[int, dict] = {}
+    for rule in _paged(session, f"{API}/repos/{repo}/rules/branches/{branch}"):
+        ruleset_id = rule.get("ruleset_id")
+        entry = rulesets.setdefault(ruleset_id, {"id": ruleset_id, "name": None, "rules": {},
+                                                 "bypass_actors": None})
+        entry["rules"][rule.get("type")] = rule.get("parameters") or {}
+    for ruleset_id, entry in rulesets.items():
+        response = session.get(f"{API}/repos/{repo}/rulesets/{ruleset_id}",
+                               params={"includes_parents": "true"}, timeout=30)
+        if response.status_code in (403, 404):
+            continue  # not visible to this token: bypass stays unknown
+        response.raise_for_status()
+        raw = response.json()
+        entry["name"] = raw.get("name")
+        if "bypass_actors" in raw:
+            entry["bypass_actors"] = raw.get("bypass_actors") or []
+    return list(rulesets.values())
+
+
+def effective_protection(classic: dict, rulesets: list[dict]) -> dict:
+    """What actually guards the branch: classic protection and every active ruleset,
+    combined the way GitHub enforces them — all layers apply at once, so the strictest
+    setting wins, and a person can bypass the gate only if every layer that binds the
+    change lets them through.
+
+    Same shape as `_classic_protection`, plus `sources` naming the layers, so
+    summarize() needs no knowledge of where a setting came from."""
+    classic = classic or {}
+    layers = [r for r in rulesets if r.get("rules")]
+    pull_rules = [r["rules"]["pull_request"] for r in layers if "pull_request" in r["rules"]]
+    check_rules = [r["rules"]["required_status_checks"] for r in layers
+                   if "required_status_checks" in r["rules"]]
+    blocks_force_push = any("non_fast_forward" in r["rules"] for r in layers)
+    enabled = bool(classic.get("enabled")) or bool(layers)
+
+    # A layer binds administrators when it requires review and nobody may skip it: classic
+    # protection with "include administrators", or a ruleset known to have no bypass list.
+    binds_admins = (bool(classic.get("enabled")) and bool(classic.get("enforce_admins"))) or any(
+        "pull_request" in r["rules"] and r.get("bypass_actors") == [] for r in layers)
+
+    classic_allows_force = bool(classic.get("allow_force_pushes")) or not classic.get("enabled")
+    return {
+        "enabled": enabled,
+        "required_approving_reviews": max(
+            [int(classic.get("required_approving_reviews") or 0) if classic.get("enabled") else 0]
+            + [int(p.get("required_approving_review_count") or 0) for p in pull_rules]),
+        "dismiss_stale_reviews": (bool(classic.get("enabled")) and bool(classic.get("dismiss_stale_reviews")))
+        or any(p.get("dismiss_stale_reviews_on_push") for p in pull_rules),
+        "enforce_admins": binds_admins,
+        "allow_force_pushes": classic_allows_force and not blocks_force_push,
+        "required_checks": sorted(
+            set(classic.get("required_checks") or [])
+            | {c.get("context") for p in check_rules for c in p.get("required_status_checks", [])}
+            - {None}),
+        "sources": (["classic"] if classic.get("enabled") else [])
+        + [f"ruleset:{r.get('name') or r.get('id')}" for r in layers],
     }
 
 
@@ -373,7 +443,9 @@ def fetch(session, repo: str, since: datetime) -> dict:
         for c in _paged(session, f"{API}/repos/{repo}/commits", sha=branch,
                         since=cutoff)
     ]
-    return {"repo": repo, "protection": _protection(session, repo, branch), "pulls": pulls,
+    protection = effective_protection(_classic_protection(session, repo, branch),
+                                      _rulesets(session, repo, branch))
+    return {"repo": repo, "protection": protection, "pulls": pulls,
             "default_commits": default_commits}
 
 
