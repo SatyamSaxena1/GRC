@@ -4,8 +4,10 @@ import { useApi } from "../lib/useApi";
 
 const RULE_LABELS: Record<string, string> = {
   NO_INDEPENDENT_APPROVAL: "No independent approval",
+  GATE_PATH_UNDER_REVIEWED: "Gate file changed with too few approvals",
   CHECKS_FAILED_OR_MISSING: "Checks failed or missing",
   DIRECT_PUSH: "Direct push",
+  GATE_FILE_REMOVED: "Gate file removed (advisory)",
   GATE_NEVER_FAILED: "Check never seen failing (advisory)",
 };
 

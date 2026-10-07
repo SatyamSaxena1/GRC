@@ -62,6 +62,7 @@ Built today (in all three packs unless noted):
 | `ai_assisted_merges_without_independent_approval` | = 0, reported as its own gap |
 | `force_push_allowed_on_default` | must be false |
 | `admins_can_bypass`, `stale_reviews_dismissed` | gate must hold for admins, and approvals must reset on new pushes; required by SOC 2 and PCI, SUPPORTING for ISO |
+| `gate_path_merges_without_two_independent_approvals` | = 0 for SOC 2 and PCI: changes to CI, tests or ownership need two independent approvals |
 
 Next, roughly in order of value:
 1. ~~**Per-merge exceptions**~~: built. Every failing merge or push is listed with its rules,
@@ -69,8 +70,9 @@ Next, roughly in order of value:
 2. ~~**Gate liveness**~~: built. Required checks that never failed on any push in the period are
    listed for a canary run (advisory; no verdict changes), because a check that cannot go red is
    decoration (ADR-019 rule 1).
-3. **Gate-path changes**: merges that touched CI workflows, tests or CODEOWNERS get stricter rules
-   (two approvers, or a code owner).
+3. ~~**Gate-path changes**~~: built. Merges that touch CI workflows, tests, CODEOWNERS or hook
+   config need two independent approvals under SOC 2 and PCI; removed gate files are flagged.
+   Code-owner approval as an alternative is not yet read.
 4. ~~**Rulesets**~~: built. Classic protection and active rulesets are combined, strictest wins.
 5. **Deploy reconciliation**: was what ran in production what was merged and approved?
 6. **GitLab and Bitbucket** collectors, reusing `summarize()` unchanged.

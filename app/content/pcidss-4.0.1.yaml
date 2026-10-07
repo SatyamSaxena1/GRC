@@ -134,7 +134,8 @@ requirements:
                               stale_reviews_dismissed, admins_can_bypass, force_push_allowed_on_default,
                               merges_in_period, merges_without_independent_approval,
                               merges_with_failing_or_missing_checks, direct_pushes_to_default,
-                              ai_assisted_merges, ai_assisted_merges_without_independent_approval]
+                              ai_assisted_merges, ai_assisted_merges_without_independent_approval,
+                              gate_path_merges, gate_path_merges_without_two_independent_approvals]
     mappings:
       - uco: UCO-CHG-001
         coverage: FULL
@@ -155,3 +156,6 @@ requirements:
           - {attribute: force_push_allowed_on_default, operator: "==", value: false}
           - {attribute: admins_can_bypass, operator: "==", value: false}
           - {attribute: stale_reviews_dismissed, operator: "==", value: true}
+          # Our baseline: a change to CI, tests or ownership can weaken every later check,
+          # so it needs two independent approvals (ADR-019 rule 2, ADR-020).
+          - {attribute: gate_path_merges_without_two_independent_approvals, operator: "==", value: 0}

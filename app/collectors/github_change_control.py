@@ -26,6 +26,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import fnmatch
 import re
 import sys
 from datetime import datetime, timedelta, timezone
@@ -46,6 +47,9 @@ ATTRIBUTES = (
     "direct_pushes_to_default",
     "ai_assisted_merges",
     "ai_assisted_merges_without_independent_approval",
+    "gate_path_merges",
+    "gate_path_merges_without_two_independent_approvals",
+    "gate_files_removed",
     "gate_checks_observed",
     "gate_checks_never_seen_failing",
 )
@@ -105,9 +109,8 @@ def _contributors(pr: dict) -> set[str]:
     return {login.lower() for login in logins}
 
 
-def approval_finding(pr: dict) -> str | None:
-    """None when the change has an independent approval, else why it does not — in
-    words an auditor can check against the PR itself.
+def _review_outcome(pr: dict) -> tuple[list[str], list[str]]:
+    """(independent approvers, why each other review did not count).
 
     An approval counts only if it is a human's latest review, it approves the exact
     commit that was merged (an approval of an earlier push says nothing about what
@@ -125,7 +128,7 @@ def approval_finding(pr: dict) -> str | None:
             continue  # a comment neither grants nor withdraws approval
         latest[str(user["login"]).lower()] = review
 
-    reasons = []
+    approvers, reasons = [], []
     for login, review in sorted(latest.items()):
         if review.get("state") != "APPROVED":
             reasons.append(f"{login}'s latest review was {str(review.get('state')).lower().replace('_', ' ')}")
@@ -134,9 +137,20 @@ def approval_finding(pr: dict) -> str | None:
         elif login in contributors:
             reasons.append(f"{login} approved but wrote or committed part of the change")
         else:
-            return None
+            approvers.append(login)
     reasons += [f"{login} is a bot; bot approvals do not count" for login in sorted(bot_approvers)]
-    return "; ".join(reasons) or "no approving review"
+    return approvers, reasons
+
+
+def independent_approvers(pr: dict) -> list[str]:
+    return _review_outcome(pr)[0]
+
+
+def approval_finding(pr: dict) -> str | None:
+    """None when the change has an independent approval, else why it does not — in
+    words an auditor can check against the PR itself."""
+    approvers, reasons = _review_outcome(pr)
+    return None if approvers else ("; ".join(reasons) or "no approving review")
 
 
 def has_independent_approval(pr: dict) -> bool:
@@ -150,6 +164,41 @@ def checks_passed(pr: dict) -> bool:
     return bool(checks) and all(
         str(c.get("conclusion") or "").lower() in PASSING_CONCLUSIONS for c in checks
     )
+
+
+# Files that change the gate itself: CI definitions, tests, ownership and hook config. A
+# change here can weaken every later check, so it needs more than one reviewer (ADR-019
+# rule 2, applied to clients). fnmatch's "*" also matches "/", so "tests/*" covers subfolders.
+GATE_PATTERNS = (
+    ".github/workflows/*", ".github/actions/*", "CODEOWNERS", ".github/CODEOWNERS",
+    "docs/CODEOWNERS", ".gitlab-ci.yml", ".circleci/*", "azure-pipelines.yml", "Jenkinsfile",
+    ".pre-commit-config.yaml", "tests/*", "test/*", "*/tests/*", "*/test/*", "*conftest.py",
+    "test_*.py", "*/test_*.py", "*_test.*", "*.test.*", "*.spec.*",
+)
+GATE_PATH_MIN_APPROVALS = 2
+
+
+def gate_paths(pr: dict, patterns: Iterable[str] = GATE_PATTERNS) -> list[str]:
+    """The gate files a PR changed, renamed away or removed — file names only, from the
+    PR's file list (never its diff)."""
+    patterns = tuple(patterns)
+    hits = set()
+    for f in pr.get("files", []):
+        for name in (f.get("filename"), f.get("previous_filename")):
+            if name and any(fnmatch.fnmatchcase(name, p) for p in patterns):
+                hits.add(name)
+    return sorted(hits)
+
+
+def removed_gate_files(pr: dict, patterns: Iterable[str] = GATE_PATTERNS) -> list[str]:
+    patterns = tuple(patterns)
+    return sorted(f["filename"] for f in pr.get("files", [])
+                  if f.get("status") == "removed" and f.get("filename")
+                  and any(fnmatch.fnmatchcase(f["filename"], p) for p in patterns))
+
+
+def gate_path_under_reviewed(pr: dict, patterns: Iterable[str] = GATE_PATTERNS) -> bool:
+    return bool(gate_paths(pr, patterns)) and len(independent_approvers(pr)) < GATE_PATH_MIN_APPROVALS
 
 
 def gate_liveness(repo: dict) -> list[dict]:
@@ -174,6 +223,11 @@ def gate_liveness(repo: dict) -> list[dict]:
                 failures[name] += str(check.get("conclusion") or "").lower() in FAILING_CONCLUSIONS
     return [{"check": name, "runs": runs[name], "failures": failures[name]}
             for name in sorted(gate, key=str) if name is not None]
+
+
+def _patterns(repo: dict) -> tuple[str, ...]:
+    """The repo's gate patterns: the defaults plus any the client added (--gate-path)."""
+    return GATE_PATTERNS + tuple(repo.get("extra_gate_patterns") or ())
 
 
 def summarize(repos: Iterable[dict]) -> dict[str, Any]:
@@ -208,6 +262,12 @@ def summarize(repos: Iterable[dict]) -> dict[str, Any]:
         "ai_assisted_merges": len(ai_pulls),
         "ai_assisted_merges_without_independent_approval": sum(
             not has_independent_approval(pr) for pr in ai_pulls),
+        "gate_path_merges": sum(bool(gate_paths(pr, _patterns(r))) for r in repos for pr in r.get("pulls", [])),
+        "gate_path_merges_without_two_independent_approvals": sum(
+            gate_path_under_reviewed(pr, _patterns(r)) for r in repos for pr in r.get("pulls", [])),
+        # Advisory, like the two below: listed for the auditor, never a failed condition.
+        "gate_files_removed": sum(
+            len(removed_gate_files(pr, _patterns(r))) for r in repos for pr in r.get("pulls", [])),
         # Advisory: no content pack fails a clause on these (ADR-020). They are listed as
         # GATE_CHECK rows for the auditor to ask for a canary.
         "gate_checks_observed": len(gates),
@@ -235,6 +295,18 @@ def exceptions(repos: Iterable[dict], limit: int = MAX_EXCEPTIONS) -> tuple[list
             reasons = []
             if (finding := approval_finding(pr)) is not None:
                 reasons.append({"rule": "NO_INDEPENDENT_APPROVAL", "detail": finding})
+            if gate_path_under_reviewed(pr, _patterns(repo)):
+                touched = gate_paths(pr, _patterns(repo))
+                shown = ", ".join(touched[:3]) + (f" (+{len(touched) - 3} more)" if len(touched) > 3 else "")
+                n = len(independent_approvers(pr))
+                reasons.append({"rule": "GATE_PATH_UNDER_REVIEWED",
+                                "detail": f"changed {shown}; {n} independent approval{'s' if n != 1 else ''}, "
+                                          f"{GATE_PATH_MIN_APPROVALS} required for gate files"})
+            if removed := removed_gate_files(pr, _patterns(repo)):
+                reasons.append({"rule": "GATE_FILE_REMOVED",
+                                "detail": "removed " + ", ".join(removed[:3])
+                                          + (f" (+{len(removed) - 3} more)" if len(removed) > 3 else "")
+                                          + "; check nothing it guarded went unguarded"})
             if not checks_passed(pr):
                 failing = [c.get("name") for c in pr.get("checks", [])
                            if str(c.get("conclusion") or "").lower() not in PASSING_CONCLUSIONS]
@@ -429,6 +501,11 @@ def fetch(session, repo: str, since: datetime) -> dict:
                 for c in commits
             ],
             "checks": head_checks,
+            "files": [
+                {"filename": f.get("filename"), "status": f.get("status"),
+                 "previous_filename": f.get("previous_filename")}
+                for f in _paged(session, f"{API}/repos/{repo}/pulls/{number}/files")
+            ],
             # Every push, for gate liveness. The newest MAX_COMMITS_CHECKED only: two calls
             # per commit, and a long-lived PR should not dominate the API budget.
             "commit_checks": head_checks + [
@@ -455,6 +532,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--repo", action="append", required=True, help="owner/name; repeatable")
     parser.add_argument("--days", type=int, default=90, help="audit period, ending now")
+    parser.add_argument("--gate-path", action="append", default=[],
+                        help="extra gate file pattern (fnmatch), added to the defaults; repeatable")
     args = parser.parse_args(argv)
 
     session = requests.Session()
@@ -463,7 +542,8 @@ def main(argv: list[str] | None = None) -> int:
     if token := os.environ.get("GITHUB_TOKEN"):
         session.headers["Authorization"] = f"Bearer {token}"
     since = datetime.now(timezone.utc) - timedelta(days=args.days)
-    repos = [fetch(session, repo, since) for repo in args.repo]
+    repos = [dict(fetch(session, repo, since), extra_gate_patterns=args.gate_path)
+             for repo in args.repo]
     rows, left_out = exceptions(repos)
     json.dump({"attributes": summarize(repos), "exceptions": rows,
                "exceptions_left_out": left_out}, sys.stdout, indent=2)

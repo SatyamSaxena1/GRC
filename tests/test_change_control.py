@@ -220,6 +220,7 @@ class _FakeGitHub:
             r: {"default_branch": "main"},
             r + "/branches/main/protection": _FakeResponse({"message": "Not Found"}, 404),
             r + "/rules/branches/main": [],
+            r + "/pulls/7/files": [{"filename": "app/main.py", "status": "modified", "patch": "@@ -1 +1 @@"}],
             r + "/pulls": [
                 {"number": 7, "updated_at": "2026-10-02T00:00:00Z", "merged_at": "2026-10-02T00:00:00Z",
                  "html_url": "https://github.com/acme/app/pull/7",
@@ -525,3 +526,76 @@ def test_fetch_reads_rulesets_and_their_bypass_lists():
     assert p["enabled"] and p["enforce_admins"] and not p["allow_force_pushes"]
     assert p["required_checks"] == ["ci"]
     assert p["sources"] == ["ruleset:main-guard", "ruleset:43"]
+
+
+# --- gate paths: changes to CI, tests and ownership need two independent approvals ----
+
+def _touching(*files, approvers=("bob",), status="modified"):
+    pr = _pr(reviews=[(a, "APPROVED", None) for a in approvers])
+    pr["files"] = [{"filename": f, "status": status} for f in files]
+    return pr
+
+
+def test_gate_files_are_recognised_by_path():
+    pr = _touching(".github/workflows/ci.yml", "tests/unit/test_x.py", "app/conftest.py",
+                   "CODEOWNERS", "web/src/Button.test.tsx", "app/main.py", "docs/readme.md")
+    assert gcc.gate_paths(pr) == [".github/workflows/ci.yml", "CODEOWNERS", "app/conftest.py",
+                                  "tests/unit/test_x.py", "web/src/Button.test.tsx"]
+
+
+def test_a_rename_out_of_a_gate_path_still_counts():
+    pr = _touching("archive/ci.yml")
+    pr["files"][0].update(status="renamed", previous_filename=".github/workflows/ci.yml")
+    assert gcc.gate_paths(pr) == [".github/workflows/ci.yml"]   # moved out of CI is still a CI change
+
+
+def test_one_independent_approval_is_not_enough_for_a_gate_file():
+    assert gcc.gate_path_under_reviewed(_touching(".github/workflows/ci.yml"))
+    assert not gcc.gate_path_under_reviewed(_touching(".github/workflows/ci.yml", approvers=("bob", "carol")))
+    assert not gcc.gate_path_under_reviewed(_touching("app/main.py"))
+
+
+def test_an_author_approving_their_own_gate_change_does_not_count_toward_two():
+    assert gcc.gate_path_under_reviewed(_touching("tests/test_x.py", approvers=("bob", "alice")))
+
+
+def test_gate_counts_and_rows_name_the_files_and_the_shortfall():
+    pulls = [_touching(".github/workflows/ci.yml", "tests/test_a.py", "tests/test_b.py", "tests/test_c.py"),
+             _touching("app/main.py"),
+             _touching("tests/test_old.py", status="removed", approvers=("bob", "carol"))]
+    repo = {"repo": "acme/app", "protection": PROTECTED, "pulls": pulls, "default_commits": []}
+    out = gcc.summarize([repo])
+    assert out["gate_path_merges"] == 2
+    assert out["gate_path_merges_without_two_independent_approvals"] == 1
+    assert out["gate_files_removed"] == 1
+    reasons = {r["rule"]: r["detail"] for row in gcc.exceptions([repo])[0] for r in row["reasons"]}
+    assert reasons["GATE_PATH_UNDER_REVIEWED"] == (
+        "changed .github/workflows/ci.yml, tests/test_a.py, tests/test_b.py (+1 more); "
+        "1 independent approval, 2 required for gate files")
+    assert reasons["GATE_FILE_REMOVED"].startswith("removed tests/test_old.py")
+
+
+def test_a_client_can_add_gate_patterns():
+    pr = _touching("policy/rego/deny.rego")
+    repo = {"repo": "acme/app", "protection": PROTECTED, "pulls": [pr], "default_commits": [],
+            "extra_gate_patterns": ["policy/*"]}
+    assert gcc.summarize([repo])["gate_path_merges_without_two_independent_approvals"] == 1
+    assert gcc.summarize([dict(repo, extra_gate_patterns=[])])["gate_path_merges"] == 0
+
+
+def test_fetch_keeps_file_names_but_never_the_diff():
+    from datetime import datetime, timezone
+
+    repo = gcc.fetch(_FakeGitHub(), "acme/app", datetime(2026, 9, 1, tzinfo=timezone.utc))
+    assert repo["pulls"][0]["files"] == [{"filename": "app/main.py", "status": "modified",
+                                          "previous_filename": None}]
+
+
+def test_an_under_reviewed_gate_change_fails_soc2_and_pci_but_not_iso(client, bootstrap, monkeypatch):
+    snapshot = gcc.summarize([{"protection": PROTECTED, "default_commits": [],
+                               "pulls": [_touching(".github/workflows/ci.yml")]}])
+    assert snapshot["merges_without_independent_approval"] == 0   # one approval: fine for ordinary code
+    verdicts = _sync(client, bootstrap, monkeypatch, snapshot)
+    assert verdicts[("ISO-27001", "A.8.32")] == "PASS"
+    assert verdicts[("SOC-2", "CC8.1")] == "PARTIAL"
+    assert verdicts[("PCI-DSS", "6.5.1")] == "PARTIAL"

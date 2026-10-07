@@ -79,6 +79,15 @@ it is reported as its own gap.
   with a plain token. Two unknowns stay conservative, giving possible false gaps but never false
   passes: classic protection answers 404 to a token without administration read, and a ruleset's
   bypass list is shown only to callers who can edit it, so a hidden list counts as bypassable.
+- **Gate paths need two independent approvals** (SOC 2 and PCI; recorded but not a condition
+  for ISO, the same delta as admin bypass). Gate files are CI definitions, tests, CODEOWNERS and
+  hook configuration (`GATE_PATTERNS`, extendable per client with `--gate-path`), matched on the
+  PR's file list, file names and status only, never the diff, at one extra API call per PR.
+  A rename out of a gate path counts. Removing a gate file is listed as advisory
+  (`GATE_FILE_REMOVED`): deleting an obsolete test is normal, so it asks the auditor to check,
+  rather than failing. Two approvals is our baseline reading of "authorized" for changes that can
+  weaken every later check (ADR-019 rule 2), not quoted framework text. Direct pushes are not
+  matched against gate paths; they are already exceptions in their own right.
 - The connector's environment-variable names carry the historical `DPDP_` prefix
   (`DPDP_GITHUB_COLLECTOR_URL`); renaming it is a separate change.
 - GitLab and Bitbucket need their own `fetch()`; `summarize()` and the packs are reused unchanged.
