@@ -108,7 +108,7 @@ The two numbers that make the pitch concrete:
 
 ```
 GET /analytics/reuse              one artefact -> 7 control links, 6 uploads avoided (86%)
-GET /analytics/readiness/PCI-DSS  an ISO-only org is 40% PCI-ready before subscribing
+GET /analytics/readiness/PCI-DSS  an ISO-only org is 33% (2 of 6 clauses) PCI-ready before subscribing
 ```
 
 ## Frontend
@@ -247,9 +247,12 @@ Honest list, kept current:
 - **No separate worker process** — see ADR-006.
 - **Background jobs are in-process** ([ADR-006](docs/adr/006-async-job-framework.md)):
   no retries, and they die with the process.
-- **RLS is untested in CI** — SQLite has no row-level security, so the policies in
-  `alembic/versions/a1b2c3d4e5f6_row_level_security.py` need a Postgres CI job to be
-  proven, not just applied.
+- **RLS is tested on real Postgres in CI, but narrowly.** The `rls` job migrates a fresh
+  Postgres schema with Alembic and runs `tests/test_rls_postgres.py` as a role that is neither
+  superuser nor BYPASSRLS (cross-tenant read and write canaries, plus the onboarding regression).
+  The rest of the suite still runs on SQLite, where RLS does not exist, so a new tenant-scoped
+  write path is only proven under RLS once a test for it is added there. Deploys wait on this job.
+  Locally: `RLS_TEST_DATABASE_URL=postgresql+psycopg://<app role>@localhost/<db> pytest tests/test_rls_postgres.py`.
 - **Scanned PDFs need PyMuPDF** for page rasterization. Without it, unreadable pages
   degrade to missing attributes with a logged warning.
 - **Auth is a stub.** `authorization: org:<id>` / `user:<id>` / `auditor:<engagement>` /

@@ -70,3 +70,11 @@ ucos:
   - code: UCO-AIGOV-009
     title: AI systems are decommissioned without increasing risk to affected parties
     domain: AI_GOVERNANCE
+  - code: UCO-CHG-001
+    title: Changes reach production only through review by someone independent of the
+      change and through passing automated checks
+    domain: CHANGE_MANAGEMENT
+  - code: UCO-CHG-002
+    title: Change-control gates are enforced for everyone and cannot be bypassed or
+      rewritten after the fact
+    domain: CHANGE_MANAGEMENT

@@ -397,6 +397,21 @@ def _link_payload(db: Session, link, actor: Actor) -> dict:
     return payload
 
 
+@router.get("/{evidence_id}/exceptions")
+def evidence_exceptions(evidence_id: str, actor: Actor = Depends(current_actor),
+                        db: Session = Depends(get_session)):
+    """The per-item rows behind a connector snapshot's counts — for a change-control
+    snapshot, each merge or push that failed a rule and why (ADR-020). Read from the
+    stored snapshot itself, so they are exactly what was collected. Empty for anything
+    that is not a connector snapshot, or for a source that reports no rows."""
+    evidence = _scoped_evidence(db, actor, evidence_id)
+    if evidence.mime_type != "application/vnd.grc.connector+json" or not evidence.storage_key:
+        return {"exceptions": [], "exceptions_left_out": 0}
+    snapshot = json.loads(get_storage().get(evidence.storage_key))
+    return {"exceptions": snapshot.get("exceptions", []),
+            "exceptions_left_out": snapshot.get("exceptions_left_out", 0)}
+
+
 @router.get("/{evidence_id}/evaluations")
 def evidence_evaluations(evidence_id: str, actor: Actor = Depends(current_actor),
                          db: Session = Depends(get_session)):

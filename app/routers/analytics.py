@@ -26,11 +26,13 @@ _AUDITOR_VERDICT = {"COMPLIANT": "PASS", "PARTIALLY_COMPLIANT": "PARTIAL", "NON_
 
 
 def best_verdict(links: list[dict]) -> str:
-    rank = {"PASS": 3, "PARTIAL": 2, "FAIL": 1}
+    """The control's verdict from its links: the best one, except that current whole-estate
+    evidence (change-control snapshots) decides by its worst (analytics.combine_verdicts)."""
     if not links:
         return "NO_EVIDENCE"
-    verdicts = (_AUDITOR_VERDICT.get(l["verdict"], l["verdict"]) for l in links)
-    return max(verdicts, key=lambda v: rank.get(v, 0))
+    return analytics.combine_verdicts([
+        (_AUDITOR_VERDICT.get(l["verdict"], l["verdict"]), l.get("artefact_type"), l.get("current", True))
+        for l in links])
 
 
 def control_details(actor: Actor, db: Session) -> list[dict]:

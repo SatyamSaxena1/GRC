@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 
 from app import audit_log
 from app.auth import Actor, current_actor, deny_read_only
+from app.collectors import github_change_control
 from app.content.load import load as load_content
 from app.db import get_session, session_scope, set_tenant
 from app.models import Evidence, Organization
@@ -39,6 +40,14 @@ SOURCES = {
         "privileged_access_mfa", "access_logging_enabled",
     }),
     "hrms": ("HRMS", "HRMS_SNAPSHOT", {"terminated_users_with_active_accounts"}),
+    # Change control (ADR-020): read-only facts about how code reached the default branch.
+    "github": ("GitHub change control", "CHANGE_CONTROL_SNAPSHOT",
+               set(github_change_control.ATTRIBUTES)),
+    # Same snapshot, same rules, from GitLab (app/collectors/gitlab_change_control.py).
+    "gitlab": ("GitLab change control", "CHANGE_CONTROL_SNAPSHOT",
+               set(github_change_control.ATTRIBUTES)),
+    "bitbucket": ("Bitbucket change control", "CHANGE_CONTROL_SNAPSHOT",
+                  set(github_change_control.ATTRIBUTES)),
 }
 
 
@@ -103,11 +112,32 @@ def _pull(source: str) -> bytes:
     except (requests.RequestException, ValueError) as exc:
         raise HTTPException(502, f"{source} collector failed: {exc}") from exc
 
-    return json.dumps(
-        {"source": source, "collected_at": datetime.now(timezone.utc).isoformat(),
-         "attributes": filtered},
-        sort_keys=True, separators=(",", ":"),
-    ).encode()
+    snapshot = {"source": source, "collected_at": datetime.now(timezone.utc).isoformat(),
+                "attributes": filtered}
+    if source in EXCEPTION_SOURCES:
+        snapshot["exceptions"], snapshot["exceptions_left_out"] = _exception_rows(payload)
+    return json.dumps(snapshot, sort_keys=True, separators=(",", ":")).encode()
+
+
+# Sources whose collector also returns the per-item rows behind its counts. Stored inside
+# the snapshot, so the rows are part of the same immutable, hashed evidence as the counts.
+EXCEPTION_SOURCES = {"github", "gitlab", "bitbucket"}
+_EXCEPTION_KEYS = {"kind", "repo", "ref", "url", "at", "author", "ai_assisted", "reasons"}
+
+
+def _exception_rows(payload: dict) -> tuple[list[dict], int]:
+    """The collector's rows, reduced to known keys and capped — never a reason to fail
+    the sync: the counts are the evidence the rules judge, the rows are its working."""
+    rows = payload.get("exceptions")
+    if not isinstance(rows, list):
+        return [], 0
+    kept = [
+        {k: v for k, v in row.items() if k in _EXCEPTION_KEYS}
+        for row in rows[:github_change_control.MAX_EXCEPTIONS] if isinstance(row, dict)
+    ]
+    left_out = payload.get("exceptions_left_out")
+    left_out = left_out if isinstance(left_out, int) and left_out >= 0 else 0
+    return kept, left_out + max(0, len(rows) - github_change_control.MAX_EXCEPTIONS)
 
 
 def _process(evidence_id: str, org_id: str, actor_label: str, request_id: str) -> None:

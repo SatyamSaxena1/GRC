@@ -28,6 +28,7 @@ import { PageTour } from "../components/PageTour";
 import { DocumentViewer } from "../components/DocumentViewer";
 import { GapFinding } from "../components/GapFinding";
 import { Spinner } from "../components/Spinner";
+import { ChangeExceptions } from "../components/ChangeExceptions";
 import { ARTEFACT_LABELS, ARTEFACT_TYPES } from "../lib/artefacts";
 import { describeBound, humanize, prettyValue } from "../lib/format";
 
@@ -426,6 +427,8 @@ export function EvidenceDetailPage() {
           );
         })}
       </div>
+
+      {evidence.artefact_type === "CHANGE_CONTROL_SNAPSHOT" && <ChangeExceptions evidenceId={id} />}
 
       <div className="section-title">What the document says</div>
       <div className="card" data-tour="extracted-attributes">

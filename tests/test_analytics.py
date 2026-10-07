@@ -132,10 +132,10 @@ def test_day_one_readiness_for_an_unsubscribed_framework(client, bootstrap, uplo
                         headers={"authorization": f"org:{org_id}"}).json()
 
     assert result["already_subscribed"] is False
-    assert result["total_requirements"] == 5
+    assert result["total_requirements"] == 6
     assert result["satisfied"] >= 3          # policy clauses already met
     assert 0.0 < result["readiness"] <= 1.0
-    assert {c["clause"] for c in result["clauses"]} == {"12.1.1", "8.3.6", "8.4.2", "7.2.4", "11.3.2"}
+    assert {c["clause"] for c in result["clauses"]} == {"12.1.1", "8.3.6", "8.4.2", "7.2.4", "11.3.2", "6.5.1"}
 
 
 def test_readiness_names_what_is_not_covered(client, bootstrap, upload, stub_extraction):
