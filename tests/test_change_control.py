@@ -220,6 +220,7 @@ class _FakeGitHub:
             r: {"default_branch": "main"},
             r + "/branches/main/protection": _FakeResponse({"message": "Not Found"}, 404),
             r + "/rules/branches/main": [],
+            r + "/deployments": [],
             r + "/pulls/7/files": [{"filename": "app/main.py", "status": "modified", "patch": "@@ -1 +1 @@"}],
             r + "/pulls": [
                 {"number": 7, "updated_at": "2026-10-02T00:00:00Z", "merged_at": "2026-10-02T00:00:00Z",
@@ -599,3 +600,101 @@ def test_an_under_reviewed_gate_change_fails_soc2_and_pci_but_not_iso(client, bo
     assert verdicts[("ISO-27001", "A.8.32")] == "PASS"
     assert verdicts[("SOC-2", "CC8.1")] == "PARTIAL"
     assert verdicts[("PCI-DSS", "6.5.1")] == "PARTIAL"
+
+
+# --- deploy reconciliation: what ran in production against what was approved -----
+
+def _deploy(sha, on_default=True, at="2026-10-04T00:00:00Z"):
+    return {"sha": sha, "on_default": on_default, "at": at, "environment": "production",
+            "by": "release-bot[bot]", "url": f"https://ci.example/{sha}"}
+
+
+def _repo_with_deploys(*deployments):
+    reviewed = _approved()
+    reviewed.update(number=1, merge_commit_sha="m-reviewed")
+    unreviewed = _pr(reviews=[])
+    unreviewed.update(number=2, head_sha="h-unrev", merge_commit_sha="m-unreviewed")
+    return {"repo": "acme/app", "protection": PROTECTED, "pulls": [reviewed, unreviewed],
+            "default_commits": [{"sha": "m-reviewed", "has_pull": True},
+                                {"sha": "m-unreviewed", "has_pull": True},
+                                {"sha": "direct1", "has_pull": False}],
+            "deployments": list(deployments)}
+
+
+def test_deploying_a_reviewed_merge_is_clean():
+    repo = _repo_with_deploys(_deploy("m-reviewed"))
+    assert gcc.deployment_finding(repo["deployments"][0], repo) is None
+
+
+def test_each_way_of_shipping_unreviewed_code_is_named():
+    repo = _repo_with_deploys(_deploy("feature-branch-sha", on_default=False), _deploy("direct1"),
+                              _deploy("m-unreviewed"), _deploy("m-reviewed"), _deploy("from-2025"))
+    findings = [gcc.deployment_finding(d, repo) for d in repo["deployments"]]
+    assert findings[0][0] == "DEPLOY_NOT_FROM_DEFAULT"
+    assert findings[1] == ("DEPLOY_OF_UNREVIEWED_CHANGE", "deployed a direct push to the default branch")
+    assert findings[2] == ("DEPLOY_OF_UNREVIEWED_CHANGE", "deployed #2, merged without an independent approval")
+    assert findings[3] is None
+    assert findings[4] is None   # older than the period: not judged, not flagged
+
+    out = gcc.summarize([repo])
+    assert out["production_deployments"] == 5
+    assert out["deployments_not_from_default_branch"] == 1
+    assert out["deployments_of_unreviewed_changes"] == 2
+    rows = [r for r in gcc.exceptions([repo])[0] if r["kind"] == "DEPLOYMENT"]
+    assert len(rows) == 3 and all("(production)" in r["reasons"][0]["detail"] for r in rows)
+
+
+def test_no_deployments_is_zero_not_a_failure(client, bootstrap, monkeypatch):
+    clean = gcc.summarize([{"protection": PROTECTED, "pulls": [_approved()], "default_commits": []}])
+    assert clean["production_deployments"] == 0
+    verdicts = _sync(client, bootstrap, monkeypatch, clean)
+    assert [verdicts[c] for c in CLAUSES] == ["PASS", "PASS", "PASS"]
+
+
+def test_a_deploy_from_a_branch_fails_every_framework(client, bootstrap, monkeypatch):
+    snapshot = gcc.summarize([_repo_with_deploys(_deploy("hotfix", on_default=False))
+                              | {"pulls": [_approved()], "default_commits": []}])
+    assert snapshot["deployments_not_from_default_branch"] == 1
+    verdicts = _sync(client, bootstrap, monkeypatch, snapshot)
+    assert [verdicts[c] for c in CLAUSES] == ["PARTIAL", "PARTIAL", "PARTIAL"]
+
+
+def test_fetch_reads_deployments_and_deploy_jobs_and_checks_the_branch():
+    from datetime import datetime, timezone
+
+    api = _FakeGitHub()
+    r = gcc.API + "/repos/acme/app"
+    api.routes[r + "/deployments"] = [
+        {"id": 11, "sha": "m7", "created_at": "2026-10-03T00:00:00Z", "creator": {"login": "alice"}},
+        {"id": 10, "sha": "old", "created_at": "2026-01-01T00:00:00Z", "creator": {"login": "alice"}},
+    ]
+    api.routes[r + "/deployments/11/statuses"] = [{"state": "success", "target_url": "https://render/1"}]
+    api.routes[r + "/actions/runs"] = {"workflow_runs": [
+        {"id": 5, "head_sha": "hotfix", "actor": {"login": "bob"}}]}
+    api.routes[r + "/actions/runs/5/jobs"] = {"jobs": [
+        {"name": "deploy", "conclusion": "success", "completed_at": "2026-10-04T00:00:00Z", "html_url": "https://gh/j/5"},
+        {"name": "test", "conclusion": "success"}]}
+    api.routes[r + "/compare/m7...main"] = {"status": "identical"}
+    api.routes[r + "/compare/hotfix...main"] = {"status": "diverged"}
+
+    repo = gcc.fetch(api, "acme/app", datetime(2026, 9, 1, tzinfo=timezone.utc),
+                     environments=["production"], deploy_jobs=["deploy"])
+    assert [(d["sha"], d["environment"], d["on_default"]) for d in repo["deployments"]] == [
+        ("m7", "production", True), ("hotfix", "job:deploy", False)]
+    assert gcc.summarize([repo])["deployments_not_from_default_branch"] == 1
+
+
+def test_pagination_keeps_the_owner_name_url_and_follows_the_page_number():
+    calls = []
+
+    class Paged:
+        def get(self, url, params=None, timeout=None):
+            calls.append((url, dict(params)))
+            response = _FakeResponse([params["page"]])
+            if params["page"] < 3:
+                response.links = {"next": {"url": f"https://api.github.com/repositories/1/x?per_page=100&page={params['page'] + 1}"}}
+            return response
+
+    assert list(gcc._paged(Paged(), gcc.API + "/repos/acme/app/x", state="closed")) == [1, 2, 3]
+    assert {url for url, _ in calls} == {gcc.API + "/repos/acme/app/x"}
+    assert all(p["state"] == "closed" for _, p in calls)

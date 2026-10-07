@@ -88,6 +88,18 @@ it is reported as its own gap.
   rather than failing. Two approvals is our baseline reading of "authorized" for changes that can
   weaken every later check (ADR-019 rule 2), not quoted framework text. Direct pushes are not
   matched against gate paths; they are already exceptions in their own right.
+- **Deploy reconciliation** compares what ran in production with what was approved. Deployments
+  come from GitHub's Deployments API (environments named with `--environment`, default
+  `production`) and from successful runs of CI jobs that deploy (`--deploy-job`), for teams that
+  deploy through a hosting hook and never record a GitHub Deployment. A deployed commit that is not
+  in the default branch's history is `DEPLOY_NOT_FROM_DEFAULT`: it was either shipped from another
+  branch or later erased from the branch by a force push, and both are findings. A deployed direct
+  push, or a deployed PR merged without an independent approval, is `DEPLOY_OF_UNREVIEWED_CHANGE`.
+  Both are conditions in all three frameworks under UCO-CHG-001. Commits from before the period
+  are not judged. No deployments at all counts as zero, not as a failure. History is checked
+  with one compare call per distinct deployed commit; at most 200 Actions runs are read.
+- Pagination follows the page number on the `/repos/<owner>/<name>` URL rather than GitHub's
+  next links, which use `/repositories/<id>/` paths that some egress proxies refuse.
 - The connector's environment-variable names carry the historical `DPDP_` prefix
   (`DPDP_GITHUB_COLLECTOR_URL`); renaming it is a separate change.
 - GitLab and Bitbucket need their own `fetch()`; `summarize()` and the packs are reused unchanged.

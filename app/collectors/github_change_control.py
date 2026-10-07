@@ -31,6 +31,7 @@ import re
 import sys
 from datetime import datetime, timedelta, timezone
 from typing import Any, Iterable
+from urllib.parse import parse_qs, urlparse
 
 # Attribute names, in the order a snapshot lists them. app/routers/connectors.py
 # imports this tuple as the "github" source's allowlist, so the two cannot drift.
@@ -50,6 +51,9 @@ ATTRIBUTES = (
     "gate_path_merges",
     "gate_path_merges_without_two_independent_approvals",
     "gate_files_removed",
+    "production_deployments",
+    "deployments_not_from_default_branch",
+    "deployments_of_unreviewed_changes",
     "gate_checks_observed",
     "gate_checks_never_seen_failing",
 )
@@ -225,6 +229,30 @@ def gate_liveness(repo: dict) -> list[dict]:
             for name in sorted(gate, key=str) if name is not None]
 
 
+def deployment_finding(deployment: dict, repo: dict) -> tuple[str, str] | None:
+    """(rule, why) when a production deployment shipped something that did not come
+    through review, else None.
+
+    Reconciles what ran against what was approved: a deployment of a commit that is not
+    in the default branch's history either skipped the gate (deployed from another branch)
+    or was erased from the record afterwards (a force push) — the snapshot cannot tell
+    which, and both are findings; one of a direct push, or of a PR
+    merged without an independent approval, shipped an unreviewed change. A commit from
+    before the period, which this snapshot cannot judge, is not flagged."""
+    sha = deployment.get("sha")
+    if not deployment.get("on_default"):
+        return ("DEPLOY_NOT_FROM_DEFAULT",
+                "deployed a commit that is not in the default branch's history: shipped from another "
+                "branch, or removed from the default branch afterwards by a force push")
+    if sha in {c.get("sha") for c in repo.get("default_commits", []) if not c.get("has_pull")}:
+        return ("DEPLOY_OF_UNREVIEWED_CHANGE", "deployed a direct push to the default branch")
+    for pr in repo.get("pulls", []):
+        if sha in (pr.get("merge_commit_sha"), pr.get("head_sha")) and not has_independent_approval(pr):
+            return ("DEPLOY_OF_UNREVIEWED_CHANGE",
+                    f"deployed #{pr.get('number')}, merged without an independent approval")
+    return None
+
+
 def _patterns(repo: dict) -> tuple[str, ...]:
     """The repo's gate patterns: the defaults plus any the client added (--gate-path)."""
     return GATE_PATTERNS + tuple(repo.get("extra_gate_patterns") or ())
@@ -262,6 +290,13 @@ def summarize(repos: Iterable[dict]) -> dict[str, Any]:
         "ai_assisted_merges": len(ai_pulls),
         "ai_assisted_merges_without_independent_approval": sum(
             not has_independent_approval(pr) for pr in ai_pulls),
+        "production_deployments": sum(len(r.get("deployments", [])) for r in repos),
+        "deployments_not_from_default_branch": sum(
+            (deployment_finding(d, r) or ("",))[0] == "DEPLOY_NOT_FROM_DEFAULT"
+            for r in repos for d in r.get("deployments", [])),
+        "deployments_of_unreviewed_changes": sum(
+            (deployment_finding(d, r) or ("",))[0] == "DEPLOY_OF_UNREVIEWED_CHANGE"
+            for r in repos for d in r.get("deployments", [])),
         "gate_path_merges": sum(bool(gate_paths(pr, _patterns(r))) for r in repos for pr in r.get("pulls", [])),
         "gate_path_merges_without_two_independent_approvals": sum(
             gate_path_under_reviewed(pr, _patterns(r)) for r in repos for pr in r.get("pulls", [])),
@@ -329,6 +364,15 @@ def exceptions(repos: Iterable[dict], limit: int = MAX_EXCEPTIONS) -> tuple[list
                     "reasons": [{"rule": "DIRECT_PUSH",
                                  "detail": "committed to the default branch without a pull request"}],
                 })
+        for d in repo.get("deployments", []):
+            if finding := deployment_finding(d, repo):
+                rows.append({
+                    "kind": "DEPLOYMENT", "repo": name, "ref": str(d.get("sha", ""))[:12],
+                    "url": d.get("url"), "at": d.get("at"), "author": d.get("by"),
+                    "ai_assisted": None,
+                    "reasons": [{"rule": finding[0],
+                                 "detail": f"{finding[1]} ({d.get('environment')})"}],
+                })
     rows.sort(key=lambda r: r.get("at") or "", reverse=True)
     # Gate rows are few and undated; they go last, but never fall off the cap.
     gate_rows = [
@@ -355,13 +399,22 @@ def _get(session, url: str, **params) -> Any:
     return response.json()
 
 
-def _paged(session, url: str, **params) -> Iterable[dict]:
-    params.setdefault("per_page", 100)
-    while url:
+def _paged(session, url: str, _key: str | None = None, **params) -> Iterable[dict]:
+    """Every item across pages. `_key` names the list inside an envelope object, for the
+    endpoints (Actions runs) that return {"total_count", "<key>": [...]}."""
+    params = {**params, "per_page": params.get("per_page", 100), "page": 1}
+    while True:
         response = session.get(url, params=params, timeout=30)
         response.raise_for_status()
-        yield from response.json()
-        url, params = response.links.get("next", {}).get("url"), {}
+        body = response.json()
+        yield from (body.get(_key, []) if _key else body)
+        # Follow only the page number: GitHub's next links use /repositories/<id>/ paths,
+        # which some proxies refuse, while the /repos/<owner>/<name> URL always works.
+        next_url = getattr(response, "links", {}).get("next", {}).get("url")
+        page = parse_qs(urlparse(next_url).query).get("page", [None])[0] if next_url else None
+        if not page:
+            return
+        params = {**params, "page": int(page)}
 
 
 def _user(raw: dict | None) -> dict | None:
@@ -468,7 +521,57 @@ def _checks(session, repo: str, sha: str) -> list[dict]:
     return checks
 
 
-def fetch(session, repo: str, since: datetime) -> dict:
+MAX_DEPLOY_RUNS = 200
+
+
+def _deployments(session, repo: str, cutoff: str, environments: Iterable[str]) -> list[dict]:
+    """Successful deployments recorded through GitHub's Deployments API."""
+    out = []
+    for env in environments:
+        for d in _paged(session, f"{API}/repos/{repo}/deployments", environment=env):
+            if d.get("created_at", "") < cutoff:
+                break  # newest first
+            statuses = _get(session, f"{API}/repos/{repo}/deployments/{d['id']}/statuses", per_page=1)
+            if statuses and statuses[0].get("state") == "success":
+                out.append({"sha": d.get("sha"), "at": d.get("created_at"), "environment": env,
+                            "by": (d.get("creator") or {}).get("login"),
+                            "url": statuses[0].get("target_url") or statuses[0].get("log_url")})
+    return out
+
+
+def _deploy_jobs(session, repo: str, cutoff: str, job_names: Iterable[str]) -> list[dict]:
+    """Successful runs of CI jobs that deploy (e.g. one that calls a hosting deploy hook),
+    for teams that never record a GitHub Deployment. Newest MAX_DEPLOY_RUNS runs only."""
+    names = set(job_names)
+    if not names:
+        return []
+    out, seen = [], 0
+    for run in _paged(session, f"{API}/repos/{repo}/actions/runs", "workflow_runs",
+                      created=f">={cutoff[:10]}"):
+        seen += 1
+        if seen > MAX_DEPLOY_RUNS:
+            break
+        jobs = _get(session, f"{API}/repos/{repo}/actions/runs/{run['id']}/jobs").get("jobs", [])
+        for job in jobs:
+            if job.get("name") in names and job.get("conclusion") == "success":
+                out.append({"sha": run.get("head_sha"), "at": job.get("completed_at"),
+                            "environment": f"job:{job['name']}",
+                            "by": (run.get("actor") or {}).get("login"), "url": job.get("html_url")})
+    return out
+
+
+def _on_default(session, repo: str, branch: str, sha: str, cache: dict) -> bool:
+    """Is `sha` contained in the default branch? compare(sha...branch) is "ahead" or
+    "identical" exactly when the branch has the commit."""
+    if sha not in cache:
+        response = session.get(f"{API}/repos/{repo}/compare/{sha}...{branch}", timeout=30)
+        cache[sha] = response.status_code == 200 and \
+            response.json().get("status") in ("ahead", "identical")
+    return cache[sha]
+
+
+def fetch(session, repo: str, since: datetime, environments: Iterable[str] = ("production",),
+          deploy_jobs: Iterable[str] = ()) -> dict:
     """One repository, as summarize() expects it. Reads only."""
     branch = _get(session, f"{API}/repos/{repo}")["default_branch"]
     cutoff = since.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")  # GitHub's format
@@ -486,6 +589,7 @@ def fetch(session, repo: str, since: datetime) -> dict:
             "number": number,
             "url": raw.get("html_url"),
             "merged_at": raw.get("merged_at"),
+            "merge_commit_sha": raw.get("merge_commit_sha"),
             "author": _user(raw.get("user")),
             "head_sha": head,
             "reviews": [
@@ -522,7 +626,13 @@ def fetch(session, repo: str, since: datetime) -> dict:
     ]
     protection = effective_protection(_classic_protection(session, repo, branch),
                                       _rulesets(session, repo, branch))
-    return {"repo": repo, "protection": protection, "pulls": pulls,
+    cache: dict[str, bool] = {}
+    deployments = [
+        dict(d, on_default=_on_default(session, repo, branch, d["sha"], cache))
+        for d in _deployments(session, repo, cutoff, environments)
+        + _deploy_jobs(session, repo, cutoff, deploy_jobs) if d.get("sha")
+    ]
+    return {"repo": repo, "protection": protection, "pulls": pulls, "deployments": deployments,
             "default_commits": default_commits}
 
 
@@ -532,6 +642,10 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--repo", action="append", required=True, help="owner/name; repeatable")
     parser.add_argument("--days", type=int, default=90, help="audit period, ending now")
+    parser.add_argument("--environment", action="append", default=None,
+                        help="GitHub Deployments environment that is production (default: production); repeatable")
+    parser.add_argument("--deploy-job", action="append", default=[],
+                        help="name of a CI job whose successful run deploys to production; repeatable")
     parser.add_argument("--gate-path", action="append", default=[],
                         help="extra gate file pattern (fnmatch), added to the defaults; repeatable")
     args = parser.parse_args(argv)
@@ -542,7 +656,8 @@ def main(argv: list[str] | None = None) -> int:
     if token := os.environ.get("GITHUB_TOKEN"):
         session.headers["Authorization"] = f"Bearer {token}"
     since = datetime.now(timezone.utc) - timedelta(days=args.days)
-    repos = [dict(fetch(session, repo, since), extra_gate_patterns=args.gate_path)
+    repos = [dict(fetch(session, repo, since, args.environment or ["production"], args.deploy_job),
+                  extra_gate_patterns=args.gate_path)
              for repo in args.repo]
     rows, left_out = exceptions(repos)
     json.dump({"attributes": summarize(repos), "exceptions": rows,

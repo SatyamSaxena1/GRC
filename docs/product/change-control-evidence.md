@@ -63,6 +63,7 @@ Built today (in all three packs unless noted):
 | `force_push_allowed_on_default` | must be false |
 | `admins_can_bypass`, `stale_reviews_dismissed` | gate must hold for admins, and approvals must reset on new pushes; required by SOC 2 and PCI, SUPPORTING for ISO |
 | `gate_path_merges_without_two_independent_approvals` | = 0 for SOC 2 and PCI: changes to CI, tests or ownership need two independent approvals |
+| `deployments_not_from_default_branch`, `deployments_of_unreviewed_changes` | = 0 in all three: what ran in production must be what was approved |
 
 Next, roughly in order of value:
 1. ~~**Per-merge exceptions**~~: built. Every failing merge or push is listed with its rules,
@@ -74,7 +75,9 @@ Next, roughly in order of value:
    config need two independent approvals under SOC 2 and PCI; removed gate files are flagged.
    Code-owner approval as an alternative is not yet read.
 4. ~~**Rulesets**~~: built. Classic protection and active rulesets are combined, strictest wins.
-5. **Deploy reconciliation**: was what ran in production what was merged and approved?
+5. ~~**Deploy reconciliation**~~: built. Production deployments (GitHub Deployments or named CI
+   deploy jobs) are matched to the approved history; deploys from outside the default branch, of
+   direct pushes, or of unapproved merges fail CC8.1, A.8.32 and 6.5.1.
 6. **GitLab and Bitbucket** collectors, reusing `summarize()` unchanged.
 
 ## Pricing hypotheses (to test, not decided)

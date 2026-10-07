@@ -147,7 +147,9 @@ requirements:
                               merges_in_period, merges_without_independent_approval,
                               merges_with_failing_or_missing_checks, direct_pushes_to_default,
                               ai_assisted_merges, ai_assisted_merges_without_independent_approval,
-                              gate_path_merges, gate_path_merges_without_two_independent_approvals]
+                              gate_path_merges, gate_path_merges_without_two_independent_approvals,
+                              production_deployments, deployments_not_from_default_branch,
+                              deployments_of_unreviewed_changes]
     mappings:
       - uco: UCO-CHG-001
         coverage: FULL
@@ -160,6 +162,9 @@ requirements:
           - {attribute: merges_with_failing_or_missing_checks, operator: "==", value: 0}
           - {attribute: direct_pushes_to_default, operator: "==", value: 0}
           - {attribute: ai_assisted_merges_without_independent_approval, operator: "==", value: 0}
+          # What ran in production must be what was approved (ADR-020, deploy reconciliation).
+          - {attribute: deployments_not_from_default_branch, operator: "==", value: 0}
+          - {attribute: deployments_of_unreviewed_changes, operator: "==", value: 0}
       - uco: UCO-CHG-002
         coverage: FULL
         confidence: 0.8

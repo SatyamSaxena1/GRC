@@ -3,6 +3,8 @@ import { getEvidenceExceptions } from "../api/client";
 import { useApi } from "../lib/useApi";
 
 const RULE_LABELS: Record<string, string> = {
+  DEPLOY_NOT_FROM_DEFAULT: "Deployed from outside the default branch",
+  DEPLOY_OF_UNREVIEWED_CHANGE: "Deployed an unreviewed change",
   NO_INDEPENDENT_APPROVAL: "No independent approval",
   GATE_PATH_UNDER_REVIEWED: "Gate file changed with too few approvals",
   CHECKS_FAILED_OR_MISSING: "Checks failed or missing",
@@ -15,6 +17,7 @@ const KIND_LABELS: Record<string, string> = {
   PULL_REQUEST: "pull request",
   DIRECT_PUSH: "push",
   GATE_CHECK: "check",
+  DEPLOYMENT: "deployment",
 };
 
 // Most serious first: an unreviewed merge matters more than a push that skipped the PR flow.
@@ -50,7 +53,7 @@ export function ChangeExceptions({ evidenceId }: { evidenceId: string }) {
         {all.length > 0 && (
           <>
             <p className="muted" style={{ margin: "0 0 10px", fontSize: 12 }}>
-              Every merge or push that failed a rule, newest first. Open each one on GitHub to test it;
+              Every merge, push or production deployment that failed a rule, newest first. Open each one on GitHub to test it;
               the counts above are decided from the same rules. Checks that never went red during the period
               are listed last: advisory only, they do not change a verdict, but an auditor relying on a check
               should see it fail once.
