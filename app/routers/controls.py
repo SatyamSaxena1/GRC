@@ -92,8 +92,12 @@ def get_control(control_id: str, actor: Actor = Depends(current_actor),
 
 
 def _control_link_out(db: Session, link: EvidenceControlLink, actor: Actor) -> dict:
+    evidence = db.get(Evidence, link.evidence_id)
     out = {"id": link.id, "evidence_id": link.evidence_id, "verdict": link.verdict,
-           "auditor_verdict": link.auditor_verdict, "locked": link.locked}
+           "auditor_verdict": link.auditor_verdict, "locked": link.locked,
+           # For combining verdicts: whole-estate evidence counts only while current.
+           "artefact_type": evidence.artefact_type if evidence else None,
+           "current": bool(evidence and evidence.lifecycle_status == "CURRENT" and evidence.deleted_at is None)}
     # Same one-field redaction as app/routers/evidence.py::_link_payload — see
     # docs/adr/012-auditor-only-ai-nutshell.md.
     if actor.is_auditor:

@@ -698,3 +698,53 @@ def test_pagination_keeps_the_owner_name_url_and_follows_the_page_number():
     assert list(gcc._paged(Paged(), gcc.API + "/repos/acme/app/x", state="closed")) == [1, 2, 3]
     assert {url for url, _ in calls} == {gcc.API + "/repos/acme/app/x"}
     assert all(p["state"] == "closed" for _, p in calls)
+
+
+# --- review fixes (PR #9, Codex) ---------------------------------------------------
+
+def test_a_failing_snapshot_on_one_platform_is_not_hidden_by_a_passing_one(client, bootstrap, monkeypatch):
+    """Two current change-control snapshots (say GitHub and GitLab) each cover part of the
+    estate: the clause takes the worst, in readiness and in the control's own verdict."""
+    org_id, _ = bootstrap(client, frameworks=["SOC-2"])
+    headers = {"authorization": f"org:{org_id}"}
+    clean = gcc.summarize([{"protection": PROTECTED, "pulls": [_approved()], "default_commits": []}])
+    dirty = dict(clean, merges_without_independent_approval=3)
+    payloads = {"github": clean, "gitlab": dirty}
+    for source in payloads:
+        monkeypatch.setenv(connectors._env_key(source, "URL"), f"https://collector.test/{source}")
+    monkeypatch.setattr(connectors.requests, "get",
+                        lambda url, **_: _Response(payloads[url.rsplit("/", 1)[-1]]))
+    for source in payloads:
+        assert client.post(f"/connectors/{source}/sync", headers=headers).status_code == 202
+
+    readiness = client.get("/analytics/readiness/SOC-2", headers=headers).json()
+    assert {r["clause"]: r["verdict"] for r in readiness["clauses"]}["CC8.1"] == "PARTIAL"
+
+    from app.routers.analytics import best_verdict
+    control = next(c for c in client.get("/controls", headers=headers).json() if c["clause"] == "CC8.1")
+    links = client.get(f"/controls/{control['id']}", headers=headers).json()["links"]
+    assert best_verdict(links) == "PARTIAL"
+
+
+def test_a_superseded_snapshot_no_longer_counts_against_the_clause():
+    from app.analytics import combine_verdicts
+    cc = "CHANGE_CONTROL_SNAPSHOT"
+    assert combine_verdicts([("FAIL", cc, False), ("PASS", cc, True)]) == "PASS"
+    assert combine_verdicts([("FAIL", cc, True), ("PASS", cc, True)]) == "FAIL"
+    assert combine_verdicts([("FAIL", "POLICY", True), ("PASS", "POLICY", True)]) == "PASS"
+
+
+def test_more_than_one_page_of_check_runs_is_read():
+    """A failed run on page 2 must not be missed."""
+    class Paged:
+        def get(self, url, params=None, timeout=None):
+            if url.endswith("/status"):
+                return _FakeResponse({"statuses": []})
+            page = params["page"]
+            r = _FakeResponse({"check_runs": [{"name": f"job{page}", "conclusion": "failure" if page == 2 else "success"}]})
+            if page < 2:
+                r.links = {"next": {"url": f"https://api.github.com/repositories/1/x?page={page + 1}"}}
+            return r
+
+    checks = gcc._checks(Paged(), "acme/app", "abc")
+    assert [c["conclusion"] for c in checks] == ["success", "failure"]

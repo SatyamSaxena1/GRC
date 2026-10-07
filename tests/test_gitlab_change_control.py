@@ -216,3 +216,15 @@ def test_a_merged_results_pipeline_on_a_temporary_merge_commit_is_the_gate():
                      "/projects/1/pipelines/72/jobs": [{"name": "test", "status": "success"},
                                                        {"name": "lint", "status": "success"}]})
     assert {c["name"] for c in repo["pulls"][0]["checks"]} == {"test", "lint"}
+
+
+def test_approval_rules_scoped_to_other_branches_do_not_count():
+    rules = [{"approvals_required": 2, "applies_to_all_protected_branches": False,
+              "protected_branches": [{"name": "release"}]},
+             {"approvals_required": 1, "applies_to_all_protected_branches": False,
+              "protected_branches": [{"name": "main"}]}]
+    assert _fetch(**{P + "/approval_rules": rules})["protection"]["required_approving_reviews"] == 1
+    only_other = [rules[0]]
+    assert _fetch(**{P + "/approval_rules": only_other})["protection"]["required_approving_reviews"] == 0
+    everywhere = [dict(rules[0], applies_to_all_protected_branches=True)]
+    assert _fetch(**{P + "/approval_rules": everywhere})["protection"]["required_approving_reviews"] == 2

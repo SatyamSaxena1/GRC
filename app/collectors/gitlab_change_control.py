@@ -123,7 +123,14 @@ def _classic_protection(gl: GitLab, project: str, branch: str, settings: dict) -
         return {"enabled": False}
     approvals = gl.get_or_none(f"/projects/{project}/approvals") or {}
     rules = gl.get_or_none(f"/projects/{project}/approval_rules") or []
-    required = max([int(r.get("approvals_required") or 0) for r in rules]
+    # Only rules that apply to the default branch: a rule can target selected protected
+    # branches, and counting one scoped to another branch would overstate the gate.
+    def applies(rule: dict) -> bool:
+        scoped = rule.get("protected_branches") or []
+        return bool(rule.get("applies_to_all_protected_branches")) or not scoped or \
+            any(b.get("name") == branch for b in scoped)
+
+    required = max([int(r.get("approvals_required") or 0) for r in rules if applies(r)]
                    + [int(approvals.get("approvals_before_merge") or 0)])
     push_levels = [p.get("access_level") for p in protected.get("push_access_levels", [])]
     return {

@@ -120,7 +120,8 @@ def framework_readiness(
 
     Every CURRENT artefact is evaluated against the target framework and the best
     verdict per clause wins — an artefact only has to satisfy a requirement once,
-    and different artefacts legitimately cover different clauses.
+    and different artefacts legitimately cover different clauses. The exception is
+    whole-estate evidence (WHOLE_ESTATE_TYPES), where the worst verdict wins.
     """
     pack = content.framework(framework)
 
@@ -149,13 +150,14 @@ def framework_readiness(
         .all()
     )
 
-    best: dict[str, str] = {}
+    per_clause: dict[str, list[tuple[str, str, bool]]] = {}
     for evidence in evidence_pool:
         attributes = evidence.attribute_values()
         for link in evaluate(attributes, evidence.artefact_type, [framework], content, as_of):
             if link.clause in na_clauses:
                 continue
-            best[link.clause] = _better(best.get(link.clause), link.verdict)
+            per_clause.setdefault(link.clause, []).append((link.verdict, evidence.artefact_type, True))
+    best = {clause: combine_verdicts(v) for clause, v in per_clause.items()}
 
     satisfied = sum(1 for v in best.values() if v == SATISFIED)
     partial = sum(1 for v in best.values() if v == "PARTIAL")
@@ -181,6 +183,24 @@ def framework_readiness(
 
 
 _RANK = {"NO_EVIDENCE": 0, "FAIL": 1, "PARTIAL": 2, "PASS": 3}
+
+
+# Evidence types where each artefact covers a different part of the estate (one change-control
+# snapshot per platform: GitHub, GitLab, Bitbucket), so every one must pass. For these a clause
+# takes the WORST current verdict; taking the best would let a clean GitHub snapshot hide a
+# failing GitLab one. Every other type is alternative evidence for the same requirement, where
+# satisfying it once is enough.
+WHOLE_ESTATE_TYPES = {"CHANGE_CONTROL_SNAPSHOT"}
+
+
+def combine_verdicts(verdicts: list[tuple[str, str | None, bool]]) -> str:
+    """One clause verdict from (verdict, artefact_type, is_current) triples. Current
+    whole-estate evidence decides by its worst verdict; otherwise the best verdict wins."""
+    whole = [v for v, kind, current in verdicts if kind in WHOLE_ESTATE_TYPES and current]
+    if whole:
+        return min(whole, key=lambda v: _RANK.get(v, 0))
+    rest = [v for v, kind, _ in verdicts if kind not in WHOLE_ESTATE_TYPES]
+    return max(rest, key=lambda v: _RANK.get(v, 0)) if rest else "NO_EVIDENCE"
 
 
 def _better(current: str | None, candidate: str) -> str:

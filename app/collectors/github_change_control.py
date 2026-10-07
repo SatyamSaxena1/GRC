@@ -514,11 +514,12 @@ def effective_protection(classic: dict, rulesets: list[dict]) -> dict:
 
 
 def _checks(session, repo: str, sha: str) -> list[dict]:
-    runs = _get(session, f"{API}/repos/{repo}/commits/{sha}/check-runs", per_page=100)
+    # Both endpoints page at 100; reading only the first page could miss a failed run and
+    # record the merge as clean.
     checks = [{"name": r["name"], "conclusion": r.get("conclusion") or r.get("status")}
-              for r in runs.get("check_runs", [])]
-    status = _get(session, f"{API}/repos/{repo}/commits/{sha}/status")
-    checks += [{"name": s["context"], "conclusion": s["state"]} for s in status.get("statuses", [])]
+              for r in _paged(session, f"{API}/repos/{repo}/commits/{sha}/check-runs", "check_runs")]
+    checks += [{"name": s["context"], "conclusion": s["state"]}
+               for s in _paged(session, f"{API}/repos/{repo}/commits/{sha}/status", "statuses")]
     return checks
 
 
