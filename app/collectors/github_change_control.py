@@ -2,8 +2,8 @@
 
 Read-only and metadata-only: branch protection, pull requests, reviews, commit
 authorship and check results. Never source code, never a write. The output is the
-collector contract app/routers/connectors.py expects — {"attributes": {...}} — and the
-content packs decide what those facts mean for SOC 2 CC8.1, ISO 27001 A.8.32 and
+collector contract app/routers/connectors.py expects — {"attributes": {...}}, plus the
+per-merge "exceptions" rows behind the counts — and the content packs decide what those facts mean for SOC 2 CC8.1, ISO 27001 A.8.32 and
 PCI DSS 6.5.1.
 
 Two halves, kept apart on purpose:
@@ -101,23 +101,42 @@ def _contributors(pr: dict) -> set[str]:
     return {login.lower() for login in logins}
 
 
-def has_independent_approval(pr: dict) -> bool:
-    """An approval counts only if it is a human's latest review, it approves the exact
+def approval_finding(pr: dict) -> str | None:
+    """None when the change has an independent approval, else why it does not — in
+    words an auditor can check against the PR itself.
+
+    An approval counts only if it is a human's latest review, it approves the exact
     commit that was merged (an approval of an earlier push says nothing about what
     shipped), and the approver contributed nothing to the change."""
     contributors = _contributors(pr)
     latest: dict[str, dict] = {}
+    bot_approvers = set()
     for review in sorted(pr.get("reviews", []), key=lambda r: r.get("submitted_at") or ""):
         user = review.get("user")
-        if _is_bot(user) or review.get("state") in {"COMMENTED", "PENDING"}:
+        if _is_bot(user):
+            if review.get("state") == "APPROVED":
+                bot_approvers.add(str((user or {}).get("login") or "unknown"))
+            continue
+        if review.get("state") in {"COMMENTED", "PENDING"}:
             continue  # a comment neither grants nor withdraws approval
         latest[str(user["login"]).lower()] = review
-    return any(
-        review.get("state") == "APPROVED"
-        and review.get("commit_id") == pr.get("head_sha")
-        and login not in contributors
-        for login, review in latest.items()
-    )
+
+    reasons = []
+    for login, review in sorted(latest.items()):
+        if review.get("state") != "APPROVED":
+            reasons.append(f"{login}'s latest review was {str(review.get('state')).lower().replace('_', ' ')}")
+        elif review.get("commit_id") != pr.get("head_sha"):
+            reasons.append(f"{login} approved an earlier push, not the merged commit")
+        elif login in contributors:
+            reasons.append(f"{login} approved but wrote or committed part of the change")
+        else:
+            return None
+    reasons += [f"{login} is a bot; bot approvals do not count" for login in sorted(bot_approvers)]
+    return "; ".join(reasons) or "no approving review"
+
+
+def has_independent_approval(pr: dict) -> bool:
+    return approval_finding(pr) is None
 
 
 def checks_passed(pr: dict) -> bool:
@@ -161,6 +180,51 @@ def summarize(repos: Iterable[dict]) -> dict[str, Any]:
         "ai_assisted_merges_without_independent_approval": sum(
             not has_independent_approval(pr) for pr in ai_pulls),
     }
+
+
+# Per-merge detail for the auditor. Capped so one noisy repository cannot push the
+# snapshot past the connector's size limit; the counts above are never capped.
+MAX_EXCEPTIONS = 500
+
+
+def exceptions(repos: Iterable[dict], limit: int = MAX_EXCEPTIONS) -> tuple[list[dict], int]:
+    """(exceptions, how many were left out) — one row per merge or push that fails a
+    rule, naming every rule it fails. The same functions decide the counts, so a row
+    exists exactly when that merge was counted.
+
+    Rows carry identifiers, links and logins, never titles or diffs: the auditor opens
+    the PR on GitHub for the content (ADR-020, data minimisation)."""
+    rows = []
+    for repo in repos:
+        name = repo.get("repo")
+        for pr in repo.get("pulls", []):
+            reasons = []
+            if (finding := approval_finding(pr)) is not None:
+                reasons.append({"rule": "NO_INDEPENDENT_APPROVAL", "detail": finding})
+            if not checks_passed(pr):
+                failing = [c.get("name") for c in pr.get("checks", [])
+                           if str(c.get("conclusion") or "").lower() not in PASSING_CONCLUSIONS]
+                reasons.append({"rule": "CHECKS_FAILED_OR_MISSING",
+                                "detail": ("failed: " + ", ".join(map(str, failing))) if failing
+                                else "no checks ran on the merged commit"})
+            if reasons:
+                rows.append({
+                    "kind": "PULL_REQUEST", "repo": name, "ref": f"#{pr.get('number')}",
+                    "url": pr.get("url"), "at": pr.get("merged_at"),
+                    "author": (pr.get("author") or {}).get("login"),
+                    "ai_assisted": is_ai_assisted(pr), "reasons": reasons,
+                })
+        for commit in repo.get("default_commits", []):
+            if not commit.get("has_pull"):
+                rows.append({
+                    "kind": "DIRECT_PUSH", "repo": name, "ref": str(commit.get("sha", ""))[:12],
+                    "url": commit.get("url"), "at": commit.get("date"),
+                    "author": commit.get("author_login"), "ai_assisted": None,
+                    "reasons": [{"rule": "DIRECT_PUSH",
+                                 "detail": "committed to the default branch without a pull request"}],
+                })
+    rows.sort(key=lambda r: r.get("at") or "", reverse=True)
+    return rows[:limit], max(0, len(rows) - limit)
 
 
 # --- GitHub REST -> the dicts above -------------------------------------------------
@@ -228,6 +292,8 @@ def fetch(session, repo: str, since: datetime) -> dict:
         number, head = raw["number"], raw["head"]["sha"]
         pulls.append({
             "number": number,
+            "url": raw.get("html_url"),
+            "merged_at": raw.get("merged_at"),
             "author": _user(raw.get("user")),
             "head_sha": head,
             "reviews": [
@@ -245,12 +311,14 @@ def fetch(session, repo: str, since: datetime) -> dict:
             "checks": _checks(session, repo, head),
         })
     default_commits = [
-        {"sha": c["sha"],
+        {"sha": c["sha"], "url": c.get("html_url"),
+         "date": ((c.get("commit") or {}).get("committer") or {}).get("date"),
+         "author_login": (c.get("author") or {}).get("login"),
          "has_pull": bool(_get(session, f"{API}/repos/{repo}/commits/{c['sha']}/pulls"))}
         for c in _paged(session, f"{API}/repos/{repo}/commits", sha=branch,
                         since=cutoff)
     ]
-    return {"protection": _protection(session, repo, branch), "pulls": pulls,
+    return {"repo": repo, "protection": _protection(session, repo, branch), "pulls": pulls,
             "default_commits": default_commits}
 
 
@@ -268,8 +336,10 @@ def main(argv: list[str] | None = None) -> int:
     if token := os.environ.get("GITHUB_TOKEN"):
         session.headers["Authorization"] = f"Bearer {token}"
     since = datetime.now(timezone.utc) - timedelta(days=args.days)
-    attributes = summarize(fetch(session, repo, since) for repo in args.repo)
-    json.dump({"attributes": attributes}, sys.stdout, indent=2)
+    repos = [fetch(session, repo, since) for repo in args.repo]
+    rows, left_out = exceptions(repos)
+    json.dump({"attributes": summarize(repos), "exceptions": rows,
+               "exceptions_left_out": left_out}, sys.stdout, indent=2)
     print()
     return 0
 

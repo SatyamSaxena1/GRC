@@ -299,6 +299,22 @@ export type EvidenceAttribute = {
 export const getEvidenceAttributes = (id: string) =>
   request<EvidenceAttribute[]>("GET", `/evidence/${id}/attributes`);
 
+/** One merge or push behind a change-control snapshot's counts (ADR-020). */
+export type ChangeException = {
+  kind: "PULL_REQUEST" | "DIRECT_PUSH";
+  repo: string | null;
+  ref: string;
+  url: string | null;
+  at: string | null;
+  author: string | null;
+  ai_assisted: boolean | null;
+  reasons: { rule: string; detail: string }[];
+};
+
+export const getEvidenceExceptions = (id: string) =>
+  request<{ exceptions: ChangeException[]; exceptions_left_out: number }>(
+    "GET", `/evidence/${id}/exceptions`);
+
 export type Gap = {
   id: string;
   kind: string;

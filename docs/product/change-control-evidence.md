@@ -64,7 +64,8 @@ Built today (in all three packs unless noted):
 | `admins_can_bypass`, `stale_reviews_dismissed` | gate must hold for admins, and approvals must reset on new pushes; required by SOC 2 and PCI, SUPPORTING for ISO |
 
 Next, roughly in order of value:
-1. **Per-merge exceptions**: the PR numbers behind each count, so the auditor can open them.
+1. ~~**Per-merge exceptions**~~: built. Every failing merge or push is listed with its rules,
+   the reason in words, and a link to open it.
 2. **Gate liveness**: required checks that have *never* failed in the period are flagged for a
    canary, because a check that cannot go red is decoration (ADR-019 rule 1).
 3. **Gate-path changes**: merges that touched CI workflows, tests or CODEOWNERS get stricter rules
@@ -95,6 +96,7 @@ Next, roughly in order of value:
   prints the collector JSON.
 - The `github` source in `app/routers/connectors.py` (`CHANGE_CONTROL_SNAPSHOT`).
 - UCO-CHG-001/002 and the three clauses in the SOC 2, ISO 27001 and PCI DSS packs.
+- `GET /evidence/{id}/exceptions` and an Exceptions table on the evidence page, filterable by rule.
 - `tests/test_change_control.py`: independence rules, check rules, a fake GitHub API, and
   connector-to-verdict tests across all three frameworks.
 

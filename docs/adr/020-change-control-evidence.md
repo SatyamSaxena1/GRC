@@ -54,8 +54,12 @@ it is reported as its own gap.
   would be a false pass.
 
 ## Consequences
-- The snapshot is a single document per period. Per-merge exceptions (which PRs failed) are the
-  next step; the auditor needs the list, not only the count.
+- Each snapshot also stores the per-item rows behind its counts: every merge or push that failed
+  a rule, the rules it failed, and why in words (for example "alice approved but wrote or committed
+  part of the change"). The rows are produced by the same functions as the counts, stored inside the
+  same hashed snapshot, served by `GET /evidence/{id}/exceptions` and shown on the evidence page.
+  They carry identifiers, links and logins, never titles or diffs, and are capped at 500 per
+  snapshot (the counts never are).
 - Branch *rulesets* are not yet read, only classic branch protection. A repository protected only
   by rulesets will read as unprotected, which is a false gap but never a false pass.
 - GitHub answers the branch-protection endpoint with 404 to any token without administration

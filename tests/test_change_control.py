@@ -221,6 +221,7 @@ class _FakeGitHub:
             r + "/branches/main/protection": _FakeResponse({"message": "Not Found"}, 404),
             r + "/pulls": [
                 {"number": 7, "updated_at": "2026-10-02T00:00:00Z", "merged_at": "2026-10-02T00:00:00Z",
+                 "html_url": "https://github.com/acme/app/pull/7",
                  "user": {"login": "agent[bot]", "type": "Bot"}, "head": {"sha": "h7"}},
                 {"number": 3, "updated_at": "2026-01-01T00:00:00Z", "merged_at": "2026-01-01T00:00:00Z",
                  "user": {"login": "bob", "type": "User"}, "head": {"sha": "h3"}},
@@ -232,7 +233,9 @@ class _FakeGitHub:
                                       "committer": {"login": "web-flow", "type": "User"}}],
             r + "/commits/h7/check-runs": {"check_runs": [{"name": "ci", "conclusion": "success"}]},
             r + "/commits/h7/status": {"statuses": []},
-            r + "/commits": [{"sha": "m7"}, {"sha": "d1"}],
+            r + "/commits": [{"sha": "m7"},
+                             {"sha": "d1", "html_url": "https://github.com/acme/app/commit/d1",
+                              "author": {"login": "alice"}, "commit": {"committer": {"date": "2026-10-03T00:00:00Z"}}}],
             r + "/commits/m7/pulls": [{"number": 7}],
             r + "/commits/d1/pulls": [],
         }
@@ -257,3 +260,91 @@ def test_fetch_maps_github_onto_the_summary_and_never_writes():
     assert out["direct_pushes_to_default"] == 1
     assert out["merges_with_failing_or_missing_checks"] == 0
     assert not hasattr(api, "post")  # the fake has no write verbs; fetch() never needed one
+    rows, _ = gcc.exceptions([repo])
+    assert [(r["kind"], r["repo"], r["url"]) for r in rows] == [
+        ("DIRECT_PUSH", "acme/app", "https://github.com/acme/app/commit/d1"),
+        ("PULL_REQUEST", "acme/app", "https://github.com/acme/app/pull/7"),
+    ]
+
+
+# --- per-merge exceptions: the rows behind the counts ------------------------------
+
+def test_each_failed_merge_names_every_rule_it_fails_in_words():
+    laundered = _pr(author="coding-agent[bot]", reviews=[("alice", "APPROVED", None)], checks=(),
+                    commits=[{"sha": HEAD, "message": "x\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+                              "author_login": "alice", "committer_login": "web-flow"}])
+    laundered.update(number=9, url="https://github.com/acme/app/pull/9", merged_at="2026-10-02T00:00:00Z")
+    repo = {"repo": "acme/app", "protection": PROTECTED, "pulls": [_approved(), laundered],
+            "default_commits": [{"sha": "d1d1d1d1d1d1d1", "has_pull": False, "author_login": "alice",
+                                 "date": "2026-10-03T00:00:00Z", "url": "https://github.com/acme/app/commit/d1"}]}
+    rows, left_out = gcc.exceptions([repo])
+    assert left_out == 0
+    assert [(r["kind"], r["ref"]) for r in rows] == [("DIRECT_PUSH", "d1d1d1d1d1d1"), ("PULL_REQUEST", "#9")]
+    pr_row = rows[1]
+    assert pr_row["ai_assisted"] is True and pr_row["url"].endswith("/pull/9")
+    assert {r["rule"] for r in pr_row["reasons"]} == {"NO_INDEPENDENT_APPROVAL", "CHECKS_FAILED_OR_MISSING"}
+    details = " ".join(r["detail"] for r in pr_row["reasons"])
+    assert "alice approved but wrote or committed part of the change" in details
+    assert "no checks ran" in details
+
+
+def test_rows_exist_exactly_for_the_counted_merges():
+    pulls = [_approved(), _approved(by="alice"), _pr(reviews=[("bob", "APPROVED", "old")]),
+             _approved(checks=(("ci", "failure"),))]
+    repo = {"repo": "acme/app", "protection": PROTECTED, "pulls": pulls, "default_commits": []}
+    counts, (rows, _) = gcc.summarize([repo]), gcc.exceptions([repo])
+    unapproved = sum(any(r["rule"] == "NO_INDEPENDENT_APPROVAL" for r in row["reasons"]) for row in rows)
+    failing = sum(any(r["rule"] == "CHECKS_FAILED_OR_MISSING" for r in row["reasons"]) for row in rows)
+    assert unapproved == counts["merges_without_independent_approval"] == 2
+    assert failing == counts["merges_with_failing_or_missing_checks"] == 1
+
+
+def test_reasons_cover_stale_withdrawn_and_bot_approvals():
+    assert "earlier push" in gcc.approval_finding(_pr(reviews=[("bob", "APPROVED", "old")]))
+    assert "changes requested" in gcc.approval_finding(
+        _pr(reviews=[("bob", "APPROVED", None), ("bob", "CHANGES_REQUESTED", None)]))
+    assert "bot approvals do not count" in gcc.approval_finding(_approved(by="review-bot[bot]"))
+    assert gcc.approval_finding(_pr()) == "no approving review"
+
+
+def test_rows_are_capped_but_counts_are_not():
+    repo = {"repo": "acme/app", "protection": PROTECTED, "pulls": [],
+            "default_commits": [{"sha": f"c{i}", "has_pull": False} for i in range(7)]}
+    rows, left_out = gcc.exceptions([repo], limit=5)
+    assert len(rows) == 5 and left_out == 2
+    assert gcc.summarize([repo])["direct_pushes_to_default"] == 7
+
+
+def test_the_auditor_can_open_the_rows_from_the_stored_snapshot(client, bootstrap, monkeypatch):
+    org_id, _ = bootstrap(client, frameworks=["SOC-2"])
+    headers = {"authorization": f"org:{org_id}"}
+    row = {"kind": "PULL_REQUEST", "repo": "acme/app", "ref": "#9", "url": "https://github.com/acme/app/pull/9",
+           "at": "2026-10-02T00:00:00Z", "author": "agent[bot]", "ai_assisted": True,
+           "reasons": [{"rule": "NO_INDEPENDENT_APPROVAL", "detail": "no approving review"}],
+           "title": "should be dropped: not a known key"}
+    attributes = gcc.summarize([{"protection": PROTECTED, "pulls": [_pr()], "default_commits": []}])
+
+    class _WithRows(_Response):
+        def json(self):
+            return {"attributes": attributes, "exceptions": [row, "not a row"], "exceptions_left_out": 3}
+
+    monkeypatch.setenv(connectors._env_key("github", "URL"), "https://collector.test/github")
+    monkeypatch.setattr(connectors.requests, "get", lambda url, **_: _WithRows(attributes))
+    assert client.post("/connectors/github/sync", headers=headers).status_code == 202
+    evidence_id = next(c["evidence_id"] for c in client.get("/connectors", headers=headers).json()
+                       if c["source"] == "github")
+
+    body = client.get(f"/evidence/{evidence_id}/exceptions", headers=headers).json()
+    assert body["exceptions_left_out"] == 3
+    assert body["exceptions"] == [{k: v for k, v in row.items() if k != "title"}]
+
+    other_org, _ = bootstrap(client, frameworks=["SOC-2"])
+    assert client.get(f"/evidence/{evidence_id}/exceptions",
+                      headers={"authorization": f"org:{other_org}"}).status_code == 404
+
+
+def test_a_document_has_no_exception_rows(client, bootstrap, upload):
+    org_id, _ = bootstrap(client)
+    evidence_id = upload(client, org_id, content=b"policy").json()["id"]
+    body = client.get(f"/evidence/{evidence_id}/exceptions", headers={"authorization": f"org:{org_id}"}).json()
+    assert body == {"exceptions": [], "exceptions_left_out": 0}
