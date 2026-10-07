@@ -87,7 +87,17 @@ export function GapsListPage() {
       key: "due", header: "Due",
       render: (g) => { const d = taskByGap.get(g.id)?.due_at; return d ? new Date(d).toLocaleDateString() : <span className="muted">—</span>; },
     },
-    { key: "status", header: "Status", render: (g) => <Badge value={g.status} /> },
+    {
+      key: "status", header: "Status",
+      // A waived gap stays OPEN (the evaluator owns it); the exception is shown beside it and
+      // stops counting by itself at expiry or when the rule or value changes (ADR-021).
+      render: (g) => g.waived && g.exception ? (
+        <span title={`Exception approved by ${g.exception.decided_by ?? "an auditor"}`}>
+          <Badge value="WAIVED" />{" "}
+          <span className="muted" style={{ fontSize: 12 }}>until {new Date(g.exception.expires_at).toLocaleDateString()}</span>
+        </span>
+      ) : <Badge value={g.status} />,
+    },
     {
       key: "ciso_sync", header: "CISO Assistant",
       render: (g) => (

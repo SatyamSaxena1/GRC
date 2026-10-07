@@ -526,7 +526,12 @@ export const submitControl = (id: string) =>
 
 // ---------------------------------------------------------------- gaps & tasks
 
-export type GapRow = Gap & { framework: string; clause: string; evidence_id: string; resolved_by_evidence_id: string | null };
+export type GapRow = Gap & {
+  framework: string; clause: string; evidence_id: string; resolved_by_evidence_id: string | null;
+  /** Covered by an approved, unexpired exception for this exact rule and value (ADR-021). */
+  waived?: boolean;
+  exception?: { id: string; expires_at: string; decided_by: string | null } | null;
+};
 export const listGaps = (status?: string) => request<GapRow[]>("GET", "/gaps", { query: { status } });
 
 export type TaskRow = {

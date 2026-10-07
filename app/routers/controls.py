@@ -16,6 +16,7 @@ from app.auth import Actor, current_actor, deny_read_only
 from app.content.load import load as load_content
 from app.db import get_session
 from app.ingest import draft_remediation
+from app.exceptions import active_exception
 from app.models import (
     AuditEvent, ControlAssignment, ControlMessage, Evidence, EvidenceControlLink, GapRow,
     OrgControl, TaskRow, User,
@@ -181,10 +182,23 @@ def list_gaps(status: str | None = None, actor: Actor = Depends(current_actor),
          "required_value": g.required_value, "required_action": g.required_action,
          "status": g.status, "evidence_id": l.evidence_id,
          "resolved_by_evidence_id": g.resolved_by_evidence_id,
-         "resolved_at": g.resolved_at.isoformat() if g.resolved_at else None}
+         "resolved_at": g.resolved_at.isoformat() if g.resolved_at else None,
+         **_exception_fields(db, actor, g, l)}
         for g, l in query.all()
         if allowed is None or (l.framework, l.clause) in allowed
     ]
+
+
+def _exception_fields(db: Session, actor: Actor, gap: GapRow, link: EvidenceControlLink) -> dict:
+    """An open gap still covered by an approved, unexpired exception for the same rule and the
+    same value is reported as waived. The gap itself stays OPEN: the evaluator owns it, and the
+    exception stops counting the moment it expires or the rule or value changes (ADR-021)."""
+    if gap.status != "OPEN":
+        return {"waived": False, "exception": None}
+    exc = active_exception(db, CONTENT, actor.org_id, gap, link)
+    return {"waived": exc is not None,
+            "exception": {"id": exc.id, "expires_at": exc.expires_at.isoformat(),
+                          "decided_by": exc.decided_by} if exc else None}
 
 
 @gaps_router.post("/{gap_id}/draft-remediation")
