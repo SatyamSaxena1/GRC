@@ -881,3 +881,18 @@ export const retryCisoSync = (entityType: CisoSyncStatus["entity_type"], entityI
   request<{ entity_type: string; entity_id: string; status: CisoSyncStatus["status"] }>(
     "POST", `/admin/ciso-sync/${entityType}/${entityId}/retry`
   );
+
+/** A gap exception (ADR-021). `state` is computed by the server on every read: only ACTIVE waives. */
+export type GapException = {
+  id: string; framework: string; clause: string; attribute: string; gap_kind: string;
+  actual_value: string | null; justification: string; compensating_control: string;
+  status: "REQUESTED" | "APPROVED" | "REJECTED" | "REVOKED";
+  state: "ACTIVE" | "REQUESTED" | "REJECTED" | "REVOKED" | "EXPIRED" | "RULE_CHANGED" | "VALUE_CHANGED";
+  requested_by: string; requested_at: string; expires_at: string;
+  decided_by: string | null; decided_at: string | null; decision_note: string;
+};
+export const listExceptions = () => request<GapException[]>("GET", "/exceptions");
+export const requestException = (gapId: string, body: { justification: string; compensating_control: string; expires_at: string }) =>
+  request<GapException>("POST", `/gaps/${gapId}/exceptions`, { json: body });
+export const decideException = (id: string, action: "approve" | "reject" | "revoke", note: string) =>
+  request<GapException>("POST", `/exceptions/${id}/${action}`, { json: { note } });

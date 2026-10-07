@@ -18,6 +18,7 @@ import {
 } from "../api/client";
 import { useApi } from "../lib/useApi";
 import { useSession } from "../lib/session";
+import { GapExceptions } from "../components/GapExceptions";
 import { Badge } from "../components/Badge";
 import { CisoSyncBadge } from "../components/CisoSyncBadge";
 import { PageTour } from "../components/PageTour";
@@ -231,6 +232,11 @@ export function ControlDetailPage() {
             ))}
           </div>
         </>
+      )}
+
+      {tab === "overview" && (
+        <GapExceptions framework={data.framework} clause={data.clause} isAuditor={isAuditor}
+                       canRequest={!isAuditor && identity?.role !== "COMPLIANCE_VIEWER"} />
       )}
 
       {tab === "review" && isAuditor && (
