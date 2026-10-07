@@ -76,7 +76,7 @@ jobs:
     runs-on: ubuntu-latest
     concurrency: render-deploy
     steps:
-      - name: Trigger Render deploy
+      - name: Trigger Render deploy (grc)
         env:
           HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
         run: |
@@ -89,3 +89,18 @@ jobs:
           case "$HOOK" in *\?*) sep='&' ;; *) sep='?' ;; esac
           curl -fsS -X POST "${HOOK}${sep}ref=${GITHUB_SHA}" -o /dev/null
           echo "Render deploy requested for $GITHUB_SHA"
+
+      # grc-demo (grc-demo-vu2u.onrender.com) is the public demo; it has auto-deploy off and,
+      # like grc, Render's GitHub App never hears about pushes, so it deploys from here too,
+      # on the same green, RLS-gated commit.
+      - name: Trigger Render deploy (grc-demo)
+        env:
+          HOOK: ${{ secrets.RENDER_DEMO_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "::warning::RENDER_DEMO_DEPLOY_HOOK_URL secret is not set, so grc-demo was not deployed"
+            exit 0
+          fi
+          case "$HOOK" in *\?*) sep='&' ;; *) sep='?' ;; esac
+          curl -fsS -X POST "${HOOK}${sep}ref=${GITHUB_SHA}" -o /dev/null
+          echo "Render deploy requested for grc-demo at $GITHUB_SHA"
