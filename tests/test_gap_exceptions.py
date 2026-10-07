@@ -12,8 +12,49 @@ from app import exceptions as exc_rules
 from app.collectors import github_change_control as gcc
 from app.models import AuditEvent, GapException
 from app.routers import connectors
-from tests.test_change_control import PROTECTED, _approved, _pr
-from tests.test_firm import as_user, auditor, firm_with_admin, request_onboarding
+
+# Small local copies of helpers from test_change_control.py and test_firm.py: tests/ is not a
+# package, so test modules cannot import each other on CI.
+HEAD = "abc123"
+PROTECTED = {"enabled": True, "required_approving_reviews": 1, "dismiss_stale_reviews": True,
+             "enforce_admins": True, "allow_force_pushes": False}
+
+
+def _pr(reviews=()):
+    return {"number": 1, "author": {"login": "alice", "is_bot": False}, "head_sha": HEAD,
+            "reviews": [{"user": {"login": who, "is_bot": False}, "state": "APPROVED",
+                         "commit_id": HEAD, "submitted_at": "2026-10-01T00:00:00Z"} for who in reviews],
+            "commits": [{"sha": HEAD, "message": "change", "author_login": "alice", "committer_login": "web-flow"}],
+            "checks": [{"name": "ci", "conclusion": "success"}]}
+
+
+def _approved():
+    return _pr(reviews=["bob"])
+
+
+def as_user(user_id, engagement_id=None):
+    headers = {"authorization": f"user:{user_id}"}
+    if engagement_id:
+        headers["x-engagement-id"] = engagement_id
+    return headers
+
+
+def firm_with_admin(client):
+    firm = client.post("/admin/audit-firms", json={"name": "Gemba"}).json()["id"]
+    admin = client.post("/admin/users", json={"email": "admin@gemba.test", "audit_firm_id": firm,
+                                              "role": "FIRM_ADMIN"}).json()["id"]
+    return firm, admin
+
+
+def auditor(client, firm_id):
+    return client.post("/admin/users", json={"email": "krishna@gemba.test", "audit_firm_id": firm_id,
+                                             "role": "AUDITOR"}).json()["id"]
+
+
+def request_onboarding(client, firm_id, frameworks=("SOC-2",)):
+    return client.post("/firm/onboarding-requests", json={
+        "audit_firm_id": firm_id, "org_name": "Acme Corp", "contact_email": "ciso@acme.test",
+        "frameworks": list(frameworks)}).json()["id"]
 
 SOON = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
 WHY = "Solo developer; every merge reviewed after a 24h cooling-off period (ADR-019)."
