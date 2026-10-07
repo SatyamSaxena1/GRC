@@ -6,6 +6,13 @@ const RULE_LABELS: Record<string, string> = {
   NO_INDEPENDENT_APPROVAL: "No independent approval",
   CHECKS_FAILED_OR_MISSING: "Checks failed or missing",
   DIRECT_PUSH: "Direct push",
+  GATE_NEVER_FAILED: "Check never seen failing (advisory)",
+};
+
+const KIND_LABELS: Record<string, string> = {
+  PULL_REQUEST: "pull request",
+  DIRECT_PUSH: "push",
+  GATE_CHECK: "check",
 };
 
 // Most serious first: an unreviewed merge matters more than a push that skipped the PR flow.
@@ -42,7 +49,9 @@ export function ChangeExceptions({ evidenceId }: { evidenceId: string }) {
           <>
             <p className="muted" style={{ margin: "0 0 10px", fontSize: 12 }}>
               Every merge or push that failed a rule, newest first. Open each one on GitHub to test it;
-              the counts above are decided from the same rules.
+              the counts above are decided from the same rules. Checks that never went red during the period
+              are listed last: advisory only, they do not change a verdict, but an auditor relying on a check
+              should see it fail once.
             </p>
             {counts.size > 1 && (
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
@@ -66,7 +75,7 @@ export function ChangeExceptions({ evidenceId }: { evidenceId: string }) {
                         {row.url
                           ? <a href={row.url} target="_blank" rel="noopener noreferrer">{row.repo} {row.ref}</a>
                           : <>{row.repo} {row.ref}</>}
-                        <div className="muted" style={{ fontSize: 11 }}>{row.kind === "DIRECT_PUSH" ? "push" : "pull request"}</div>
+                        <div className="muted" style={{ fontSize: 11 }}>{KIND_LABELS[row.kind] ?? row.kind}</div>
                       </td>
                       <td>{row.at ? new Date(row.at).toLocaleDateString() : "—"}</td>
                       <td>{row.author ?? "—"}</td>

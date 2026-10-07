@@ -66,8 +66,9 @@ Built today (in all three packs unless noted):
 Next, roughly in order of value:
 1. ~~**Per-merge exceptions**~~: built. Every failing merge or push is listed with its rules,
    the reason in words, and a link to open it.
-2. **Gate liveness**: required checks that have *never* failed in the period are flagged for a
-   canary, because a check that cannot go red is decoration (ADR-019 rule 1).
+2. ~~**Gate liveness**~~: built. Required checks that never failed on any push in the period are
+   listed for a canary run (advisory; no verdict changes), because a check that cannot go red is
+   decoration (ADR-019 rule 1).
 3. **Gate-path changes**: merges that touched CI workflows, tests or CODEOWNERS get stricter rules
    (two approvers, or a code owner).
 4. **Rulesets** alongside classic branch protection.

@@ -60,6 +60,14 @@ it is reported as its own gap.
   same hashed snapshot, served by `GET /evidence/{id}/exceptions` and shown on the evidence page.
   They carry identifiers, links and logins, never titles or diffs, and are capped at 500 per
   snapshot (the counts never are).
+- **Gate liveness is advisory.** A gate check (the branch's required checks, or every check
+  that ran on merged commits when none are required) is counted over every push of every PR
+  merged in the period, because the merged head is green by construction. A check that never
+  failed is listed as a `GATE_CHECK` row asking for a canary run, and counted in
+  `gate_checks_never_seen_failing`, but no clause fails on it: a careful team can stay green, so
+  "never failed" is unproven, not broken. Cancelled runs prove nothing either way. Two API calls
+  per push, capped at the newest 30 pushes per PR. Without required checks the gate includes
+  non-gate jobs (deploys, review bots), which is one more reason to require checks.
 - Branch *rulesets* are not yet read, only classic branch protection. A repository protected only
   by rulesets will read as unprotected, which is a false gap but never a false pass.
 - GitHub answers the branch-protection endpoint with 404 to any token without administration

@@ -264,6 +264,7 @@ def test_fetch_maps_github_onto_the_summary_and_never_writes():
     assert [(r["kind"], r["repo"], r["url"]) for r in rows] == [
         ("DIRECT_PUSH", "acme/app", "https://github.com/acme/app/commit/d1"),
         ("PULL_REQUEST", "acme/app", "https://github.com/acme/app/pull/7"),
+        ("GATE_CHECK", "acme/app", None),   # "ci" passed every time it ran
     ]
 
 
@@ -279,7 +280,8 @@ def test_each_failed_merge_names_every_rule_it_fails_in_words():
                                  "date": "2026-10-03T00:00:00Z", "url": "https://github.com/acme/app/commit/d1"}]}
     rows, left_out = gcc.exceptions([repo])
     assert left_out == 0
-    assert [(r["kind"], r["ref"]) for r in rows] == [("DIRECT_PUSH", "d1d1d1d1d1d1"), ("PULL_REQUEST", "#9")]
+    assert [(r["kind"], r["ref"]) for r in rows] == [
+        ("DIRECT_PUSH", "d1d1d1d1d1d1"), ("PULL_REQUEST", "#9"), ("GATE_CHECK", "ci")]
     pr_row = rows[1]
     assert pr_row["ai_assisted"] is True and pr_row["url"].endswith("/pull/9")
     assert {r["rule"] for r in pr_row["reasons"]} == {"NO_INDEPENDENT_APPROVAL", "CHECKS_FAILED_OR_MISSING"}
@@ -348,3 +350,91 @@ def test_a_document_has_no_exception_rows(client, bootstrap, upload):
     evidence_id = upload(client, org_id, content=b"policy").json()["id"]
     body = client.get(f"/evidence/{evidence_id}/exceptions", headers={"authorization": f"org:{org_id}"}).json()
     assert body == {"exceptions": [], "exceptions_left_out": 0}
+
+
+# --- gate liveness: a check that has never gone red is unproven -------------------
+
+def _with_pushes(pr, *conclusions):
+    """A PR whose earlier pushes ran "ci" with these conclusions before the merged head."""
+    pr["commit_checks"] = pr["checks"] + [{"name": "ci", "conclusion": c} for c in conclusions]
+    return pr
+
+
+def test_a_check_that_failed_on_an_earlier_push_is_live():
+    repo = {"repo": "acme/app", "protection": PROTECTED, "default_commits": [],
+            "pulls": [_with_pushes(_approved(), "failure", "success")]}
+    assert gcc.gate_liveness(repo) == [{"check": "ci", "runs": 3, "failures": 1}]
+    out = gcc.summarize([repo])
+    assert (out["gate_checks_observed"], out["gate_checks_never_seen_failing"]) == (1, 0)
+    assert all(r["kind"] != "GATE_CHECK" for r in gcc.exceptions([repo])[0])
+
+
+def test_a_check_that_never_went_red_is_flagged_with_its_run_count():
+    repo = {"repo": "acme/app", "protection": PROTECTED, "default_commits": [],
+            "pulls": [_with_pushes(_approved(), "success"), _approved()]}
+    assert gcc.summarize([repo])["gate_checks_never_seen_failing"] == 1
+    (row,) = [r for r in gcc.exceptions([repo])[0] if r["kind"] == "GATE_CHECK"]
+    assert row["ref"] == "ci" and row["reasons"][0]["rule"] == "GATE_NEVER_FAILED"
+    assert "ran 3 times" in row["reasons"][0]["detail"]
+
+
+def test_cancelled_runs_do_not_prove_a_gate_can_fail():
+    repo = {"repo": "acme/app", "protection": PROTECTED, "default_commits": [],
+            "pulls": [_with_pushes(_approved(), "cancelled")]}
+    assert gcc.gate_liveness(repo)[0]["failures"] == 0
+
+
+def test_required_checks_define_the_gate_when_protection_names_them():
+    """An optional check that fails says nothing about the required one."""
+    pr = _approved(checks=(("ci", "success"), ("docs", "success")))
+    pr["commit_checks"] = pr["checks"] + [{"name": "docs", "conclusion": "failure"}]
+    repo = {"repo": "acme/app", "protection": dict(PROTECTED, required_checks=["ci"]),
+            "pulls": [pr], "default_commits": []}
+    assert gcc.gate_liveness(repo) == [{"check": "ci", "runs": 1, "failures": 0}]
+
+
+def test_a_required_check_that_never_ran_is_not_counted_as_observed():
+    repo = {"repo": "acme/app", "protection": dict(PROTECTED, required_checks=["security-scan"]),
+            "pulls": [_approved()], "default_commits": []}
+    out = gcc.summarize([repo])
+    assert out["gate_checks_observed"] == 0 and out["gate_checks_never_seen_failing"] == 0
+    # ...and a merge without it is already caught as failing or missing checks only if no
+    # check ran at all; a required check that never ran is a protection-settings question.
+
+
+def test_gate_rows_survive_the_row_cap():
+    repo = {"repo": "acme/app", "protection": PROTECTED, "pulls": [_approved()],
+            "default_commits": [{"sha": f"c{i}", "has_pull": False} for i in range(10)]}
+    rows, left_out = gcc.exceptions([repo], limit=4)
+    assert [r["kind"] for r in rows] == ["DIRECT_PUSH"] * 3 + ["GATE_CHECK"]
+    assert left_out == 7
+
+
+def test_liveness_is_advisory_and_never_changes_a_verdict(client, bootstrap, monkeypatch):
+    clean = gcc.summarize([{"protection": PROTECTED, "pulls": [_approved()],
+                            "default_commits": [{"sha": "m1", "has_pull": True}]}])
+    assert clean["gate_checks_never_seen_failing"] == 1
+    verdicts = _sync(client, bootstrap, monkeypatch, clean)
+    assert [verdicts[c] for c in CLAUSES] == ["PASS", "PASS", "PASS"]
+
+
+def test_fetch_reads_required_checks_and_earlier_pushes():
+    from datetime import datetime, timezone
+
+    api = _FakeGitHub()
+    r = gcc.API + "/repos/acme/app"
+    api.routes[r + "/branches/main/protection"] = {
+        "required_status_checks": {"contexts": ["ci"], "checks": [{"context": "ci"}, {"context": "lint"}]},
+        "required_pull_request_reviews": {"required_approving_review_count": 1},
+    }
+    api.routes[r + "/pulls/7/commits"] = [
+        {"sha": "e1", "commit": {"message": "first try"}, "author": {"login": "alice", "type": "User"},
+         "committer": {"login": "alice", "type": "User"}},
+    ] + api.routes[r + "/pulls/7/commits"]
+    api.routes[r + "/commits/e1/check-runs"] = {"check_runs": [{"name": "ci", "conclusion": "failure"}]}
+    api.routes[r + "/commits/e1/status"] = {"statuses": []}
+
+    repo = gcc.fetch(api, "acme/app", datetime(2026, 9, 1, tzinfo=timezone.utc))
+    assert repo["protection"]["required_checks"] == ["ci", "lint"]
+    assert gcc.gate_liveness(repo) == [{"check": "ci", "runs": 2, "failures": 1},
+                                       {"check": "lint", "runs": 0, "failures": 0}]

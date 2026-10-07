@@ -301,7 +301,7 @@ export const getEvidenceAttributes = (id: string) =>
 
 /** One merge or push behind a change-control snapshot's counts (ADR-020). */
 export type ChangeException = {
-  kind: "PULL_REQUEST" | "DIRECT_PUSH";
+  kind: "PULL_REQUEST" | "DIRECT_PUSH" | "GATE_CHECK";
   repo: string | null;
   ref: string;
   url: string | null;

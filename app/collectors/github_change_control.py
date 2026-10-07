@@ -46,9 +46,13 @@ ATTRIBUTES = (
     "direct_pushes_to_default",
     "ai_assisted_merges",
     "ai_assisted_merges_without_independent_approval",
+    "gate_checks_observed",
+    "gate_checks_never_seen_failing",
 )
 
 PASSING_CONCLUSIONS = {"success", "neutral", "skipped"}
+# What counts as the gate going red. Cancelled or skipped runs prove nothing either way.
+FAILING_CONCLUSIONS = {"failure", "timed_out", "error"}
 
 # A commit counts as AI-assisted when a co-author trailer or the author names a known
 # coding agent. A heuristic over what tools *declare*, not a detector: an undeclared AI
@@ -148,6 +152,30 @@ def checks_passed(pr: dict) -> bool:
     )
 
 
+def gate_liveness(repo: dict) -> list[dict]:
+    """[{"check", "runs", "failures"}] for each gate check of one repository.
+
+    The gate is the branch's required checks when protection names any, else every check
+    that ran on a merged commit. Runs are counted over every commit of every PR merged in
+    the period, not just the merged heads: the merged head is green by construction, so a
+    gate is only ever seen failing on the pushes before it. A check with no failure at all
+    is not proven broken — a careful team can stay green — but it is not proven able to
+    fail either, which is what an auditor relying on it needs (ADR-019 rule 1)."""
+    pulls = repo.get("pulls", [])
+    required = (repo.get("protection") or {}).get("required_checks") or []
+    gate = set(required) or {c.get("name") for pr in pulls for c in pr.get("checks", [])}
+    runs: dict[str, int] = dict.fromkeys(gate, 0)
+    failures: dict[str, int] = dict.fromkeys(gate, 0)
+    for pr in pulls:
+        for check in pr.get("commit_checks") or pr.get("checks", []):
+            name = check.get("name")
+            if name in runs:
+                runs[name] += 1
+                failures[name] += str(check.get("conclusion") or "").lower() in FAILING_CONCLUSIONS
+    return [{"check": name, "runs": runs[name], "failures": failures[name]}
+            for name in sorted(gate, key=str) if name is not None]
+
+
 def summarize(repos: Iterable[dict]) -> dict[str, Any]:
     """Attributes for one snapshot, across every repository in scope.
 
@@ -160,6 +188,7 @@ def summarize(repos: Iterable[dict]) -> dict[str, Any]:
     protections = [r.get("protection") or {} for r in repos]
     pulls = [pr for r in repos for pr in r.get("pulls", [])]
     ai_pulls = [pr for pr in pulls if is_ai_assisted(pr)]
+    gates = [g for r in repos for g in gate_liveness(r) if g["runs"]]
     return {
         "repositories_in_scope": len(repos),
         "default_branch_protected": bool(repos) and all(p.get("enabled") for p in protections),
@@ -179,6 +208,10 @@ def summarize(repos: Iterable[dict]) -> dict[str, Any]:
         "ai_assisted_merges": len(ai_pulls),
         "ai_assisted_merges_without_independent_approval": sum(
             not has_independent_approval(pr) for pr in ai_pulls),
+        # Advisory: no content pack fails a clause on these (ADR-020). They are listed as
+        # GATE_CHECK rows for the auditor to ask for a canary.
+        "gate_checks_observed": len(gates),
+        "gate_checks_never_seen_failing": sum(not g["failures"] for g in gates),
     }
 
 
@@ -194,6 +227,7 @@ def exceptions(repos: Iterable[dict], limit: int = MAX_EXCEPTIONS) -> tuple[list
 
     Rows carry identifiers, links and logins, never titles or diffs: the auditor opens
     the PR on GitHub for the content (ADR-020, data minimisation)."""
+    repos = list(repos)
     rows = []
     for repo in repos:
         name = repo.get("repo")
@@ -224,12 +258,23 @@ def exceptions(repos: Iterable[dict], limit: int = MAX_EXCEPTIONS) -> tuple[list
                                  "detail": "committed to the default branch without a pull request"}],
                 })
     rows.sort(key=lambda r: r.get("at") or "", reverse=True)
-    return rows[:limit], max(0, len(rows) - limit)
+    # Gate rows are few and undated; they go last, but never fall off the cap.
+    gate_rows = [
+        {"kind": "GATE_CHECK", "repo": repo.get("repo"), "ref": g["check"], "url": None,
+         "at": None, "author": None, "ai_assisted": None,
+         "reasons": [{"rule": "GATE_NEVER_FAILED",
+                      "detail": f"ran {g['runs']} time{'s' if g['runs'] != 1 else ''} in the period "
+                                "and never failed; ask for a canary run that shows it can"}]}
+        for repo in repos for g in gate_liveness(repo) if g["runs"] and not g["failures"]
+    ][:limit]
+    kept = rows[:max(0, limit - len(gate_rows))]
+    return kept + gate_rows, len(rows) - len(kept)
 
 
 # --- GitHub REST -> the dicts above -------------------------------------------------
 
 API = "https://api.github.com"
+MAX_COMMITS_CHECKED = 30
 
 
 def _get(session, url: str, **params) -> Any:
@@ -266,6 +311,9 @@ def _protection(session, repo: str, branch: str) -> dict:
         "dismiss_stale_reviews": bool(reviews.get("dismiss_stale_reviews")),
         "enforce_admins": bool((raw.get("enforce_admins") or {}).get("enabled")),
         "allow_force_pushes": bool((raw.get("allow_force_pushes") or {}).get("enabled")),
+        "required_checks": sorted(
+            {c.get("context") for c in (raw.get("required_status_checks") or {}).get("checks", [])}
+            | set((raw.get("required_status_checks") or {}).get("contexts", [])) - {None}),
     }
 
 
@@ -290,6 +338,8 @@ def fetch(session, repo: str, since: datetime) -> dict:
         if not raw.get("merged_at") or raw["merged_at"] < cutoff:
             continue
         number, head = raw["number"], raw["head"]["sha"]
+        commits = list(_paged(session, f"{API}/repos/{repo}/pulls/{number}/commits"))
+        head_checks = _checks(session, repo, head)
         pulls.append({
             "number": number,
             "url": raw.get("html_url"),
@@ -306,9 +356,14 @@ def fetch(session, repo: str, since: datetime) -> dict:
                  "author_login": (c.get("author") or {}).get("login"),
                  "committer_login": (c.get("committer") or {}).get("login"),
                  "author_is_bot": (c.get("author") or {}).get("type") == "Bot"}
-                for c in _paged(session, f"{API}/repos/{repo}/pulls/{number}/commits")
+                for c in commits
             ],
-            "checks": _checks(session, repo, head),
+            "checks": head_checks,
+            # Every push, for gate liveness. The newest MAX_COMMITS_CHECKED only: two calls
+            # per commit, and a long-lived PR should not dominate the API budget.
+            "commit_checks": head_checks + [
+                check for c in commits[-MAX_COMMITS_CHECKED:] if c["sha"] != head
+                for check in _checks(session, repo, c["sha"])],
         })
     default_commits = [
         {"sha": c["sha"], "url": c.get("html_url"),
