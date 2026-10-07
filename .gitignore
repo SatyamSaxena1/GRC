@@ -4,6 +4,8 @@ __pycache__/
 .venv/
 .env
 *.db
+*.db-shm
+*.db-wal
 evidence_storage/
 evidence_storage_demo/
 .pytest_cache/
