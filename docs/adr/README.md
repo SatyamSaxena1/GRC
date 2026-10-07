@@ -20,3 +20,4 @@
 | [016](016-ai-rmf-starter-pack.md) | AI RMF as a content pack: a new UCO domain, and only the subcategories evidence can settle | Accepted |
 | [017](017-compliance-officer-persona.md) | The compliance officer is `ORG_ADMIN`; add only a read-only `COMPLIANCE_VIEWER` role | Accepted |
 | [018](018-model-boundary.md) | The model may witness, doubt, suggest or narrate — never decide | Proposed |
+| [019](019-how-this-repo-is-built.md) | How this repo is built: agent output is testimony, checks that can fail decide, a human seals one decision at a time | Proposed |
