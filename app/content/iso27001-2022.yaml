@@ -72,3 +72,35 @@ requirements:
         confidence: 1.0
         source: EXPERT
         delta_conditions: []
+
+  # Evidenced by a GitHub change-control snapshot (ADR-020). ISO states the outcome, not
+  # the mechanism: gate hardening beyond force-push is SUPPORTING here, a baseline of ours.
+  - clause: "A.8.32"
+    title: Change management
+    text: >
+      Changes to information processing facilities and systems follow change management procedures.
+    evidence_requirements:
+      - artefact_type: CHANGE_CONTROL_SNAPSHOT
+        required_attributes: [repositories_in_scope, default_branch_protected, required_approving_reviews,
+                              stale_reviews_dismissed, admins_can_bypass, force_push_allowed_on_default,
+                              merges_in_period, merges_without_independent_approval,
+                              merges_with_failing_or_missing_checks, direct_pushes_to_default,
+                              ai_assisted_merges, ai_assisted_merges_without_independent_approval]
+    mappings:
+      - uco: UCO-CHG-001
+        coverage: FULL
+        confidence: 0.8
+        source: EXPERT
+        delta_conditions:
+          - {attribute: default_branch_protected, operator: "==", value: true}
+          - {attribute: required_approving_reviews, operator: ">=", value: 1}
+          - {attribute: merges_without_independent_approval, operator: "==", value: 0}
+          - {attribute: merges_with_failing_or_missing_checks, operator: "==", value: 0}
+          - {attribute: direct_pushes_to_default, operator: "==", value: 0}
+          - {attribute: ai_assisted_merges_without_independent_approval, operator: "==", value: 0}
+      - uco: UCO-CHG-002
+        coverage: SUPPORTING
+        confidence: 0.8
+        source: EXPERT
+        delta_conditions:
+          - {attribute: force_push_allowed_on_default, operator: "==", value: false}

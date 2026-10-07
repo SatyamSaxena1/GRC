@@ -21,3 +21,4 @@
 | [017](017-compliance-officer-persona.md) | The compliance officer is `ORG_ADMIN`; add only a read-only `COMPLIANCE_VIEWER` role | Accepted |
 | [018](018-model-boundary.md) | The model may witness, doubt, suggest or narrate — never decide | Proposed |
 | [019](019-how-this-repo-is-built.md) | How this repo is built: agent output is testimony, checks that can fail decide, a human seals one decision at a time | Proposed |
+| [020](020-change-control-evidence.md) | Change-control evidence from clients' repositories: read Git, never replace it | Proposed |

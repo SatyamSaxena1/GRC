@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 
 from app import audit_log
 from app.auth import Actor, current_actor, deny_read_only
+from app.collectors import github_change_control
 from app.content.load import load as load_content
 from app.db import get_session, session_scope, set_tenant
 from app.models import Evidence, Organization
@@ -39,6 +40,9 @@ SOURCES = {
         "privileged_access_mfa", "access_logging_enabled",
     }),
     "hrms": ("HRMS", "HRMS_SNAPSHOT", {"terminated_users_with_active_accounts"}),
+    # Change control (ADR-020): read-only facts about how code reached the default branch.
+    "github": ("GitHub change control", "CHANGE_CONTROL_SNAPSHOT",
+               set(github_change_control.ATTRIBUTES)),
 }
 
 

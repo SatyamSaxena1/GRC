@@ -108,7 +108,7 @@ The two numbers that make the pitch concrete:
 
 ```
 GET /analytics/reuse              one artefact -> 7 control links, 6 uploads avoided (86%)
-GET /analytics/readiness/PCI-DSS  an ISO-only org is 40% PCI-ready before subscribing
+GET /analytics/readiness/PCI-DSS  an ISO-only org is 33% (2 of 6 clauses) PCI-ready before subscribing
 ```
 
 ## Frontend
