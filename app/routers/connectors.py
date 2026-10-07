@@ -43,6 +43,9 @@ SOURCES = {
     # Change control (ADR-020): read-only facts about how code reached the default branch.
     "github": ("GitHub change control", "CHANGE_CONTROL_SNAPSHOT",
                set(github_change_control.ATTRIBUTES)),
+    # Same snapshot, same rules, from GitLab (app/collectors/gitlab_change_control.py).
+    "gitlab": ("GitLab change control", "CHANGE_CONTROL_SNAPSHOT",
+               set(github_change_control.ATTRIBUTES)),
 }
 
 
@@ -116,7 +119,7 @@ def _pull(source: str) -> bytes:
 
 # Sources whose collector also returns the per-item rows behind its counts. Stored inside
 # the snapshot, so the rows are part of the same immutable, hashed evidence as the counts.
-EXCEPTION_SOURCES = {"github"}
+EXCEPTION_SOURCES = {"github", "gitlab"}
 _EXCEPTION_KEYS = {"kind", "repo", "ref", "url", "at", "author", "ai_assisted", "reasons"}
 
 

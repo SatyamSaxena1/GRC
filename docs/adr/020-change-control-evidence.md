@@ -102,7 +102,23 @@ it is reported as its own gap.
   next links, which use `/repositories/<id>/` paths that some egress proxies refuse.
 - The connector's environment-variable names carry the historical `DPDP_` prefix
   (`DPDP_GITHUB_COLLECTOR_URL`); renaming it is a separate change.
-- GitLab and Bitbucket need their own `fetch()`; `summarize()` and the packs are reused unchanged.
+- **GitLab** (`app/collectors/gitlab_change_control.py`, connector source `gitlab`, gitlab.com or
+  self-managed via `--url`) maps onto the same snapshot, and `summarize()`, `exceptions()` and the
+  packs are reused unchanged. So a verdict means the same on either platform. Where GitLab records
+  less, the mapping stays conservative:
+  - Approvals carry no commit, so they count as covering the merged commit only when the project
+    resets approvals on push; otherwise they are treated as possibly stale.
+  - Commits carry a name, not a username, so an approver whose name matches a commit author is
+    not independent.
+  - Nobody may push directly to the branch → admins bound. "Pipelines must succeed" → every job
+    is part of the gate. Jobs that are allowed to fail are not the gate going red.
+  - Checks come from the MR's own pipelines (fork and "merged results" pipelines appear only
+    there); the latest pipeline before the merge is the one that gated it.
+  - File names come from the diffs endpoint, which also returns diff text; only names and status
+    are kept.
+  - Settings hidden from the token (401/403/404) read as unknown; hidden deployments print a
+    warning instead of reading as none. The token needs `read_api` with at least Reporter access.
+- Bitbucket still needs its own `fetch()`.
 - The collector's token must be fine-grained and read-only: metadata, pull requests, contents
   read for commit metadata, and checks, plus administration read if classic branch protection
   is used (rulesets need none). A token that can write would make the platform a

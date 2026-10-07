@@ -138,7 +138,7 @@ def _review_outcome(pr: dict) -> tuple[list[str], list[str]]:
             reasons.append(f"{login}'s latest review was {str(review.get('state')).lower().replace('_', ' ')}")
         elif review.get("commit_id") != pr.get("head_sha"):
             reasons.append(f"{login} approved an earlier push, not the merged commit")
-        elif login in contributors:
+        elif login in contributors or (review.get("user") or {}).get("contributed"):
             reasons.append(f"{login} approved but wrote or committed part of the change")
         else:
             approvers.append(login)
