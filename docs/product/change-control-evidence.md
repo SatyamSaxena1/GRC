@@ -78,7 +78,7 @@ Next, roughly in order of value:
 5. ~~**Deploy reconciliation**~~: built. Production deployments (GitHub Deployments or named CI
    deploy jobs) are matched to the approved history; deploys from outside the default branch, of
    direct pushes, or of unapproved merges fail CC8.1, A.8.32 and 6.5.1.
-6. ~~**GitLab**~~: built (gitlab.com and self-managed), same snapshot and rules. **Bitbucket** next.
+6. ~~**GitLab** and **Bitbucket**~~: built (gitlab.com, self-managed GitLab, Bitbucket Cloud); same snapshot and rules on all three platforms.
 
 ## Pricing hypotheses (to test, not decided)
 - Audit firms: per engagement, as an add-on to the existing platform.

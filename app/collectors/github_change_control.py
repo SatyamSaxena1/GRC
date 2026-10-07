@@ -175,7 +175,8 @@ def checks_passed(pr: dict) -> bool:
 # rule 2, applied to clients). fnmatch's "*" also matches "/", so "tests/*" covers subfolders.
 GATE_PATTERNS = (
     ".github/workflows/*", ".github/actions/*", "CODEOWNERS", ".github/CODEOWNERS",
-    "docs/CODEOWNERS", ".gitlab-ci.yml", ".circleci/*", "azure-pipelines.yml", "Jenkinsfile",
+    "docs/CODEOWNERS", ".gitlab-ci.yml", ".gitlab/*", "bitbucket-pipelines.yml", ".circleci/*",
+    "azure-pipelines.yml", "Jenkinsfile",
     ".pre-commit-config.yaml", "tests/*", "test/*", "*/tests/*", "*/test/*", "*conftest.py",
     "test_*.py", "*/test_*.py", "*_test.*", "*.test.*", "*.spec.*",
 )

@@ -118,7 +118,23 @@ it is reported as its own gap.
     are kept.
   - Settings hidden from the token (401/403/404) read as unknown; hidden deployments print a
     warning instead of reading as none. The token needs `read_api` with at least Reporter access.
-- Bitbucket still needs its own `fetch()`.
+- **Bitbucket Cloud** (`app/collectors/bitbucket_change_control.py`, connector source `bitbucket`)
+  maps onto the same snapshot, with the same conservative choices as GitLab:
+  - Approvals carry no commit, so they cover the merged commit only with the "reset approvals on
+    change" restriction.
+  - People are matched by account uuid, or by name for commits not linked to an account.
+  - Admins are bound only when nobody is exempt from the push restriction and merge checks are
+    enforced. "Builds must pass" → every build status is part of the gate.
+  - Branch restrictions need repository admin to read; hidden reads as unprotected.
+  - Bitbucket links commits to PRs only through an add-on, so a direct push is a default-branch
+    commit that is neither a PR's merge commit nor one of a PR's commits.
+  - A merged PR's commit list starts with the merge commit, so the head is resolved from the PR's
+    source commit.
+  - Diffstat gives file names without diff text. Deployments come from Bitbucket Deployments by
+    environment name.
+  - Rate limits (429) are waited out using Retry-After, up to three times. An unauthenticated
+    caller gets about 60 requests an hour, so real use needs a token.
+- `bitbucket-pipelines.yml` and `.gitlab/` are gate paths for every collector.
 - The collector's token must be fine-grained and read-only: metadata, pull requests, contents
   read for commit metadata, and checks, plus administration read if classic branch protection
   is used (rulesets need none). A token that can write would make the platform a
