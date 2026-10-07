@@ -58,7 +58,15 @@ export default function RoleSurface({ color }: { color: string }) {
     if (!el) return;
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-    const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: false });
+    // WebGL can be disabled or blocked (Firefox asks per site; some managed browsers turn it
+    // off). three.js throws then, and an uncaught throw here blanks the whole app, so the
+    // decorative background simply doesn't draw. Same pattern as three/ParticleShield.tsx.
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: false, alpha: false });
+    } catch {
+      return;
+    }
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     el.appendChild(renderer.domElement);
 

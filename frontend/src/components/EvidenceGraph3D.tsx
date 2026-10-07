@@ -27,7 +27,15 @@ export default function EvidenceGraph3D({ nodes, edges, focus, accent, onHover, 
     if (!el) return;
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    // No WebGL (disabled or blocked): say so in place of the graph instead of throwing,
+    // which would blank the whole app.
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    } catch {
+      el.textContent = "The 3D evidence map needs WebGL, which this browser has turned off for this site.";
+      return;
+    }
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     el.appendChild(renderer.domElement);
     const labels = new CSS2DRenderer();
