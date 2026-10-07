@@ -36,7 +36,13 @@ export default function FeatureConstellation({ features, reachable, color, onPic
     if (!el) return;
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    // No WebGL (disabled or blocked): skip the decoration rather than blank the app.
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    } catch {
+      return;
+    }
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     el.appendChild(renderer.domElement);
     const labels = new CSS2DRenderer();
