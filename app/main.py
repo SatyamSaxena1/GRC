@@ -16,7 +16,7 @@ from app import auth, oidc
 from app.ai.provider import make_gateway
 from app.db import engine, init_db
 from app.routers import (
-    activity, admin, analytics, audit, breach, ciso, connectors, controls, evidence, export, firm,
+    activity, admin, analytics, audit, breach, ciso, connectors, controls, evidence, exceptions, export, firm,
     glossary, notifications, rights_requests,
 )
 
@@ -120,6 +120,7 @@ app.include_router(evidence.router)
 app.include_router(audit.router)
 app.include_router(controls.router)
 app.include_router(controls.gaps_router)
+app.include_router(exceptions.router)
 app.include_router(controls.tasks_router)
 app.include_router(controls.messages_router)
 app.include_router(controls.requests_router)

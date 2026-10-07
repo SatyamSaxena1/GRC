@@ -330,11 +330,11 @@ table.data-table tbody tr:last-child td { border-bottom: none; }
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
-.badge-pass, .badge-compliant, .badge-done, .badge-ready, .badge-ok { background: var(--success-bg); color: var(--success); }
-.badge-partial, .badge-open, .badge-review, .badge-scanning, .badge-extracting, .badge-analyzing, .badge-evaluating, .badge-pending { background: var(--warn-bg); color: var(--warn); }
+.badge-active, .badge-pass, .badge-compliant, .badge-done, .badge-ready, .badge-ok { background: var(--success-bg); color: var(--success); }
+.badge-requested, .badge-partial, .badge-open, .badge-review, .badge-scanning, .badge-extracting, .badge-analyzing, .badge-evaluating, .badge-pending { background: var(--warn-bg); color: var(--warn); }
 .badge-fail, .badge-failed, .badge-no_evidence, .badge-non_compliant { background: var(--danger-bg); color: var(--danger); }
 .badge-skipped { background: var(--neutral-bg); color: var(--text-muted); }
-.badge-locked { background: #eef0f6; color: #4b5170; }
+.badge-locked, .badge-waived, .badge-revoked, .badge-rejected, .badge-expired, .badge-rule_changed, .badge-value_changed { background: #eef0f6; color: #4b5170; }
 .badge-low { background: var(--neutral-bg); color: var(--text-muted); }
 .badge-medium { background: #eef1fb; color: var(--primary-dark); }
 .badge-high, .badge-critical { background: var(--danger-bg); color: var(--danger); }

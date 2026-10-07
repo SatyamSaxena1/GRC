@@ -359,6 +359,43 @@ class GapRow(Base):
         return self.status == "OPEN"
 
 
+class GapException(Base):
+    """A time-bound, human-approved exception to one gap (ADR-021). Never edits the gap: the
+    evaluator keeps recomputing it, and whether this exception still holds is decided at read
+    time (app/exceptions.py::state) against the CURRENT rule and value. It is bound to:
+
+    - rule_hash: the requirement's full definition from its content pack. Edit the rule and
+      every exception written against the old one stops applying.
+    - value_fingerprint: framework, clause, attribute, gap kind and the gap's actual value.
+      "4 unapproved merges" accepted never covers 5.
+    - expires_at: required, bounded; nothing is accepted forever.
+
+    Requested by the auditee, decided by an auditor on the engagement, never by the person
+    who asked. Rows are never deleted; a decision or revocation is a new state on the row and
+    an audit event."""
+    __tablename__ = "gap_exceptions"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"))
+    framework: Mapped[str]
+    clause: Mapped[str]
+    attribute: Mapped[str]
+    gap_kind: Mapped[str]
+    rule_hash: Mapped[str]
+    value_fingerprint: Mapped[str]
+    actual_value: Mapped[str | None] = mapped_column(default=None)  # shown, never trusted
+    justification: Mapped[str] = mapped_column(Text)
+    compensating_control: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(String, default="REQUESTED")  # REQUESTED|APPROVED|REJECTED|REVOKED
+    requested_by: Mapped[str]
+    requested_by_user_id: Mapped[str | None] = mapped_column(default=None)
+    requested_at: Mapped[datetime] = mapped_column(default=_now)
+    expires_at: Mapped[datetime]
+    decided_by: Mapped[str | None] = mapped_column(default=None)
+    decided_by_user_id: Mapped[str | None] = mapped_column(default=None)
+    decided_at: Mapped[datetime | None] = mapped_column(default=None)
+    decision_note: Mapped[str] = mapped_column(Text, default="")
+
+
 class TaskRow(Base):
     """A unit of remediation work. Two ways one comes to exist: the evaluator
     opens one per gap (`gap_id` set, status is evidence-driven — only new

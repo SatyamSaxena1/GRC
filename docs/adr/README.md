@@ -22,3 +22,4 @@
 | [018](018-model-boundary.md) | The model may witness, doubt, suggest or narrate — never decide | Proposed |
 | [019](019-how-this-repo-is-built.md) | How this repo is built: agent output is testimony, checks that can fail decide, a human seals one decision at a time | Proposed |
 | [020](020-change-control-evidence.md) | Change-control evidence from clients' repositories: read Git, never replace it | Proposed |
+| [021](021-gap-exceptions.md) | Gap exceptions that cannot quietly widen: rule- and value-bound, expiring, decided by an auditor | Proposed |
