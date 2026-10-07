@@ -748,3 +748,20 @@ def test_more_than_one_page_of_check_runs_is_read():
 
     checks = gcc._checks(Paged(), "acme/app", "abc")
     assert [c["conclusion"] for c in checks] == ["success", "failure"]
+
+
+def test_the_repos_own_main_ruleset_blocks_force_pushes_for_everyone():
+    """.github/rulesets/main-history.json, read as the collector reads an active ruleset:
+    force pushes and deletion are blocked, with no bypass list."""
+    import json
+    from pathlib import Path
+
+    raw = json.loads((Path(__file__).parent.parent / ".github/rulesets/main-history.json").read_text())
+    assert raw["enforcement"] == "active" and raw["bypass_actors"] == []
+    assert raw["conditions"]["ref_name"]["include"] == ["~DEFAULT_BRANCH"]
+    ruleset = {"id": 1, "name": raw["name"], "bypass_actors": raw["bypass_actors"],
+               "rules": {r["type"]: r.get("parameters", {}) for r in raw["rules"]}}
+    p = gcc.effective_protection({"enabled": False}, [ruleset])
+    out = gcc.summarize([{"protection": p, "pulls": [], "default_commits": []}])
+    assert out["default_branch_protected"] is True
+    assert out["force_push_allowed_on_default"] is False
