@@ -78,14 +78,30 @@ MISCALIBRATION_THRESHOLD = 3
 _OPEN, _ENDED = {ACTIVE, "REQUESTED"}, {"EXPIRED", "REVOKED", "RULE_CHANGED", "VALUE_CHANGED"}
 
 
-def rule_pressure(rows: list[GapException], content: Content) -> dict[tuple[str, str, str], dict]:
+def open_gap_fingerprints(db: Session, org_id: str) -> set[str]:
+    """The value fingerprints of this organisation's open gaps, as they are now."""
+    from app.models import Evidence
+    rows = (db.query(GapRow, EvidenceControlLink)
+            .join(EvidenceControlLink, EvidenceControlLink.id == GapRow.link_id)
+            .join(Evidence, Evidence.id == EvidenceControlLink.evidence_id)
+            .filter(Evidence.org_id == org_id, GapRow.status == "OPEN"))
+    return {gap_fingerprint(g, l) for g, l in rows}
+
+
+_GONE = "no-open-gap"  # never a real fingerprint
+
+
+def rule_pressure(rows: list[GapException], content: Content,
+                  open_fingerprints: set[str]) -> dict[tuple[str, str, str], dict]:
     """Per rule (framework, clause, attribute): exceptions open now, and ones that ended, which
-    is what renewing one leaves behind. Rejected requests are not counted."""
+    is what renewing one leaves behind. Rejected requests are not counted. An approved one whose
+    gap no longer has the accepted value (or is closed) has ended, as active_exception sees it."""
     out: dict[tuple[str, str, str], dict] = {}
     for exc in rows:
         key = (exc.framework, exc.clause, exc.attribute)
         counts = out.setdefault(key, {"open": 0, "ended": 0})
-        current = state(exc, content)
+        fingerprint = exc.value_fingerprint if exc.value_fingerprint in open_fingerprints else _GONE
+        current = state(exc, content, fingerprint)
         if current in _OPEN:
             counts["open"] += 1
         elif current in _ENDED:

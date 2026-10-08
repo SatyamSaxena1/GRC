@@ -74,6 +74,20 @@ def published_keys() -> list[dict]:
             for kid, k in public_keys().items()]
 
 
+def _unchained_rows(db: Session, chain: str, genesis: AuditEvent, until: str | None = None) -> list[AuditEvent]:
+    """Rows an instance still running the previous code wrote after this chain's genesis, during
+    a deploy switchover: outside the hash chain, so the checkpoint covers them by digest."""
+    after = genesis.detail["legacy_until"]
+    rows = [e for e in audit_log._legacy(db, chain) if audit_log._ts(e.at) > after]
+    return [e for e in rows if until is None or audit_log._ts(e.at) <= until]
+
+
+def _unchained(db: Session, chain: str, genesis: AuditEvent) -> dict:
+    rows = _unchained_rows(db, chain, genesis)
+    return {"count": len(rows), "digest": audit_log._legacy_digest(rows),
+            "until": max((audit_log._ts(e.at) for e in rows), default=None)}
+
+
 def _previous(db: Session, chain: str) -> dict | None:
     last = (db.query(AuditEvent).filter_by(chain=chain, action="AUDIT_CHECKPOINT_ISSUED")
             .order_by(AuditEvent.chain_seq.desc()).first())
@@ -101,6 +115,7 @@ def issue(db: Session, org_id: str, actor_label: str, request_id: str = "",
         "event_count": report.events,
         "genesis_hash": genesis.entry_hash,
         "previous": _previous(db, chain),
+        "unchained": _unchained(db, chain, genesis),
         "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z"),
     }
     public = key.public_key()
@@ -113,11 +128,26 @@ def issue(db: Session, org_id: str, actor_label: str, request_id: str = "",
     return signed
 
 
+def _well_formed(checkpoint) -> bool:
+    """A file someone uploads can hold anything: check the shape before trusting any field."""
+    if not isinstance(checkpoint, dict) or not isinstance(checkpoint.get("signature"), dict):
+        return False
+    unchained = checkpoint.get("unchained")
+    return (isinstance(checkpoint.get("chain_seq"), int) and not isinstance(checkpoint.get("chain_seq"), bool)
+            and all(isinstance(checkpoint.get(k), str) for k in ("org_id", "head_hash", "genesis_hash"))
+            and isinstance(unchained, dict) and isinstance(unchained.get("count"), int)
+            and isinstance(unchained.get("digest"), str)
+            and (unchained.get("until") is None or isinstance(unchained.get("until"), str))
+            and all(isinstance(v, str) for v in checkpoint["signature"].values()))
+
+
 def verify_signature(checkpoint: dict) -> list[str]:
-    signature = checkpoint.get("signature") or {}
-    body = {k: v for k, v in checkpoint.items() if k != "signature"}
-    if checkpoint.get("format") != FORMAT:
+    if not isinstance(checkpoint, dict) or checkpoint.get("format") != FORMAT:
         return [f"not a {FORMAT} checkpoint"]
+    if not _well_formed(checkpoint):
+        return ["the checkpoint is malformed: a field is missing or has the wrong type"]
+    signature = checkpoint["signature"]
+    body = {k: v for k, v in checkpoint.items() if k != "signature"}
     key = public_keys().get(signature.get("kid", ""))
     if key is None or signature.get("alg") != "Ed25519":
         return ["signed with a key this platform does not know"]
@@ -146,11 +176,20 @@ def verify(db: Session, org_id: str, checkpoint: dict) -> dict:
             genesis = db.query(AuditEvent).filter_by(chain=chain, chain_seq=1).one_or_none()
             if genesis is None or genesis.entry_hash != checkpoint.get("genesis_hash"):
                 problems.append("the chain was restarted since the checkpoint")
+            else:
+                unchained = checkpoint["unchained"]
+                rows = (_unchained_rows(db, chain, genesis, unchained["until"])
+                        if unchained["until"] else [])
+                if len(rows) != unchained["count"] or audit_log._legacy_digest(rows) != unchained["digest"]:
+                    problems.append("events written outside the chain during a deploy have changed "
+                                    "since the checkpoint")
         if not report.ok:
             problems += report.problems
+    seq = checkpoint.get("chain_seq") if isinstance(checkpoint, dict) else None
+    seq = seq if isinstance(seq, int) and not isinstance(seq, bool) else None
     return {"verified": not problems, "problems": problems,
-            "checkpoint_seq": checkpoint.get("chain_seq"), "current_head_seq": report.head_seq,
-            "events_since": max(0, report.head_seq - (checkpoint.get("chain_seq") or 0))}
+            "checkpoint_seq": seq, "current_head_seq": report.head_seq,
+            "events_since": max(0, report.head_seq - (seq or 0))}
 
 
 def export_events(db: Session, org_id: str) -> list[dict]:

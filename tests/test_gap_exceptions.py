@@ -248,3 +248,14 @@ def test_repeated_exceptions_on_one_rule_flag_it_as_possibly_miscalibrated(clien
     assert pressure == [{"framework": "SOC-2", "clause": gap["clause"],
                          "attribute": "merges_without_independent_approval",
                          "open": 1, "ended": 2, "orgs": 1}]
+
+
+def test_an_exception_retired_by_a_new_value_counts_as_ended(client, setup, monkeypatch):
+    """Review fix: pressure must agree with active_exception, which stops applying an
+    exception once the gap's value moves."""
+    org_id, engagement_id, gap = setup
+    exc = _request(client, org_id, gap["id"]).json()
+    _approve(client, engagement_id, exc["id"])
+    _sync(client, monkeypatch, org_id, unapproved=5)
+    row = client.get("/exceptions", headers={"authorization": f"org:{org_id}"}).json()[0]
+    assert row["same_rule"]["open"] == 0 and row["same_rule"]["ended"] == 1

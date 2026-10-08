@@ -47,6 +47,11 @@ def token(framework: str, clause: str) -> str:
     return re.sub(r"[^a-z0-9._-]", "-", raw)
 
 
+def _line(text: str) -> str:
+    """OSCAL titles are single-line markup: fold any line breaks a free-text name carries."""
+    return " ".join(str(text).split())
+
+
 def _ts(dt: datetime | None) -> str | None:
     if dt is None:
         return None
@@ -71,8 +76,12 @@ def build(db: Session, actor: Actor, content: Content, framework: str, controls:
     """`controls`, `gaps` and `verdict_of` come from the same sweeps the other exports use
     (app/routers/analytics.py), so this adds no authorization rule of its own."""
     org = db.get(Organization, actor.org_id)
-    engagement = (db.query(Engagement).filter_by(org_id=actor.org_id, status="ACTIVE")
-                  .order_by(Engagement.period_end.desc()).first())
+    # The auditor's own engagement when acting under one; the latest active one otherwise.
+    engagement = db.get(Engagement, actor.engagement_id) if actor.engagement_id else None
+    if engagement is None or engagement.org_id != actor.org_id:
+        engagement = (db.query(Engagement).filter_by(org_id=actor.org_id, status="ACTIVE")
+                      .order_by(Engagement.period_end.desc()).first())
+    org_name = _line(org.name)
     controls = sorted((c for c in controls if c["framework"] == framework), key=lambda c: c["clause"])
     gaps = [g for g in gaps if g["framework"] == framework]
 
@@ -92,7 +101,7 @@ def build(db: Session, actor: Actor, content: Content, framework: str, controls:
             resource_id = _uuid("evidence", evidence.id)
             resources[resource_id] = {
                 "uuid": resource_id,
-                "title": evidence.original_filename or evidence.artefact_type,
+                "title": _line(evidence.original_filename or evidence.artefact_type),
                 "props": _props(artefact_type=evidence.artefact_type, version=evidence.version),
                 "rlinks": [{"href": f"/evidence/{evidence.id}/file",
                             "hashes": [{"algorithm": "SHA-256", "value": evidence.sha256}]}],
@@ -122,11 +131,12 @@ def build(db: Session, actor: Actor, content: Content, framework: str, controls:
             risk_ids.append(risk["uuid"])
             risks.append(risk)
 
-        verdict = verdict_of(control["links"])
+        # Judge the finding on exactly the evidence its observations show: the current versions.
+        verdict = verdict_of([l for l in control["links"] if l.get("current", True)])
         verdict = _AUDITOR.get(verdict, verdict)
         finding = {
             "uuid": _uuid("finding", framework, control["clause"]),
-            "title": f"{framework} {control['clause']}" + (f": {control['title']}" if control["title"] else ""),
+            "title": _line(f"{framework} {control['clause']}" + (f": {control['title']}" if control["title"] else "")),
             "description": f"Control verdict {verdict}"
                            + (" (locked by the auditor)" if control["locked"] else "") + ".",
             "props": _props(clause=control["clause"], verdict=verdict,
@@ -143,7 +153,7 @@ def build(db: Session, actor: Actor, content: Content, framework: str, controls:
     plan_id = _uuid("assessment-plan", actor.org_id, engagement.id if engagement else "self-assessment")
     plan = {"uuid": plan_id,
             "title": "Assessment plan" + (f": engagement {engagement.id}" if engagement else ": self-assessment"),
-            "description": f"{framework} assessment of {org.name} on the GRC platform. There is no separate "
+            "description": f"{framework} assessment of {org_name} on the GRC platform. There is no separate "
                            f"OSCAL assessment plan; this resource stands in for it.",
             "props": _props(engagement=engagement.id if engagement else None, framework=framework)}
 
@@ -153,7 +163,7 @@ def build(db: Session, actor: Actor, content: Content, framework: str, controls:
              else min(stamps, default=EPOCH))
     result = {
         "uuid": _uuid("result", actor.org_id, framework),
-        "title": f"{framework} results for {org.name}",
+        "title": f"{framework} results for {org_name}",
         "description": "Verdicts decided by deterministic rules over extracted facts; a model never "
                        "decides a verdict (ADR-004). Auditor locks are shown as props.",
         "start": _ts(start),
@@ -169,7 +179,7 @@ def build(db: Session, actor: Actor, content: Content, framework: str, controls:
 
     document = {
         "metadata": {
-            "title": f"{org.name}: {framework} assessment results",
+            "title": f"{org_name}: {framework} assessment results",
             "last-modified": _ts(last_modified),
             "version": "",
             "oscal-version": OSCAL_VERSION,
