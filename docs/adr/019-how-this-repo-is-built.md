@@ -87,6 +87,10 @@ that has caught nothing and costs more than it saves, is removed by amending thi
 `tests/test_rls_postgres.py` on real Postgres as a non-superuser role, fails if the role could
 bypass RLS or if the tests are skipped, and fails when the ed57e9e fix is reverted. `deploy` now
 needs it. The look-back of rule 4 (production logs for the SQLite-only period) is still open.
+A second vacuous check turned up the same way: the audit hash chain had only ever been verified
+on SQLite. On Postgres, row-level security gave each tenant a partial view of one global chain,
+so it could not verify. A canary in the `rls` job showed it failing; chains are now per tenant,
+serialized, cover the timestamp, and are append-only in the database (`app/audit_log.py`).
 
 ## Alternatives considered
 - **Replace Git** (Mercurial, Pijul, Fossil, an operation-log system such as Zed's DeltaDB).

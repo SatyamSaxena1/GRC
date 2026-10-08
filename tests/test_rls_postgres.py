@@ -240,4 +240,50 @@ def test_the_audit_chain_verifies_from_every_tenants_view(client, engine):
     for org in (org_a, org_b):
         with Session(engine) as s, s.begin():
             set_tenant(s, org)
-            assert verify_chain(s) is True, f"chain broken from {org}'s view"
+            from app.audit_log import verify, visible_chains
+            assert verify_chain(s) is True, [verify(s, c) for c in visible_chains(s)]
+
+
+def test_the_database_refuses_to_edit_or_delete_audit_events(client, engine):
+    """Append-only in the database itself, not only by convention in the application."""
+    from sqlalchemy.orm import Session
+
+    from app.audit_log import record
+    from app.db import set_tenant
+
+    org = _org(client, "Acme")
+    with Session(engine) as s, s.begin():
+        set_tenant(s, org)
+        event_id = record(s, actor="t", action="TOUCHED", entity_type="t", entity="x", org_id=org).id
+    for statement in ("UPDATE audit_events SET reason = 'edited' WHERE id = :id",
+                      "DELETE FROM audit_events WHERE id = :id"):
+        with pytest.raises(Exception, match="append-only"):
+            with Session(engine) as s, s.begin():
+                set_tenant(s, org)
+                s.execute(text(statement), {"id": event_id})
+
+
+def test_concurrent_writers_never_fork_a_chain(client, engine):
+    """Writers of one chain are serialized by an advisory lock: twenty concurrent events
+    land as twenty consecutive links, not as branches sharing a predecessor."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    from sqlalchemy.orm import Session
+
+    from app.audit_log import record, verify
+    from app.db import set_tenant
+
+    org = _org(client, "Acme")
+
+    def write(i):
+        with Session(engine) as s, s.begin():
+            set_tenant(s, org)
+            record(s, actor="t", action=f"TOUCHED-{i}", entity_type="t", entity="x", org_id=org)
+
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        list(pool.map(write, range(20)))
+    with Session(engine) as s, s.begin():
+        set_tenant(s, org)
+        report = verify(s, org)
+    assert report.ok, report.problems
+    assert report.head_seq == report.events and report.events >= 21

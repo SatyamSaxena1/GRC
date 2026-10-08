@@ -33,6 +33,7 @@ from datetime import date, datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session
 
+from app import audit_log
 from app.content.load import Content
 from app.evaluate import evaluate
 from app.models import (
@@ -340,6 +341,8 @@ def _main() -> int:
             set_tenant(db, org.id)  # RLS scopes each pass (no-op on SQLite)
             report = attention_report(db, org.id, content)
             print(f"\n{org.name} ({org.id})")
+            # A broken audit chain is never a warning: silence is never green (ADR-019).
+            problems += _report_chain(db, audit_log.chain_of(org.id))
             if report.total == 0:
                 print("  nothing needs attention")
                 continue
@@ -362,8 +365,21 @@ def _main() -> int:
                         + sum(1 for b in report.breach if b.overdue)
                         + sum(1 for d in report.dsr if d.overdue))
 
+        problems += _report_chain(db, audit_log.PLATFORM)
+
     print(f"\n{problems} item(s) need attention")
     return 1 if problems else 0
+
+
+def _report_chain(db: Session, chain: str) -> int:
+    report = audit_log.verify(db, chain)
+    if not report.ok:
+        print(f"  AUDIT CHAIN BROKEN ({chain}): {'; '.join(report.problems)}")
+        return 1
+    if report.unchained_after_genesis:
+        print(f"  audit chain {chain}: {report.unchained_after_genesis} event(s) written outside "
+              f"the chain during a deploy switchover")
+    return 0
 
 
 def sync_all_connectors(db: Session, org_id: str) -> list[str]:

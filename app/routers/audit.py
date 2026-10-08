@@ -58,6 +58,14 @@ def _auditor_link(db: Session, actor: Actor, link_id: str) -> EvidenceControlLin
     return link
 
 
+@router.get("/chain")
+def chain_status(actor: Actor = Depends(current_actor), db: Session = Depends(get_session)):
+    """Whether this organisation's audit chain still verifies end to end, and its head."""
+    if not actor.org_id:
+        raise HTTPException(400, "no organisation selected")
+    return audit_log.verify(db, audit_log.chain_of(actor.org_id)).to_dict()
+
+
 @router.post("/links/{link_id}/verdict")
 def record_verdict(link_id: str, body: VerdictIn, actor: Actor = Depends(current_actor),
                    db: Session = Depends(get_session)):
