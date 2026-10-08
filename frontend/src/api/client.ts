@@ -872,6 +872,9 @@ export async function getEvidenceFile(id: string): Promise<Blob> {
   if (!res.ok) throw new ApiError(res.status, await res.text());
   return res.blob();
 }
+/** One framework's results as an OSCAL assessment-results document, for other GRC tools. */
+export const downloadOscalExport = (framework: string) =>
+  downloadFile("/export/oscal/assessment-results.json", `${framework.toLowerCase()}-assessment-results.oscal.json`, { framework });
 export const downloadComplianceExport = (format: "csv" | "xlsx" = "csv", params: Record<string, string | undefined> = {}) =>
   downloadFile(`/export/compliance.${format}`, `compliance-export.${format}`, params);
 export const downloadGapsExport = (params: Record<string, string | undefined> = {}) =>
