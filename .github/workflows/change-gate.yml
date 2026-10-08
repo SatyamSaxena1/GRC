@@ -1,0 +1,30 @@
+# The change-control gate on this repository itself (ADR-024), in warn-only mode: it reports
+# whether each pull request would pass the audit's per-merge rules, without blocking it.
+# Expect warnings while one person reviews everything; that is the finding, honestly stated.
+name: change-control gate
+
+on:
+  pull_request:
+  pull_request_review:
+    types: [submitted, dismissed]
+
+permissions:
+  contents: read
+  pull-requests: read
+  checks: read
+  statuses: read
+
+concurrency:
+  group: change-gate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    name: change-control gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/change-control-gate
+        with:
+          frameworks: SOC-2 ISO-27001 PCI-DSS
+          warn-only: "true"

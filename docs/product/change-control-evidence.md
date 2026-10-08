@@ -79,6 +79,9 @@ Next, roughly in order of value:
    deploy jobs) are matched to the approved history; deploys from outside the default branch, of
    direct pushes, or of unapproved merges fail CC8.1, A.8.32 and 6.5.1.
 6. ~~**GitLab** and **Bitbucket**~~: built (gitlab.com, self-managed GitLab, Bitbucket Cloud); same snapshot and rules on all three platforms.
+7. ~~**Pre-merge gate**~~: built for GitHub (ADR-024). The same rules, run on an open pull request
+   in the client's CI (`.github/actions/change-control-gate`), with a warn-only rollout mode
+   that never hides a gate that cannot run.
 
 ## Pricing hypotheses (to test, not decided)
 - Audit firms: per engagement, as an add-on to the existing platform.
