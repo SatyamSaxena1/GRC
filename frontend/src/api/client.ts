@@ -840,6 +840,33 @@ export type ActivityEvent = {
 };
 export const getActivity = () => request<ActivityEvent[]>("GET", "/activity");
 
+// Audit-chain integrity and auditor-held checkpoints (app/audit_log.py, ADR-023).
+export type ChainStatus = {
+  chain: string; ok: boolean; events: number; head_seq: number; head_hash: string;
+  legacy_events: number; unchained_after_genesis: number; problems: string[];
+};
+export const getChainStatus = () => request<ChainStatus>("GET", "/audit/chain");
+export type CheckpointVerdict = {
+  verified: boolean; problems: string[]; checkpoint_seq: number | null; current_head_seq: number; events_since: number;
+};
+export const verifyCheckpoint = (checkpoint: unknown) =>
+  request<CheckpointVerdict>("POST", "/audit/checkpoints/verify", { json: checkpoint });
+/** POST, then save the signed checkpoint the response carries: the auditor keeps this file. */
+export async function downloadCheckpoint(): Promise<void> {
+  const res = await fetch(new URL("/audit/checkpoints", window.location.origin), { method: "POST", headers: authHeaders() });
+  if (!res.ok) throw new ApiError(res.status, await res.text());
+  const checkpoint = await res.json();
+  const objectUrl = URL.createObjectURL(new Blob([JSON.stringify(checkpoint, null, 2)], { type: "application/json" }));
+  const a = document.createElement("a");
+  a.href = objectUrl;
+  a.download = `audit-checkpoint-${checkpoint.chain_seq}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(objectUrl);
+}
+export const downloadAuditEvents = () => downloadFile("/audit/events.ndjson", "audit-events.ndjson");
+
 // ---------------------------------------------------------------- export
 
 /** Triggers a browser download of an authenticated response. There is no

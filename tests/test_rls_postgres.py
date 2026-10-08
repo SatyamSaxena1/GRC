@@ -287,3 +287,29 @@ def test_concurrent_writers_never_fork_a_chain(client, engine):
         report = verify(s, org)
     assert report.ok, report.problems
     assert report.head_seq == report.events and report.events >= 21
+
+
+def test_an_auditor_checkpoint_issues_and_verifies_under_rls(client, monkeypatch):
+    """ADR-023 on the real substrate: issuing reads and extends the tenant's own chain, and the
+    trigger that makes audit_events append-only does not get in the way."""
+    import base64
+
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+    from cryptography.hazmat.primitives.serialization import Encoding, NoEncryption, PrivateFormat
+
+    raw = Ed25519PrivateKey.generate().private_bytes(Encoding.Raw, PrivateFormat.Raw, NoEncryption())
+    monkeypatch.setenv("AUDIT_CHECKPOINT_SIGNING_KEY", base64.b64encode(raw).decode())
+    org = client.post("/admin/organizations", json={"name": "Acme", "frameworks": ["ISO-27001"]}).json()["id"]
+    firm = client.post("/admin/audit-firms", json={"name": "Gemba"}).json()["id"]
+    engagement = client.post("/admin/engagements", json={"audit_firm_id": firm, "org_id": org,
+                                                         "frameworks": ["ISO-27001"]}).json()["id"]
+    admin = client.post("/admin/users", json={"email": "lead@gemba.test", "role": "FIRM_ADMIN",
+                                              "audit_firm_id": firm}).json()["id"]
+    client.post("/tasks", headers={"authorization": f"org:{org}"}, json={"title": "something audited"})
+    # a signed-in firm user acting under the engagement, as in production
+    issued = client.post("/audit/checkpoints",
+                         headers={"authorization": f"user:{admin}", "x-engagement-id": engagement})
+    assert issued.status_code == 200, issued.text
+    result = client.post("/audit/checkpoints/verify", headers={"authorization": f"org:{org}"},
+                         json=issued.json()).json()
+    assert result["verified"] is True, result
