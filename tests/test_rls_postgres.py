@@ -214,3 +214,30 @@ def test_verdict_provenance_is_recorded_and_replays_under_rls(client, monkeypatc
     assert link["provenance"]["evaluation_hash"]
     replay = client.get(f"/evidence/{evidence['id']}/links/{link['id']}/replay", headers=headers).json()
     assert replay["status"] == "REPRODUCED", replay
+
+
+def test_the_audit_chain_verifies_from_every_tenants_view(client, engine):
+    """The canary for the audit chain under RLS. Each tenant sees only its own events plus
+    platform events, so a single global chain cannot be both written and verified from a
+    tenant's view: one tenant's write chains off rows another tenant never sees."""
+    from sqlalchemy.orm import Session
+
+    from app.audit_log import record, verify_chain
+    from app.db import set_tenant
+
+    org_a, org_b = _org(client, "Acme"), _org(client, "Beta")
+
+    def write(org):
+        with Session(engine) as s, s.begin():
+            set_tenant(s, org)
+            record(s, actor="test", action="TOUCHED", entity_type="test", entity="x", org_id=org)
+
+    write(org_a)
+    write(org_b)
+    write(None)      # a platform event, visible to every tenant
+    write(org_a)
+
+    for org in (org_a, org_b):
+        with Session(engine) as s, s.begin():
+            set_tenant(s, org)
+            assert verify_chain(s) is True, f"chain broken from {org}'s view"
