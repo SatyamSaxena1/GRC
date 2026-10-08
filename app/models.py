@@ -319,6 +319,16 @@ class EvidenceControlLink(Base):
     # verdict input; purely a staleness signal for the payload.
     evaluated_at: Mapped[datetime] = mapped_column(default=_now)
 
+    # Provenance (ADR-022): what produced the verdict, so it can be replayed. Null on
+    # links evaluated before provenance existed. `engine_verdict` is what the rules
+    # said; an auditor's lock overwrites `verdict`, never this.
+    rule_hash: Mapped[str | None] = mapped_column(String, default=None)
+    engine_version: Mapped[str | None] = mapped_column(String, default=None)
+    build_id: Mapped[str | None] = mapped_column(String, default=None)
+    evaluation_inputs: Mapped[dict | None] = mapped_column(JSON, default=None)
+    evaluation_hash: Mapped[str | None] = mapped_column(String, default=None)
+    engine_verdict: Mapped[str | None] = mapped_column(String, default=None)
+
     auditor_verdict: Mapped[str | None] = mapped_column(default=None)
     locked_by_engagement_id: Mapped[str | None] = mapped_column(
         ForeignKey("engagements.id"), default=None
@@ -333,6 +343,19 @@ class EvidenceControlLink(Base):
     @property
     def locked(self) -> bool:
         return self.locked_by_engagement_id is not None
+
+
+class RuleDefinition(Base):
+    """Every requirement definition a verdict was ever judged against, keyed by its
+    rule_hash (app/exceptions.py), so an old verdict can be replayed after the pack
+    changes. Platform content, not tenant data: no org_id. Insert-only, and the body
+    must hash to its key, so an edited row is detectable (ADR-022)."""
+    __tablename__ = "rule_definitions"
+    rule_hash: Mapped[str] = mapped_column(String, primary_key=True)
+    framework: Mapped[str]
+    clause: Mapped[str]
+    body: Mapped[dict] = mapped_column(JSON)
+    first_seen_at: Mapped[datetime] = mapped_column(default=_now)
 
 
 class GapRow(Base):

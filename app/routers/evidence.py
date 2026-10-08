@@ -10,7 +10,7 @@ from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app import audit_log, authorization, events
+from app import audit_log, authorization, events, provenance
 from app.auth import Actor, current_actor, deny_read_only
 from app.content.load import load as load_content
 from app.db import get_session, session_scope, set_tenant
@@ -368,6 +368,16 @@ def _link_payload(db: Session, link, actor: Actor) -> dict:
         "id": link.id, "framework": link.framework, "clause": link.clause,
         "verdict": link.verdict, "auditor_verdict": link.auditor_verdict,
         "confidence": link.ai_confidence, "ucos": link.ucos, "locked": link.locked,
+        # What produced the verdict (ADR-022); nulls on links judged before it existed.
+        "provenance": {
+            "engine_verdict": link.engine_verdict, "rule_hash": link.rule_hash,
+            "engine_version": link.engine_version, "build_id": link.build_id,
+            "as_of": (link.evaluation_inputs or {}).get("as_of"),
+            "evaluation_hash": link.evaluation_hash,
+            "rules_changed_since": (
+                None if link.rule_hash is None
+                else provenance.rule_hash(CONTENT, link.framework, link.clause) != link.rule_hash),
+        },
         "gaps": [
             {"id": g.id, "kind": g.kind, "attribute": g.attribute, "detail": g.detail,
              "actual_value": g.actual_value, "required_value": g.required_value,
@@ -410,6 +420,18 @@ def evidence_exceptions(evidence_id: str, actor: Actor = Depends(current_actor),
     snapshot = json.loads(get_storage().get(evidence.storage_key))
     return {"exceptions": snapshot.get("exceptions", []),
             "exceptions_left_out": snapshot.get("exceptions_left_out", 0)}
+
+
+@router.get("/{evidence_id}/links/{link_id}/replay")
+def replay_link(evidence_id: str, link_id: str, actor: Actor = Depends(current_actor),
+                db: Session = Depends(get_session)):
+    """Re-run the exact rule this verdict was judged against over the exact inputs it read,
+    and say what today's rule would decide. Pure computation: it writes nothing (ADR-022)."""
+    _scoped_evidence(db, actor, evidence_id)
+    link = next((l for l in _visible_links(db, actor, evidence_id) if l.id == link_id), None)
+    if link is None:
+        raise HTTPException(404)
+    return provenance.replay(db, CONTENT, link)
 
 
 @router.get("/{evidence_id}/evaluations")

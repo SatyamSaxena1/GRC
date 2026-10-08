@@ -94,7 +94,10 @@ def _lock(db: Session, actor: Actor, link: EvidenceControlLink, verdict: str) ->
     link.unlocked_at = None
     audit_log.record(db, actor=actor.label(), request_id=actor.request_id, action="CONTROL_LOCKED",
                      entity_type="evidence_control_link", entity=link.id, org_id=actor.org_id,
-                     detail={"verdict": verdict, "evidence_id": link.evidence_id},
+                     detail={"verdict": verdict, "evidence_id": link.evidence_id,
+                             # what the rules decided, exactly (ADR-022)
+                             "engine_verdict": link.engine_verdict, "rule_hash": link.rule_hash,
+                             "evaluation_hash": link.evaluation_hash},
                      before=before, after=_snapshot(link))
     ciso_sync.push_verdict(db, actor.label(), actor.request_id, link, actor.org_id)
 

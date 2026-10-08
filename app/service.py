@@ -14,7 +14,7 @@ from datetime import date, datetime, timezone
 
 from sqlalchemy.orm import Session
 
-from app import audit_log, ciso_sync
+from app import audit_log, ciso_sync, provenance
 from app import events, normalize
 from app.ai import decision
 from app.ai.prompts import NUTSHELL_PROMPT_VERSION
@@ -597,6 +597,7 @@ def _run_pipeline(db: Session, content: Content, evidence: Evidence, actor_label
 
     as_of = _audit_as_of(db, evidence.org_id)
     org_commitments = _org_commitments(db, evidence.org_id)
+    provenance_trail: list[dict] = []
     for link in evaluate(attributes, evidence.artefact_type, org.frameworks, content, as_of,
                          org_commitments):
         evaluated.add((link.framework, link.clause))
@@ -620,6 +621,11 @@ def _run_pipeline(db: Session, content: Content, evidence: Evidence, actor_label
         row.ai_confidence = _link_confidence(link, run)
         row.rationale = f"{len(link.gaps)} gap(s)" if link.gaps else "all conditions met"
         row.evaluated_at = datetime.now(timezone.utc)
+        provenance.stamp(db, content, row, link, evidence.artefact_type, attributes, as_of,
+                         org_commitments)
+        provenance_trail.append({"framework": link.framework, "clause": link.clause,
+                                 "verdict": link.verdict,
+                                 "evaluation_hash": row.evaluation_hash})
         # Same gateway the extraction call above already checked — skip the whole
         # narration step rather than repeat a doomed health check per link when
         # the model was already unavailable this run.
@@ -660,7 +666,7 @@ def _run_pipeline(db: Session, content: Content, evidence: Evidence, actor_label
         db, actor=actor_label, action="EVIDENCE_PROCESSED", entity_type="evidence",
         entity=evidence.id, org_id=evidence.org_id,
         detail={"attributes": list(attributes), "extraction_status": run.status,
-                "quality_score": quality.score},
+                "quality_score": quality.score, "evaluations": provenance_trail},
         request_id=request_id,
     )
     # An unusable extraction is flagged for a human, never quietly accepted.
