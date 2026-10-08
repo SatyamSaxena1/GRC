@@ -221,3 +221,30 @@ def test_another_tenant_cannot_see_or_touch_an_exception(client, setup, bootstra
     assert client.get("/exceptions", headers={"authorization": f"org:{other_org}"}).json() == []
     assert _approve(client, other_engagement, exc["id"]).status_code == 404
     assert _request(client, other_org, gap["id"]).status_code == 404
+
+
+def test_repeated_exceptions_on_one_rule_flag_it_as_possibly_miscalibrated(client, setup, db):
+    """Trishul's operational rule: renewing exceptions on the same rule again and again says
+    more about the rule than about the risk."""
+    from app import monitor
+    from app.content.load import load as load_content
+
+    org_id, engagement_id, gap = setup
+    headers = {"authorization": f"org:{org_id}"}
+
+    def latest():
+        return client.get("/exceptions", headers=headers).json()[0]
+
+    first = _request(client, org_id, gap["id"]).json()
+    assert latest()["same_rule"] == {"open": 1, "ended": 0, "miscalibration_suspected": False}
+    for _ in range(2):  # accept, withdraw, ask again: what renewing looks like
+        exc_id = latest()["id"]
+        client.post(f"/exceptions/{exc_id}/revoke", headers=headers, json={"note": "renewing"})
+        _request(client, org_id, gap["id"])
+    assert first["id"] != latest()["id"]
+    assert latest()["same_rule"] == {"open": 1, "ended": 2, "miscalibration_suspected": True}
+
+    pressure = monitor.exception_pressure(db, [org_id], load_content())
+    assert pressure == [{"framework": "SOC-2", "clause": gap["clause"],
+                         "attribute": "merges_without_independent_approval",
+                         "open": 1, "ended": 2, "orgs": 1}]

@@ -70,3 +70,27 @@ def active_exception(db: Session, content: Content, org_id: str, gap: GapRow,
         attribute=gap.attribute, gap_kind=gap.kind, status="APPROVED",
     ).all()
     return next((e for e in candidates if state(e, content, fingerprint) == ACTIVE), None)
+
+
+# Trishul's operational rule: rising exceptions on one rule usually mean the rule is
+# miscalibrated, not that the risk is acceptable. At this many on one rule, say so.
+MISCALIBRATION_THRESHOLD = 3
+_OPEN, _ENDED = {ACTIVE, "REQUESTED"}, {"EXPIRED", "REVOKED", "RULE_CHANGED", "VALUE_CHANGED"}
+
+
+def rule_pressure(rows: list[GapException], content: Content) -> dict[tuple[str, str, str], dict]:
+    """Per rule (framework, clause, attribute): exceptions open now, and ones that ended, which
+    is what renewing one leaves behind. Rejected requests are not counted."""
+    out: dict[tuple[str, str, str], dict] = {}
+    for exc in rows:
+        key = (exc.framework, exc.clause, exc.attribute)
+        counts = out.setdefault(key, {"open": 0, "ended": 0})
+        current = state(exc, content)
+        if current in _OPEN:
+            counts["open"] += 1
+        elif current in _ENDED:
+            counts["ended"] += 1
+    for counts in out.values():
+        counts["miscalibration_suspected"] = counts["open"] + counts["ended"] >= MISCALIBRATION_THRESHOLD
+    return out
+

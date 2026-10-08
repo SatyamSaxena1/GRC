@@ -103,6 +103,13 @@ export function GapExceptions({ framework, clause, isAuditor, canRequest }: {
                 {e.actual_value != null && <span className="muted"> = {e.actual_value}</span>}</div>
               <div style={{ fontSize: 13 }}>{e.justification}</div>
               {e.compensating_control && <div className="muted" style={{ fontSize: 12 }}>Compensating control: {e.compensating_control}</div>}
+              {e.same_rule?.miscalibration_suspected && (e.status === "REQUESTED" || e.status === "APPROVED") && (
+                <div className="alert alert-warning" style={{ fontSize: 12, margin: "4px 0" }}>
+                  This rule has {e.same_rule.open} open and {e.same_rule.ended} past exception(s) here. Repeated
+                  exceptions usually mean the rule is miscalibrated, not that the risk is acceptable: review the
+                  rule before {e.status === "REQUESTED" ? "approving" : "renewing"}.
+                </div>
+              )}
               <div className="muted" style={{ fontSize: 12 }}>
                 {STATE_HELP[e.state]} Requested by {e.requested_by}; expires {new Date(e.expires_at).toLocaleDateString()}
                 {e.decided_by && <>; {e.status.toLowerCase()} by {e.decided_by}{e.decision_note && ` ("${e.decision_note}")`}</>}.
