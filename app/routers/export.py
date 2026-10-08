@@ -13,20 +13,24 @@ per-view exports, the same filters those list pages already accept.
 from __future__ import annotations
 
 import csv
+import hashlib
 import io
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
 from openpyxl import Workbook
 from openpyxl.worksheet.worksheet import Worksheet
 from sqlalchemy.orm import Session
 
+from app import audit_log, oscal
 from app.auth import Actor, current_actor
+from app.content.load import load as load_content
 from app.db import get_session
 from app.routers import controls as controls_router
 from app.routers.analytics import best_verdict, control_details
 
 router = APIRouter(prefix="/export", tags=["export"])
+CONTENT = load_content()
 
 COMPLIANCE_HEADER = ["framework", "clause", "title", "verdict", "auditor_verdict", "locked",
                      "owner_emails", "open_gaps"]
@@ -134,3 +138,29 @@ def tasks_xlsx(status: str | None = None, priority: str | None = None,
         for t in tasks
     ]
     return _xlsx_response(TASKS_HEADER, rows, "tasks-export.xlsx")
+
+
+@router.get("/oscal/assessment-results.json")
+def oscal_assessment_results(framework: str, actor: Actor = Depends(current_actor),
+                             db: Session = Depends(get_session)):
+    """One framework's results as an OSCAL assessment-results document (docs/product/oscal-export.md).
+    The same state always gives the same bytes; their SHA-256 is returned in a header and recorded
+    in the audit trail, so a file handed to someone else can be matched to this export."""
+    try:
+        CONTENT.framework(framework)
+    except KeyError:
+        raise HTTPException(404, f"unknown framework {framework}") from None
+    document = oscal.build(db, actor, CONTENT, framework, control_details(actor, db),
+                           controls_router.list_gaps(status="OPEN", actor=actor, db=db), best_verdict)
+    body = oscal.render(document)
+    digest = hashlib.sha256(body).hexdigest()
+    audit_log.record(db, actor=actor.label(), request_id=actor.request_id, action="EXPORT_GENERATED",
+                     entity_type="export", entity=f"oscal-assessment-results:{framework}",
+                     org_id=actor.org_id,
+                     detail={"format": f"oscal-assessment-results-{oscal.OSCAL_VERSION}",
+                             "framework": framework, "sha256": digest})
+    db.commit()
+    slug = oscal.token(framework, "results")
+    return Response(content=body, media_type="application/json", headers={
+        "Content-Disposition": f"attachment; filename={slug}.oscal.json",
+        "X-Content-SHA256": digest})

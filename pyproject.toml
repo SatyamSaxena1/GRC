@@ -24,7 +24,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "httpx"]
+dev = ["pytest", "httpx", "jsonschema"]  # jsonschema: OSCAL export validation (tests/test_oscal_export.py)
 # Rasterizes scanned PDF pages for the VLM fallback. Optional: without it those
 # pages degrade to "no text recovered" rather than failing. See ADR-008.
 ocr = ["pymupdf"]

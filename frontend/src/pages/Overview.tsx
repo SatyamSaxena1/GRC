@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ApiError, downloadComplianceExport, getDashboard } from "../api/client";
+import { ApiError, downloadComplianceExport, downloadOscalExport, getDashboard } from "../api/client";
 import { useApi } from "../lib/useApi";
 import { useSession } from "../lib/session";
 import { Badge } from "../components/Badge";
@@ -42,6 +42,18 @@ export function OverviewPage() {
     }
   };
 
+  const exportOscal = async (framework: string) => {
+    setExporting(true);
+    setExportError(null);
+    try {
+      await downloadOscalExport(framework);
+    } catch (err) {
+      setExportError(err instanceof ApiError ? String(err.detail) : (err as Error).message);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   // Everything below used to be 7 separate calls plus one GET /controls/{id}
   // per control (client-side fan-out) — now one round trip. See
   // app/routers/analytics.py::dashboard.
@@ -56,6 +68,7 @@ export function OverviewPage() {
   // then would be wrong (ProcessingNotice covers that case).
   const empty = data?.controls.total === 0 && data.evidence.total === 0;
   const canUpload = identity?.kind !== "auditor"; // same rule EvidenceList uses
+  const subscribed = (data?.readiness ?? []).filter((r) => r.already_subscribed);
 
   return (
     <div>
@@ -71,6 +84,21 @@ export function OverviewPage() {
           <button className="btn" disabled={exporting} onClick={() => exportReport("xlsx")}>
             {exporting ? "Preparing…" : "Download (XLSX)"}
           </button>
+          {subscribed.length > 0 && (
+            <select
+              className="btn"
+              aria-label="Export OSCAL assessment results"
+              title="OSCAL assessment results: a standard file other GRC tools can import"
+              value=""
+              disabled={exporting}
+              onChange={(e) => e.target.value && exportOscal(e.target.value)}
+            >
+              <option value="">OSCAL (JSON)…</option>
+              {subscribed.map((r) => (
+                <option key={r.framework} value={r.framework}>{r.framework}</option>
+              ))}
+            </select>
+          )}
           <PageTour id="overview" steps={TOUR_STEPS} />
         </div>
       </div>
