@@ -90,6 +90,7 @@ def submit_onboarding_request(body: OnboardingIn, db: Session = Depends(get_sess
         return {"id": same.id, "status": same.status}
     req = OnboardingRequest(**body.model_dump())
     db.add(req)
+    db.flush()  # assign the id, so the audit event names the request it records
     audit_log.record(db, actor="anonymous", action="ONBOARDING_REQUESTED",
                      entity_type="onboarding_request", entity=req.id,
                      detail={"org_name": req.org_name, "frameworks": req.frameworks})

@@ -571,6 +571,8 @@ class AuditEvent(Base):
     verified; hash chaining is designed in from the start rather than retrofitted.
     """
     __tablename__ = "audit_events"
+    # A second writer at the same position is an error, never a silent fork.
+    __table_args__ = (UniqueConstraint("chain", "chain_seq", name="uq_audit_events_chain_seq"),)
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
     # Explicit chain order. Timestamps can collide within the same microsecond and
     # ids are random, so ordering by them makes write-order and verify-order
@@ -589,3 +591,8 @@ class AuditEvent(Base):
     prev_hash: Mapped[str] = mapped_column(String, default="")
     entry_hash: Mapped[str] = mapped_column(String, default="")
     at: Mapped[datetime] = mapped_column(default=_now)
+    # Per-tenant chains (app/audit_log.py): the org id, or "platform" for events with no org.
+    # Null on rows written before per-tenant chains, which each chain's genesis event seals.
+    chain: Mapped[str | None] = mapped_column(String, default=None)
+    chain_seq: Mapped[int | None] = mapped_column(Integer, default=None)
+    hash_version: Mapped[int | None] = mapped_column(Integer, default=None)
