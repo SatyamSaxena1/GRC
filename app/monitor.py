@@ -37,7 +37,7 @@ from app import audit_log
 from app.content.load import Content
 from app.evaluate import evaluate
 from app.models import (
-    TERMINAL_EVIDENCE_STATUSES, AiRun, BreachEvent, Evidence, EvidenceControlLink, Organization,
+    TERMINAL_EVIDENCE_STATUSES, AiRun, BreachEvent, Evidence, EvidenceControlLink, GapException, Organization,
     RightsRequest,
 )
 
@@ -366,9 +366,39 @@ def _main() -> int:
                         + sum(1 for d in report.dsr if d.overdue))
 
         problems += _report_chain(db, audit_log.PLATFORM)
+        _report_exception_pressure(db, orgs, content)
 
     print(f"\n{problems} item(s) need attention")
     return 1 if problems else 0
+
+
+def exception_pressure(db: Session, org_ids: list[str], content: Content) -> list[dict]:
+    """Rules with many exceptions across all organisations, for whoever owns the content packs.
+    Counts only, never which organisations (Trishul's metric rule): the point is the rule."""
+    from app.db import set_tenant
+    from app.exceptions import MISCALIBRATION_THRESHOLD, rule_pressure
+
+    totals: dict[tuple[str, str, str], dict] = {}
+    for org_id in org_ids:
+        set_tenant(db, org_id)
+        rows = db.query(GapException).filter_by(org_id=org_id).all()
+        for key, counts in rule_pressure(rows, content).items():
+            total = totals.setdefault(key, {"open": 0, "ended": 0, "orgs": 0})
+            total["open"] += counts["open"]
+            total["ended"] += counts["ended"]
+            total["orgs"] += 1 if counts["open"] else 0
+    return [{"framework": fw, "clause": clause, "attribute": attr, **counts}
+            for (fw, clause, attr), counts in sorted(totals.items())
+            if counts["open"] + counts["ended"] >= MISCALIBRATION_THRESHOLD]
+
+
+def _report_exception_pressure(db: Session, orgs: list, content: Content) -> None:
+    rows = exception_pressure(db, [o.id for o in orgs], content)
+    if rows:
+        print("\nRules with repeated exceptions (review the rule before renewing them):")
+    for r in rows:
+        print(f"  {r['framework']} {r['clause']} {r['attribute']}: {r['open']} open, "
+              f"{r['ended']} ended, in {r['orgs']} organisation(s)")
 
 
 def _report_chain(db: Session, chain: str) -> int:

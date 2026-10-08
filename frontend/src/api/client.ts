@@ -913,6 +913,8 @@ export type GapException = {
   state: "ACTIVE" | "REQUESTED" | "REJECTED" | "REVOKED" | "EXPIRED" | "RULE_CHANGED" | "VALUE_CHANGED";
   requested_by: string; requested_at: string; expires_at: string;
   decided_by: string | null; decided_at: string | null; decision_note: string;
+  // Exceptions on the same rule in this organisation: open now, and ended (renewals leave these).
+  same_rule?: { open: number; ended: number; miscalibration_suspected: boolean };
 };
 export const listExceptions = () => request<GapException[]>("GET", "/exceptions");
 export const requestException = (gapId: string, body: { justification: string; compensating_control: string; expires_at: string }) =>
