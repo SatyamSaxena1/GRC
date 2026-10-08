@@ -16,6 +16,11 @@ from app.content.load import Content, DeltaCondition, EvidenceRequirement, Evide
 
 Verdict = str  # PASS | PARTIAL | FAIL
 
+# Bump whenever this module's logic changes what a verdict or gap would be. Stamped on
+# every verdict (ADR-022) and pinned by tests/test_verdict_provenance.py's engine
+# fingerprint, which fails until the bump and the new fingerprint land together.
+ENGINE_VERSION = "1"
+
 
 @dataclass(frozen=True)
 class Gap:
@@ -194,6 +199,22 @@ def _freshness_gaps(
                     actual=expires_on.isoformat(),
                     required=f"valid on or after {as_of.isoformat()}{commitment_note}")]
     return []
+
+
+def consulted_attributes(req: Requirement, artefact_type: str) -> tuple[set[str], set[str]]:
+    """Every evidence attribute and every org commitment `evaluate_requirement` can read
+    for this requirement and artefact type. Recording just these makes a verdict
+    replayable without copying the whole document's extraction (ADR-022)."""
+    matching = _matching_evidence_requirements(req, artefact_type)
+    attrs = set(_required_attributes(matching) or ())
+    attrs |= {c.attribute for m in req.mappings for c in m.delta_conditions}
+    commitments: set[str] = set()
+    validity = _validity_for(matching)
+    if validity is not None:
+        attrs |= {a for a in (validity.expiry_attribute, validity.issued_attribute) if a}
+        if validity.org_defined_max_age_attribute:
+            commitments.add(validity.org_defined_max_age_attribute)
+    return attrs, commitments
 
 
 def checks_for(req: Requirement, attributes: dict[str, Any], artefact_type: str) -> tuple[Check, ...]:

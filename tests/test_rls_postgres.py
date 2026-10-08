@@ -185,3 +185,32 @@ def test_signing_in_as_a_user_still_works_under_rls(client):
     alice = _user(client, org_a, "alice@acme.test")
     assert client.get("/controls", headers={"authorization": f"user:{alice}"}).status_code == 200
     assert client.get("/controls", headers={"authorization": "user:nobody"}).status_code == 401
+
+
+class _Collector:
+    content = b"{}"
+
+    def raise_for_status(self):
+        return None
+
+    def json(self):
+        return {"attributes": {"default_branch_protected": True, "required_approving_reviews": 1,
+                               "merges_without_independent_approval": 2}}
+
+
+def test_verdict_provenance_is_recorded_and_replays_under_rls(client, monkeypatch):
+    """ADR-022 on the real substrate: rule_definitions is platform content with no tenant
+    column, written from inside a tenant-bound pipeline, and replay reads it back."""
+    from app.routers import connectors
+    org = client.post("/admin/organizations", json={"name": "Acme", "frameworks": ["SOC-2"]}).json()["id"]
+    monkeypatch.setenv(connectors._env_key("github", "URL"), "https://collector.test/github")
+    monkeypatch.setattr(connectors.requests, "get", lambda url, **_: _Collector())
+    headers = {"authorization": f"org:{org}"}
+    assert client.post("/connectors/github/sync", headers=headers).status_code == 202
+    evidence = next(e for e in client.get("/evidence", headers=headers).json()
+                    if e["artefact_type"] == "CHANGE_CONTROL_SNAPSHOT")
+    link = next(l for l in client.get(f"/evidence/{evidence['id']}", headers=headers).json()["links"]
+                if l["clause"] == "CC8.1")
+    assert link["provenance"]["evaluation_hash"]
+    replay = client.get(f"/evidence/{evidence['id']}/links/{link['id']}/replay", headers=headers).json()
+    assert replay["status"] == "REPRODUCED", replay

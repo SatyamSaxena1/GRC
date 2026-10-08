@@ -346,7 +346,27 @@ export type EvidenceLink = {
   // Visible to every role — see docs/adr/013-organization-defined-commitments.md.
   commitment_stale: boolean;
   stale_reason: string;
+  // What produced the verdict (ADR-022). Nulls on links judged before it was recorded.
+  provenance?: Provenance;
 };
+export type Provenance = {
+  engine_verdict: string | null;
+  rule_hash: string | null;
+  engine_version: string | null;
+  build_id: string | null;
+  as_of: string | null;
+  evaluation_hash: string | null;
+  rules_changed_since: boolean | null;
+};
+export type ReplayResult = {
+  status: "REPRODUCED" | "DIFFERS" | "NOT_RECORDED" | "RULE_BODY_INVALID";
+  replayed?: { verdict: string } | null;
+  rules_changed_since?: boolean;
+  under_current_rules?: { verdict: string } | null;
+  current_engine_version: string;
+};
+export const replayLink = (evidenceId: string, linkId: string) =>
+  request<ReplayResult>("GET", `/evidence/${evidenceId}/links/${linkId}/replay`);
 export const getEvidenceEvaluations = (id: string) =>
   request<EvidenceLink[]>("GET", `/evidence/${id}/evaluations`);
 

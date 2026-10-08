@@ -14,6 +14,7 @@ import {
   streamEvidenceEvents,
   updateEvidenceMetadata,
   type CheckedItem,
+  type Provenance,
   type EvidenceAttribute,
   type EvidenceVersion,
   type Gap,
@@ -28,6 +29,7 @@ import { PageTour } from "../components/PageTour";
 import { DocumentViewer } from "../components/DocumentViewer";
 import { GapFinding } from "../components/GapFinding";
 import { Spinner } from "../components/Spinner";
+import { VerdictProvenance } from "../components/VerdictProvenance";
 import { ChangeExceptions } from "../components/ChangeExceptions";
 import { ARTEFACT_LABELS, ARTEFACT_TYPES } from "../lib/artefacts";
 import { describeBound, humanize, prettyValue } from "../lib/format";
@@ -40,6 +42,7 @@ type LiveLink = {
   id: string; framework: string; clause: string; verdict: string;
   locked: boolean; gaps: ShownGap[];
   checked?: CheckedItem[]; // absent on a live-preview link: the stream doesn't carry it
+  provenance?: Provenance; // absent on a live-preview link too
 };
 
 // A distinct thing to change in the document, and everything it would close.
@@ -186,7 +189,7 @@ export function EvidenceDetailPage() {
   const shownLinks: LiveLink[] = evidence.links.length
     ? evidence.links.map((l) => ({
         id: l.id, framework: l.framework, clause: l.clause, verdict: l.verdict,
-        locked: l.locked, gaps: l.gaps, checked: l.checked,
+        locked: l.locked, gaps: l.gaps, checked: l.checked, provenance: l.provenance,
       }))
     : liveLinks;
 
@@ -419,6 +422,9 @@ export function EvidenceDetailPage() {
                       <Checked checks={link.checked} passed={link.verdict === "PASS"} sourceOf={sourceOf} />
                     ) : (
                       open.length === 0 && link.verdict === "PASS" && <div className="muted verdict-ok">All conditions met.</div>
+                    )}
+                    {link.provenance?.evaluation_hash && (
+                      <VerdictProvenance evidenceId={id} linkId={link.id} provenance={link.provenance} />
                     )}
                   </div>
                 );
