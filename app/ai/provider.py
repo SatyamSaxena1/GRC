@@ -5,6 +5,9 @@
                                      (LM Studio, vLLM, llama.cpp server: anything OpenAI-compatible)
     LLM_FALLBACK=ollama|openai       (optional) a second provider used when the first is down
                                      (app/ai/failover.py), configured by its own variables above
+    LLM_DECISION_MODEL               (optional) a Jev-class model for the typed decisions only
+                                     (app/ai/decision.py; ADR-025), with LLM_DECISION_PROVIDER /
+                                     LLM_DECISION_BASE_URL when it runs on another server
 
 One place decides, so changing model server is an environment change with no code deploy,
 and switching back is the rollback. Tool-calling features keep their own gateway
@@ -35,10 +38,12 @@ def default_vision_model() -> str:
     return openai_compat.VISION_MODEL if _openai() else ollama.VISION_MODEL
 
 
-def _build(kind: str, model: str | None, vision_model: str | None):
+def _build(kind: str, model: str | None, vision_model: str | None, base_url: str = ""):
     if kind in ("openai", "openai-compat", "lmstudio"):
-        return openai_compat.OpenAICompatGateway(model=model or openai_compat.MODEL, vision_model=vision_model)
-    return ollama.OllamaGateway(model=model or ollama.MODEL, vision_model=vision_model)
+        return openai_compat.OpenAICompatGateway(model=model or openai_compat.MODEL, vision_model=vision_model,
+                                                 base_url=base_url or openai_compat.BASE_URL)
+    return ollama.OllamaGateway(model=model or ollama.MODEL, vision_model=vision_model,
+                                base_url=base_url or ollama.BASE_URL)
 
 
 def fallback() -> str:
@@ -59,6 +64,29 @@ def make_gateway(model: str | None = None, vision_model: str | None = None):
     from app.ai.failover import FailoverGateway
 
     return FailoverGateway(primary, _build(other, None, None))
+
+
+def decision_model() -> str:
+    return os.environ.get("LLM_DECISION_MODEL", "").strip()
+
+
+def decision_only(model: str, kind: str = "", base_url: str = ""):
+    """A gateway for `model` alone, on the decision server (or the primary one)."""
+    kind = kind or os.environ.get("LLM_DECISION_PROVIDER", "").strip().lower() or provider()
+    return _build(kind, model, None, base_url or os.environ.get("LLM_DECISION_BASE_URL", "").strip())
+
+
+def decision_gateway(extraction=None):
+    """The gateway the typed decisions ask (ADR-025). Without LLM_DECISION_MODEL it is the
+    extraction gateway itself, exactly as before. With it, a Jev-class model answers, and the
+    extraction gateway stands behind it: a decision server that is down costs one failed call,
+    not the wrong-document guard. `model` on the result names whichever one answered."""
+    extraction = extraction if extraction is not None else make_gateway()
+    model = decision_model()
+    if not model:
+        return extraction
+    from app.ai.failover import FailoverGateway
+    return FailoverGateway(decision_only(model), extraction)
 
 
 def list_models() -> list[str]:

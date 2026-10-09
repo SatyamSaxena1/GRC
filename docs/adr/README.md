@@ -26,3 +26,4 @@
 | [022](022-verdict-provenance.md) | Verdict provenance: every computed verdict names its rule, engine, build and inputs, and can be replayed | Proposed |
 | [023](023-auditor-held-checkpoints.md) | Auditor-held signed checkpoints of the audit chain, verifiable offline | Proposed |
 | [024](024-pre-merge-change-gate.md) | A pre-merge change-control gate that runs the audit's own rules in the client's CI | Proposed |
+| [025](025-jev-class-decision-model.md) | Typed decisions get their own Jev-class model, measured on our own cases | Proposed |

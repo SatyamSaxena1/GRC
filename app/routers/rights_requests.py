@@ -19,9 +19,9 @@ from sqlalchemy.orm import Session
 
 from app import audit_log
 from app.ai import decision
+from app.ai.provider import decision_gateway
 from app.auth import Actor, current_actor, deny_read_only
 from app.db import get_session
-from app.ingest import gateway_for
 from app.models import OrgCommitment, RightsRequest, TaskRow
 
 router = APIRouter(prefix="/rights-requests", tags=["rights-requests"])
@@ -76,7 +76,15 @@ KINDS = {
     "NOMINATION": "names another person to exercise their rights if they die or become incapacitated (s.14)",
     "GRIEVANCE": "complains about how their data, or an earlier request, was handled (s.13)",
 }
+# An explicit way out: without it, "hello, is this the right email?" was
+# confidently a GRIEVANCE (0.75, qwen2.5vl:7b) because it had to be *something*.
+KIND_OPTIONS = {**KINDS, "NOT_A_REQUEST": "does not ask to exercise any of these rights"}
+KIND_QUESTION = "Which kind of data-principal request is this?"
 SUGGEST_THRESHOLD = 0.6  # same bar as the evidence upload form's type suggestion
+
+
+def kind_state(details: str) -> str:
+    return f"The requester wrote:\n{details}"
 
 
 class KindSuggestion(BaseModel):
@@ -91,13 +99,7 @@ def suggest_kind(body: KindSuggestion, actor: Actor = Depends(current_actor)):
         raise deny_read_only(actor, "log a rights request")
     if not body.details.strip():
         return {"probabilities": {}, "suggested": None}
-    # An explicit way out: without it, "hello, is this the right email?" was
-    # confidently a GRIEVANCE (0.75, qwen2.5vl:7b) because it had to be *something*.
-    probabilities = decision.choose(
-        gateway_for(None), "Which kind of data-principal request is this?",
-        f"The requester wrote:\n{body.details}",
-        {**KINDS, "NOT_A_REQUEST": "does not ask to exercise any of these rights"},
-    )
+    probabilities = decision.choose(decision_gateway(), KIND_QUESTION, kind_state(body.details), KIND_OPTIONS)
     suggested = decision.top(probabilities, SUGGEST_THRESHOLD)
     probabilities.pop("NOT_A_REQUEST", None)
     return {"probabilities": probabilities,

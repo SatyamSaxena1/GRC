@@ -1,0 +1,23 @@
+{
+  "about": "Value/quote pairs for the quote-support check (app/service.py SUPPORT_QUESTION). YES: the quote states the value, often in other words. NO: it states something else, or nothing about it. Written to mirror the 2026-09-24 and 2026-10-06 measurements: normalised values that must read as stated, blunt wrong copies, and subtle scope changes. Ground truth; never edited to make a model pass.",
+  "cases": [
+    {"attribute": "password_min_length", "value": 12, "quote": "Passwords must be at least 12 characters.", "expected": "YES"},
+    {"attribute": "review_date", "value": "2026-03-20", "quote": "Review completed: 20 March 2026", "expected": "YES"},
+    {"attribute": "compliance_status", "value": true, "quote": "Overall Compliance Status: Pass", "expected": "YES"},
+    {"attribute": "compliance_status", "value": false, "quote": "Overall Compliance Status: Fail", "expected": "YES"},
+    {"attribute": "access_review_frequency_days", "value": 90, "quote": "Access rights are reviewed every 90 days.", "expected": "YES"},
+    {"attribute": "approver_role", "value": "Chief Information Security Officer", "quote": "Approved by: Meera Khanna, Chief Information Security Officer", "expected": "YES"},
+    {"attribute": "mfa_required_for", "value": ["remote access", "administrative access"], "quote": "Multi-factor authentication is required for all remote access and for administrative access.", "expected": "YES"},
+    {"attribute": "log_retention_days", "value": 365, "quote": "Audit logs are retained for one year.", "expected": "YES"},
+    {"attribute": "effective_date", "value": "2026-09-09", "quote": "Effective Date: 9 September 2026", "expected": "YES"},
+    {"attribute": "encryption_at_rest", "value": true, "quote": "All customer data is encrypted at rest using AES-256.", "expected": "YES"},
+    {"attribute": "password_min_length", "value": 8, "quote": "Passwords must be at least 12 characters.", "expected": "NO"},
+    {"attribute": "compliance_status", "value": true, "quote": "Overall Compliance Status: Fail", "expected": "NO"},
+    {"attribute": "access_review_frequency_days", "value": 30, "quote": "Access rights are reviewed every 90 days.", "expected": "NO"},
+    {"attribute": "approver_role", "value": "Chief Executive Officer", "quote": "Approved by: Meera Khanna, Chief Information Security Officer", "expected": "NO"},
+    {"attribute": "effective_date", "value": "2026-09-19", "quote": "Effective Date: 9 September 2026", "expected": "NO"},
+    {"attribute": "log_retention_days", "value": 365, "quote": "Audit logs are retained for 90 days.", "expected": "NO"},
+    {"attribute": "mfa_required_for", "value": ["all access"], "quote": "Multi-factor authentication is required for remote access.", "expected": "NO"},
+    {"attribute": "encryption_at_rest", "value": true, "quote": "Data in transit is protected with TLS 1.2 or higher.", "expected": "NO"}
+  ]
+}

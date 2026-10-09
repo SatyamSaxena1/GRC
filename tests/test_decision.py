@@ -70,8 +70,27 @@ def test_order_averaging_cancels_position_bias():
     assert len(gateway.prompts) == 3
     firsts = {p.split("Options:\n")[1].split("\n")[0].split(": ")[0][3:] for p in gateway.prompts}
     assert firsts == set(OPTIONS)  # every option led once
-    assert all(math.isclose(p, 1 / 3) for p in averaged.values())
-    assert decision.top(averaged, threshold=0.6) is None  # no longer a confident pick
+    assert averaged == {}  # each order put a different option on top: no answer at all
+
+    tops = [decision.top(p) for p in decision.passes(PositionBiasedGateway(), "q", "s", OPTIONS, orders=3)]
+    assert sorted(tops) == sorted(OPTIONS) and not decision.stable(
+        decision.passes(PositionBiasedGateway(), "q", "s", OPTIONS, orders=3))
+
+
+def test_an_answer_that_holds_in_every_order_is_averaged():
+    """The measured PCI case: SCAN_REPORT on top in every order, at 0.98 and at 0.71."""
+    class Steady(FakeGateway):
+        def next_token_logprobs(self, system, user, top=20):
+            listing = user.split("Options:\n")[1].splitlines()
+            letter = next(line[0] for line in listing if ") SCAN_REPORT:" in line)
+            self.calls = getattr(self, "calls", 0) + 1
+            share = 0.98 if self.calls == 1 else 0.71
+            rest = (1 - share) / 2
+            return {l: math.log(share if l == letter else rest) for l in "ABC"}
+
+    averaged = decision.choose(Steady(), "q", "s", OPTIONS, orders=3)
+    assert decision.top(averaged) == "SCAN_REPORT"
+    assert math.isclose(averaged["SCAN_REPORT"], (0.98 + 0.71 + 0.71) / 3)
 
 
 def test_order_averaging_fails_whole_on_a_failed_pass():
@@ -268,3 +287,75 @@ def test_the_quote_check_tells_the_model_a_normalised_value_counts_as_stated():
     from app.service import SUPPORT_QUESTION
     for needle in ("normalised", "'Pass'", "2026-06-18", "different, or says nothing"):
         assert needle in SUPPORT_QUESTION
+
+
+def test_without_a_decision_model_the_extraction_gateway_decides(monkeypatch):
+    from app.ai import provider
+    monkeypatch.delenv("LLM_DECISION_MODEL", raising=False)
+    extraction = FakeGateway()
+    assert provider.decision_gateway(extraction) is extraction
+
+
+def test_a_decision_model_answers_with_the_extraction_model_behind_it(monkeypatch):
+    """ADR-025: a Jev-class model for the typed decisions; the extraction gateway stays
+    behind it so a down decision server does not switch the wrong-document guard off."""
+    from app.ai import provider
+    from app.ai.failover import FailoverGateway
+    monkeypatch.setenv("LLM_DECISION_MODEL", "h2o-lightning-4b")
+    monkeypatch.setenv("LLM_DECISION_PROVIDER", "openai")
+    monkeypatch.setenv("LLM_DECISION_BASE_URL", "http://decider:8000")
+    extraction = FakeGateway()
+    gateway = provider.decision_gateway(extraction)
+    assert isinstance(gateway, FailoverGateway) and gateway.secondary is extraction
+    assert gateway.primary.model == "h2o-lightning-4b" and gateway.primary.base_url == "http://decider:8000"
+
+    extraction.up = True
+    gateway.primary.available = lambda: False  # decision server down: the extraction model answers
+    assert gateway.model == "fake"
+
+
+def test_the_pipeline_asks_the_decision_model_not_the_extraction_one(client, bootstrap, upload, monkeypatch):
+    from app.ai.failover import FailoverGateway
+    monkeypatch.setenv("LLM_DECISION_MODEL", "h2o-lightning-4b")
+    seen = []
+
+    def fake_extract(text, names, method="native_text", gateway=None):
+        return ExtractionRun(fields={n: ExtractedField() for n in names},
+                             model="stub", provider="stub", status="OK")
+
+    def fake_choose(gateway, question, state, options, **_):
+        seen.append(gateway)
+        return {}
+
+    monkeypatch.setattr(service, "extract_attributes", fake_extract)
+    monkeypatch.setattr(service, "generate_nutshell", lambda *a, **k: "")
+    monkeypatch.setattr(decision, "choose", fake_choose)
+    org_id, _ = bootstrap(client)
+    upload(client, org_id)
+    assert seen and all(isinstance(g, FailoverGateway) and g.primary.model == "h2o-lightning-4b" for g in seen)
+    _suggest(client, {"authorization": f"org:{org_id}"})
+    assert seen[-1].primary.model == "h2o-lightning-4b"
+
+
+def _answers_policy(user):
+    listing = user.split("Options:\n")[1].splitlines()
+    return {next(line[0] for line in listing if ") POLICY:" in line): 0.0}
+
+
+def test_passes_from_two_models_are_never_averaged():
+    """The decision server failing over to the extraction model between passes would mix
+    two models' answers into one number."""
+    class OneModel(FakeGateway):
+        def next_token_logprobs(self, system, user, top=20):
+            return _answers_policy(user)  # the same answer in every order
+
+    class Switches(OneModel):
+        calls = 0
+
+        def next_token_logprobs(self, system, user, top=20):
+            self.calls += 1
+            self.model = "decider" if self.calls == 1 else "extractor"
+            return super().next_token_logprobs(system, user, top)
+
+    assert decision.top(decision.choose(OneModel(), "q", "s", OPTIONS, orders=3)) == "POLICY"
+    assert decision.choose(Switches(), "q", "s", OPTIONS, orders=3) == {}
