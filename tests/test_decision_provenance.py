@@ -122,3 +122,31 @@ def test_calibration_scores_settled_decisions_against_what_people_did(client, bo
     out = capsys.readouterr().out
     assert "artefact_type_check decider: 2 asked, 1 flagged, 2 settled, accuracy 100%" in out
     assert org_id not in out  # counts only, never which organisation
+
+
+def test_a_changed_option_description_changes_the_hash():
+    """Review fix: the model sees each option's description, so the hash must too."""
+    assert decision.options_digest({"YES": "states it"}) != decision.options_digest({"YES": "implies it"})
+
+
+def test_a_failover_between_quote_checks_records_nothing(client, bootstrap, upload, db):
+    """Review fix: answers from two models must not land in one record under the last one."""
+    from types import SimpleNamespace
+    org_id, _ = bootstrap(client)
+    evidence = db.get(Evidence, upload(client, org_id).json()["evidence_id"])
+    gateway = SimpleNamespace(model="decider", provider="fake", last_latency_ms=0)
+    answers = iter([{"YES": 0.9, "NO": 0.1}, {"YES": 0.2, "NO": 0.8}])
+
+    def choose(gw, question, state, options, **_):
+        answer = next(answers)
+        gateway.model = "decider" if answer["YES"] > 0.5 else "extractor"  # failed over before the second
+        return answer
+
+    original, decision.choose = decision.choose, choose
+    try:
+        fields = {n: ExtractedField(value=1, sources=[Source(quote=f"{n} is 1")]) for n in ("a", "b")}
+        run = ExtractionRun(fields=fields, model="stub", provider="stub", status="OK")
+        assert service._unsupported_values(db, gateway, evidence, run) == []
+    finally:
+        decision.choose = original
+    assert not db.query(AiRun).filter_by(evidence_id=evidence.id, operation="quote_support_check").count()

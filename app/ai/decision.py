@@ -140,3 +140,9 @@ def brier(probabilities: dict[str, float], truth: str, options=None) -> float:
     keys = list(options if options is not None else probabilities)
     p = probabilities or {k: 1 / len(keys) for k in keys}
     return sum((p.get(k, 0.0) - (k == truth)) ** 2 for k in keys) / 2
+
+
+def options_digest(options: dict[str, str]) -> str:
+    """The options exactly as the model sees them, keys and descriptions in order: a changed
+    description is a different question even when every key is the same."""
+    return digest(json.dumps(list(options.items()), ensure_ascii=False))

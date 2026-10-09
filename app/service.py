@@ -142,7 +142,7 @@ def _type_mismatch(db: Session, gateway, evidence: Evidence, text: str, trail: l
     top = decision.top(probabilities)
     _decision_run(db, gateway, evidence, "artefact_type_check", "artefact_type:v1",
                   {"question_sha256": decision.digest(CLASSIFY_QUESTION), "options": list(ARTEFACT_TYPES),
-                   "orders": CLASSIFY_ORDERS, "declared": evidence.artefact_type,
+                   "options_sha256": decision.options_digest(ARTEFACT_TYPES), "orders": CLASSIFY_ORDERS, "declared": evidence.artefact_type,
                    "state_sha256": decision.digest(classify_state(filename, text))},
                   probabilities, trail, confidence=probabilities[top])
     declared = evidence.artefact_type
@@ -198,6 +198,7 @@ def _unsupported_values(db: Session, gateway, evidence: Evidence, run, trail: li
     a hallucination check on extraction, one yes/no per quoted field."""
     checked: dict[str, dict] = {}
     states: dict[str, str] = {}
+    models: set[str] = set()
     unsupported = []
     for name, field in run.fields.items():
         quote = " … ".join(s.quote for s in field.sources if s.quote)
@@ -207,6 +208,9 @@ def _unsupported_values(db: Session, gateway, evidence: Evidence, run, trail: li
         probabilities = decision.choose(gateway, SUPPORT_QUESTION, state, SUPPORT_OPTIONS)
         if not probabilities:
             return []  # model gone mid-way: judge nothing rather than half
+        models.add(getattr(gateway, "model", ""))
+        if len(models) > 1:
+            return []  # failed over mid-way: one record must not credit one model with another's answers
         checked[name] = probabilities
         states[name] = decision.digest(state)
         if probabilities.get("NO", 0.0) >= UNSUPPORTED_MIN:
@@ -214,7 +218,7 @@ def _unsupported_values(db: Session, gateway, evidence: Evidence, run, trail: li
     if checked:
         _decision_run(db, gateway, evidence, "quote_support_check", "quote_support:v3",
                       {"question_sha256": decision.digest(SUPPORT_QUESTION), "options": list(SUPPORT_OPTIONS),
-                       "orders": 1, "state_sha256": states},
+                       "options_sha256": decision.options_digest(SUPPORT_OPTIONS), "orders": 1, "state_sha256": states},
                       checked, trail, requested_attributes=list(checked))
     return unsupported
 
