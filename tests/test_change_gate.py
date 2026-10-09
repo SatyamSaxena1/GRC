@@ -125,3 +125,19 @@ def test_the_gate_and_the_period_audit_agree_on_the_same_change():
         rows, _ = gcc.exceptions([{"repo": "acme/app", "protection": {}, "pulls": [pr],
                                    "default_commits": [], "deployments": []}])
         assert (gate["status"] == change_gate.PASS) == (not [r for r in rows if r["kind"] == "PULL_REQUEST"]), github
+
+
+def test_waiting_rereads_only_the_head_checks(monkeypatch, capsys):
+    """Review fix: polling must not re-read reviews, commits and files on every round."""
+    monkeypatch.setattr(change_gate.time, "sleep", lambda s: None)
+    api = _GitHub(reviews=[("bob", "h9")], checks=[("ci", "in_progress")])
+    calls = []
+    original = api.get
+    api.get = lambda url, params=None, timeout=None: (calls.append(url), original(url, params, timeout))[1]
+    clock = iter([0, 0, 1, 2, 3, 100, 100, 100])
+    monkeypatch.setattr(change_gate.time, "monotonic", lambda: next(clock))
+    code = change_gate.main(["--repo", "acme/app", "--pr", "9", "--wait", "10", "--poll", "1", "--json"],
+                            session=api)
+    assert code == change_gate.PENDING
+    assert calls.count(R + "/pulls/9/reviews") == 1 and calls.count(R + "/pulls/9/files") == 1
+    assert calls.count(R + "/commits/h9/check-runs") > 1

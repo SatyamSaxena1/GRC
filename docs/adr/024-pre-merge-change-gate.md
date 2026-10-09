@@ -47,6 +47,13 @@ judges one open pull request:
 - **Independence.** The platform never reads the gate's result. The gate is the client's own
   preventive control; the audit still reads Git independently afterwards (ADR-020). A green gate
   is testimony, not evidence.
+- **The gate never runs code from the change it judges.** Otherwise a pull request could
+  edit the gate to pass itself. This repository's workflow checks out the base commit before
+  running the local action. Clients pin the action to a tag or commit SHA
+  (`uses: SatyamSaxena1/GRC/.github/actions/change-control-gate@<sha>`), never to a branch the
+  pull request can change.
+- **Waiting is cheap.** While other checks run, only the head commit's checks are re-read,
+  not the whole pull request, so a long wait cannot exhaust the token's API allowance.
 - This repository runs the gate on its own pull requests in warn-only mode
   (`.github/workflows/change-gate.yml`).
 

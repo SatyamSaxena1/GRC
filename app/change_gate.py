@@ -124,13 +124,16 @@ def _session(token: str | None):
 def run(args: argparse.Namespace, session=None) -> tuple[int, dict | str]:
     session = session or _session(os.environ.get("GITHUB_TOKEN"))
     deadline = time.monotonic() + args.wait
+    raw = gcc._get(session, f"{gcc.API}/repos/{args.repo}/pulls/{args.pr}")
+    pr = gcc.pull_facts(session, args.repo, raw)  # reviews, commits, files: read once
     while True:
-        raw = gcc._get(session, f"{gcc.API}/repos/{args.repo}/pulls/{args.pr}")
-        result = judge(gcc.pull_facts(session, args.repo, raw), args.framework, set(args.self_check),
-                       args.gate_path)
+        result = judge(pr, args.framework, set(args.self_check), args.gate_path)
         if result["status"] != PENDING or time.monotonic() >= deadline:
             return result["status"], result
         time.sleep(min(args.poll, max(0.0, deadline - time.monotonic())))
+        # Only the head commit's checks change while waiting; re-reading the whole pull
+        # request on every poll could exhaust the token's API allowance.
+        pr = {**pr, "checks": gcc._checks(session, args.repo, pr["head_sha"])}
 
 
 def main(argv: list[str] | None = None, session=None) -> int:

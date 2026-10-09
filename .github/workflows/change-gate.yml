@@ -23,7 +23,11 @@ jobs:
     name: change-control gate
     runs-on: ubuntu-latest
     steps:
+      # The gate's own code comes from the base branch, never from the pull request it judges:
+      # otherwise a PR could edit the gate to pass itself.
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
       - uses: ./.github/actions/change-control-gate
         with:
           frameworks: SOC-2 ISO-27001 PCI-DSS
