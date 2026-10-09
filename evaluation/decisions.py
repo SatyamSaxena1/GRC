@@ -119,15 +119,29 @@ def harmonic(*scores: float) -> float:
 
 # ---------------------------------------------------------------- running
 
+class Timed:
+    """Times every model call, answered or not: a model that is slow and then fails must
+    not look fast because its failures carried no answer to time."""
+
+    def __init__(self, gateway):
+        self.gateway, self.call_ms = gateway, []
+
+    def __getattr__(self, name):
+        return getattr(self.gateway, name)
+
+    def next_token_logprobs(self, system, user, top=20):
+        start = time.monotonic()
+        try:
+            return self.gateway.next_token_logprobs(system, user, top)
+        finally:
+            self.call_ms.append((time.monotonic() - start) * 1000)
+
+
 def run_task(gateway, task: str) -> dict:
-    rows, call_ms = [], []
+    rows, timed = [], Timed(gateway)
     for ask in asks(task):
         orders = max(ask["orders"], STABILITY_ORDERS)
-        start = time.monotonic()
-        results = decision.passes(gateway, ask["question"], ask["state"], ask["options"], orders)
-        elapsed = (time.monotonic() - start) * 1000
-        if results:
-            call_ms += [elapsed / len(results)] * len(results)
+        results = decision.passes(timed, ask["question"], ask["state"], ask["options"], orders)
         # The answer production would have given: the same first passes, combined the same way.
         answer = decision.combine(results[:ask["orders"]])
         top = decision.top(answer)
@@ -138,7 +152,7 @@ def run_task(gateway, task: str) -> dict:
             "unanswered": not answer, "order_dependent": bool(results) and not decision.stable(results),
             "probabilities": answer, "declared": ask.get("declared"),
         })
-    return summarise(task, rows, call_ms)
+    return summarise(task, rows, timed.call_ms)
 
 
 def summarise(task: str, rows: list[dict], call_ms: list[float]) -> dict:
@@ -152,7 +166,7 @@ def summarise(task: str, rows: list[dict], call_ms: list[float]) -> dict:
         "unanswered": sum(r["unanswered"] for r in rows),
         "order_dependent": sum(r["order_dependent"] for r in rows),
         "p50_call_ms": p50,
-        "intelligence": accuracy * 100, "calibration": (1 - mean_brier) * 100, "speed": speed_score(p50),
+        "intelligence": accuracy * 100, "calibration": (1 - mean_brier) * 100, "speed": speed_score(p50) if call_ms else 0.0,  # never asked: no speed to claim
         "guard": guard(task, rows), "rows": rows,
     }
     summary["score"] = harmonic(summary["intelligence"], summary["calibration"], summary["speed"])

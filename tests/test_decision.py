@@ -5,6 +5,8 @@ Suggestions only — the task queue order itself stays deterministic."""
 from __future__ import annotations
 
 import math
+
+import pytest
 from datetime import datetime, timedelta, timezone
 
 from app import service
@@ -359,3 +361,22 @@ def test_passes_from_two_models_are_never_averaged():
 
     assert decision.top(decision.choose(OneModel(), "q", "s", OPTIONS, orders=3)) == "POLICY"
     assert decision.choose(Switches(), "q", "s", OPTIONS, orders=3) == {}
+
+
+@pytest.mark.parametrize("kind", ["ollama", "openai"])
+def test_a_decision_server_keeps_its_own_credentials(monkeypatch, kind):
+    """Review fix: a separately secured decision server must not be sent the extraction
+    server's key, or its availability check fails and the switch silently never happens."""
+    from app.ai import ollama, openai_compat, provider
+    monkeypatch.setattr(ollama, "API_KEY", "extraction-key")
+    monkeypatch.setattr(openai_compat, "API_KEY", "extraction-key")
+    monkeypatch.setenv("LLM_DECISION_PROVIDER", kind)
+    monkeypatch.setenv("LLM_DECISION_API_KEY", "decision-key")
+    module = ollama if kind == "ollama" else openai_compat
+    gateway = provider.decision_only("decider")
+    assert module._headers(gateway.api_key) == {"Authorization": "Bearer decision-key"}
+
+    monkeypatch.delenv("LLM_DECISION_API_KEY")  # unset: the provider's own key, as on one server
+    gateway = provider.decision_only("decider")
+    assert module._headers(gateway.api_key) == {"Authorization": "Bearer extraction-key"}
+    assert provider.make_gateway().api_key is None  # extraction gateways are unchanged

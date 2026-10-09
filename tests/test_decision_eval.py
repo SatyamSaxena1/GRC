@@ -86,3 +86,16 @@ def test_the_command_reports_an_unreachable_model_and_fails(monkeypatch, capsys)
     monkeypatch.setattr(decisions, "decision_only", lambda *a: Down({}))
     assert decisions.main(["--model", "missing"]) == 1
     assert "not reachable" in capsys.readouterr().out
+
+
+def test_failed_calls_count_towards_latency(monkeypatch):
+    """Review fix: a slow model that never answers must not score a perfect speed."""
+    class SlowFailure(Oracle):
+        def next_token_logprobs(self, system, user, top=20):
+            raise RuntimeError("timed out")
+
+    clock = iter(range(0, 10_000_000, 2))  # every call takes 2 s
+    monkeypatch.setattr(decisions.time, "monotonic", lambda: next(clock))
+    task = decisions.run_task(SlowFailure({}), "rights")
+    assert task["unanswered"] == task["cases"]
+    assert task["p50_call_ms"] == 2000 and task["speed"] < 80

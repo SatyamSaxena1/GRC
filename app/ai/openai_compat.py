@@ -49,8 +49,10 @@ _JSON_FORMAT = {"type": "json_schema",
 _FENCE = re.compile(r"^```(?:json)?\s*|\s*```$", re.S)
 
 
-def _headers() -> dict[str, str]:
-    return {"Authorization": f"Bearer {API_KEY}"} if API_KEY else {}
+def _headers(api_key: str | None = None) -> dict[str, str]:
+    """`api_key` is a gateway's own (a decision server's, ADR-025); None means LLM_API_KEY."""
+    key = API_KEY if api_key is None else api_key
+    return {"Authorization": f"Bearer {key}"} if key else {}
 
 
 def unfence(text: str) -> str:
@@ -62,10 +64,12 @@ def unfence(text: str) -> str:
 class OpenAICompatGateway:
     provider = "openai-compat"
 
-    def __init__(self, model: str = MODEL, base_url: str = BASE_URL, vision_model: str | None = None):
+    def __init__(self, model: str = MODEL, base_url: str = BASE_URL, vision_model: str | None = None,
+                 api_key: str | None = None):
         self.model = model
         self.base_url = base_url.rstrip("/")
         self.vision_model = vision_model
+        self.api_key = api_key
         self.last_latency_ms = 0
         self.last_stats: dict = {}
         self.last_truncated = False
@@ -78,7 +82,7 @@ class OpenAICompatGateway:
         (uploads then land in review rather than failing mid-pipeline)."""
         if self._available is None:
             try:
-                resp = requests.get(f"{self.base_url}/v1/models", headers=_headers(), timeout=5)
+                resp = requests.get(f"{self.base_url}/v1/models", headers=_headers(self.api_key), timeout=5)
                 resp.raise_for_status()
                 self._available = bool(self.model) and self.model in {m["id"] for m in resp.json().get("data", [])}
             except (requests.RequestException, KeyError, ValueError):
@@ -102,7 +106,8 @@ class OpenAICompatGateway:
             logger.error("llm_truncated model=%s %s", self.model, self.last_stats)
 
     def _post(self, payload: dict, stream: bool = False):
-        return requests.post(f"{self.base_url}/v1/chat/completions", json=payload, headers=_headers(),
+        return requests.post(f"{self.base_url}/v1/chat/completions", json=payload,
+                             headers=_headers(self.api_key),
                              timeout=TIMEOUT_S, stream=stream)
 
     def _chat(self, payload: dict) -> dict:

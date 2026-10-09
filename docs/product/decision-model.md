@@ -32,6 +32,7 @@ Put the table in ADR-025.
 | `LLM_DECISION_MODEL` | the model name |
 | `LLM_DECISION_PROVIDER` | `ollama` or `openai`. Defaults to `LLM_PROVIDER` |
 | `LLM_DECISION_BASE_URL` | the server, if it is not the extraction server |
+| `LLM_DECISION_API_KEY` | that server's bearer token, if it differs from the extraction server's |
 
 No deploy is needed. To roll back, unset `LLM_DECISION_MODEL`. If the decision server goes
 down, the extraction model answers instead, and each AI run records which model it was.

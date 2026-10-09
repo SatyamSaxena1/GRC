@@ -22,8 +22,9 @@ and self-hosting keeps every document on our own servers.
 
 ## Decision
 - **A separate decision model, by environment only.**
-  - `LLM_DECISION_MODEL` names it, and `LLM_DECISION_PROVIDER` / `LLM_DECISION_BASE_URL` say
-    where it runs (Ollama, or any OpenAI-compatible server such as vLLM or llama.cpp).
+  - `LLM_DECISION_MODEL` names it, and `LLM_DECISION_PROVIDER` / `LLM_DECISION_BASE_URL` /
+    `LLM_DECISION_API_KEY` say where it runs and how to authenticate (Ollama, or any
+    OpenAI-compatible server such as vLLM or llama.cpp).
   - Unset means exactly today's behaviour. Setting it is a deploy-free switch; unsetting it is
     the rollback.
   - The extraction gateway stands behind it (`FailoverGateway`). A decision server that is
@@ -37,7 +38,7 @@ and self-hosting keeps every document on our own servers.
   demo samples, and `evaluation/decision_cases/`. It reports:
   - accuracy;
   - Brier score and ECE;
-  - p50 latency per call, on JevBench's scale (80 is 1 s, 90 is 316 ms);
+  - p50 latency per call, failed calls included, on JevBench's scale (80 is 1 s, 90 is 316 ms);
   - how often an answer depends on the option order;
   - what the guards would have caught, and falsely flagged, at today's thresholds.
 
