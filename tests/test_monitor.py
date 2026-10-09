@@ -236,3 +236,40 @@ def test_attention_endpoint_serves_the_report(client, bootstrap, upload):
     assert body["total"] == 1
     assert body["failed"][0]["evidence_id"] == evidence_id
     assert body["horizon_days"] == monitor.EXPIRY_HORIZON_DAYS
+
+
+# Local copy of the collector stub in test_gap_exceptions.py: tests/ is not a package,
+# so test modules cannot import each other on CI.
+class _Response:
+    content = b"{}"
+
+    def raise_for_status(self):
+        return None
+
+    def json(self):
+        from app.collectors import github_change_control as gcc
+        protection = {"enabled": True, "required_approving_reviews": 1, "dismiss_stale_reviews": True,
+                      "enforce_admins": True, "allow_force_pushes": False}
+        return {"attributes": gcc.summarize([{"protection": protection, "pulls": [], "default_commits": []}])}
+
+
+def test_the_scheduled_connector_sync_evaluates_what_it_stores(client, bootstrap, monkeypatch, db):
+    """The cron path used to stop at STORED: the endpoint's background task was the only
+    thing that ran the pipeline, so each scheduled sync replaced an evaluated snapshot
+    with an unevaluated one and the control read NO_EVIDENCE."""
+    from app.routers import connectors
+
+    org_id, _ = bootstrap(client, frameworks=["SOC-2"])
+    monkeypatch.setenv(connectors._env_key("github", "URL"), "https://collector.test/github")
+    monkeypatch.setattr(connectors.requests, "get", lambda url, **_: _Response())
+
+    # Twice: the second run supersedes the first, which is where the control went dark.
+    for _ in range(2):
+        assert monitor.sync_all_connectors(db, org_id) == ["github: synced"]
+
+    current = db.query(Evidence).filter_by(org_id=org_id, lifecycle_status="CURRENT").one()
+    assert current.version == 2
+    assert current.status == "READY"
+    assert current.extracted_attributes
+    assert ("SOC-2", "CC8.1") in verdicts(current.id)
+    assert not report_for(org_id).stuck

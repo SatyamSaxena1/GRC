@@ -416,11 +416,19 @@ def sync_all_connectors(db: Session, org_id: str) -> list[str]:
     """Sync every configured, in-scope DPDP connector source for one org —
     the batch counterpart to POST /connectors/{source}/sync, sharing its
     implementation via app.routers.connectors::sync_connector_for_org so
-    there is one place that actually pulls and stores a connector snapshot."""
+    there is one place that actually pulls and stores a connector snapshot.
+
+    Each stored snapshot is evaluated here, inline: the endpoint hands that to a
+    background task, and nothing else ever picks up a STORED row. Skipping it
+    leaves the new CURRENT snapshot with no links while the evaluated one is
+    already SUPERSEDED."""
     from fastapi import HTTPException
 
+    from app.content.load import load as load_content
     from app.routers import connectors
+    from app.service import process_evidence
 
+    content = load_content()
     org = db.get(Organization, org_id)
     na_sources = set(org.dpdp_na_sources) if org else set()
     results = []
@@ -430,8 +438,12 @@ def sync_all_connectors(db: Session, org_id: str) -> list[str]:
         if source in na_sources:
             continue
         try:
-            connectors.sync_connector_for_org(db, org_id, "system:monitor", "", source)
-            results.append(f"{source}: synced")
+            evidence = connectors.sync_connector_for_org(db, org_id, "system:monitor", "", source)
+            process_evidence(db, content, evidence, "system:monitor")  # ends at FAILED, never raises
+            if evidence.status == "FAILED":
+                results.append(f"{source}: failed (stored, not evaluated: {evidence.status_detail})")
+            else:
+                results.append(f"{source}: synced")
         except HTTPException as exc:
             results.append(f"{source}: failed ({exc.detail})")
     return results
