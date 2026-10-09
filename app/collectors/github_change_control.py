@@ -572,6 +572,46 @@ def _on_default(session, repo: str, branch: str, sha: str, cache: dict) -> bool:
     return cache[sha]
 
 
+def pull_facts(session, repo: str, raw: dict) -> dict:
+    """One pull request as summarize() expects it, from GitHub's pull object. Shared by the
+    period collector (fetch) and the pre-merge gate (app/change_gate.py), so both judge
+    exactly the same facts."""
+    number, head = raw["number"], raw["head"]["sha"]
+    commits = list(_paged(session, f"{API}/repos/{repo}/pulls/{number}/commits"))
+    head_checks = _checks(session, repo, head)
+    return {
+        "number": number,
+        "url": raw.get("html_url"),
+        "merged_at": raw.get("merged_at"),
+        "merge_commit_sha": raw.get("merge_commit_sha"),
+        "author": _user(raw.get("user")),
+        "head_sha": head,
+        "reviews": [
+            {"user": _user(r.get("user")), "state": r.get("state"),
+             "commit_id": r.get("commit_id"), "submitted_at": r.get("submitted_at")}
+            for r in _paged(session, f"{API}/repos/{repo}/pulls/{number}/reviews")
+        ],
+        "commits": [
+            {"sha": c["sha"], "message": c["commit"]["message"],
+             "author_login": (c.get("author") or {}).get("login"),
+             "committer_login": (c.get("committer") or {}).get("login"),
+             "author_is_bot": (c.get("author") or {}).get("type") == "Bot"}
+            for c in commits
+        ],
+        "checks": head_checks,
+        "files": [
+            {"filename": f.get("filename"), "status": f.get("status"),
+             "previous_filename": f.get("previous_filename")}
+            for f in _paged(session, f"{API}/repos/{repo}/pulls/{number}/files")
+        ],
+        # Every push, for gate liveness. The newest MAX_COMMITS_CHECKED only: two calls
+        # per commit, and a long-lived PR should not dominate the API budget.
+        "commit_checks": head_checks + [
+            check for c in commits[-MAX_COMMITS_CHECKED:] if c["sha"] != head
+            for check in _checks(session, repo, c["sha"])],
+    }
+
+
 def fetch(session, repo: str, since: datetime, environments: Iterable[str] = ("production",),
           deploy_jobs: Iterable[str] = ()) -> dict:
     """One repository, as summarize() expects it. Reads only."""
@@ -584,40 +624,7 @@ def fetch(session, repo: str, since: datetime, environments: Iterable[str] = ("p
             break  # sorted by update time: nothing older can have merged in the period
         if not raw.get("merged_at") or raw["merged_at"] < cutoff:
             continue
-        number, head = raw["number"], raw["head"]["sha"]
-        commits = list(_paged(session, f"{API}/repos/{repo}/pulls/{number}/commits"))
-        head_checks = _checks(session, repo, head)
-        pulls.append({
-            "number": number,
-            "url": raw.get("html_url"),
-            "merged_at": raw.get("merged_at"),
-            "merge_commit_sha": raw.get("merge_commit_sha"),
-            "author": _user(raw.get("user")),
-            "head_sha": head,
-            "reviews": [
-                {"user": _user(r.get("user")), "state": r.get("state"),
-                 "commit_id": r.get("commit_id"), "submitted_at": r.get("submitted_at")}
-                for r in _paged(session, f"{API}/repos/{repo}/pulls/{number}/reviews")
-            ],
-            "commits": [
-                {"sha": c["sha"], "message": c["commit"]["message"],
-                 "author_login": (c.get("author") or {}).get("login"),
-                 "committer_login": (c.get("committer") or {}).get("login"),
-                 "author_is_bot": (c.get("author") or {}).get("type") == "Bot"}
-                for c in commits
-            ],
-            "checks": head_checks,
-            "files": [
-                {"filename": f.get("filename"), "status": f.get("status"),
-                 "previous_filename": f.get("previous_filename")}
-                for f in _paged(session, f"{API}/repos/{repo}/pulls/{number}/files")
-            ],
-            # Every push, for gate liveness. The newest MAX_COMMITS_CHECKED only: two calls
-            # per commit, and a long-lived PR should not dominate the API budget.
-            "commit_checks": head_checks + [
-                check for c in commits[-MAX_COMMITS_CHECKED:] if c["sha"] != head
-                for check in _checks(session, repo, c["sha"])],
-        })
+        pulls.append(pull_facts(session, repo, raw))
     default_commits = [
         {"sha": c["sha"], "url": c.get("html_url"),
          "date": ((c.get("commit") or {}).get("committer") or {}).get("date"),
