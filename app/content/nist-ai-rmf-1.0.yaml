@@ -71,13 +71,16 @@ requirements:
         source: EXPERT
         delta_conditions:
           # Substring matching (see app/evaluate.py::contains_all) — a real
-          # extraction returns natural phrases, not canonical tokens. Four of the
+          # extraction returns natural phrases, not canonical tokens. Five of the
           # seven characteristics, not all seven: these are the ones a governance
           # policy reliably names, and demanding all seven would fail documents
-          # that are genuinely adequate.
+          # that are genuinely adequate. "fair" is required because the policy is
+          # where AI RMF expects "fair with harmful bias managed" to be committed to;
+          # measuring bias itself is MEASURE, out of scope (ADR-016). The substring
+          # matches "fair", "fairness" and "fair treatment".
           - attribute: trustworthy_ai_characteristics_addressed
             operator: contains_all
-            value: ["valid", "safe", "secure", "transparent"]
+            value: ["valid", "safe", "secure", "transparent", "fair"]
 
   - clause: "GOVERN 1.3"
     title: Risk management activity is scaled to the organisation's stated risk tolerance
