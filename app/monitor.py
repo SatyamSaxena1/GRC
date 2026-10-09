@@ -36,6 +36,7 @@ from sqlalchemy.orm import Session
 from app import audit_log
 from app.content.load import Content
 from app.evaluate import evaluate
+from app.service import process_evidence
 from app.models import (
     TERMINAL_EVIDENCE_STATUSES, AiRun, BreachEvent, Evidence, EvidenceControlLink, GapException, Organization,
     RightsRequest,
@@ -430,10 +431,22 @@ def sync_all_connectors(db: Session, org_id: str) -> list[str]:
         if source in na_sources:
             continue
         try:
-            connectors.sync_connector_for_org(db, org_id, "system:monitor", "", source)
-            results.append(f"{source}: synced")
+            evidence = connectors.sync_connector_for_org(db, org_id, "system:monitor", "", source)
         except HTTPException as exc:
             results.append(f"{source}: failed ({exc.detail})")
+            continue
+        # Judge it now, as the "Collect evidence" button does: a snapshot stored but never
+        # evaluated would leave the controls on the previous verdict while the run reports green.
+        try:
+            process_evidence(db, connectors.CONTENT, evidence, "system:monitor", "")
+        except Exception as exc:  # noqa: BLE001 — reported as a failure, never swallowed
+            results.append(f"{source}: synced, evaluation failed ({type(exc).__name__}: {exc})")
+            continue
+        if evidence.status == "FAILED":
+            results.append(f"{source}: synced, evaluation failed ({evidence.status_detail or 'see the evidence page'})")
+        else:
+            links = db.query(EvidenceControlLink).filter_by(evidence_id=evidence.id).count()
+            results.append(f"{source}: synced and evaluated ({links} controls)")
     return results
 
 
