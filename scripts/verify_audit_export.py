@@ -33,6 +33,13 @@ def _content(e: dict) -> dict:
     return {k: e[k] for k in CONTENT_FIELDS}
 
 
+def _seal(rows: list[dict]) -> str:
+    h = hashlib.sha256()
+    for e in rows:
+        h.update(json.dumps({**_content(e), "id": e["id"], "at": e["at"]}, sort_keys=True, default=str).encode())
+    return h.hexdigest()
+
+
 def verify_chain(events: list[dict]) -> list[str]:
     chained = sorted((e for e in events if e["chain_seq"] is not None), key=lambda e: e["chain_seq"])
     legacy = [e for e in events if e["chain_seq"] is None]
@@ -51,10 +58,7 @@ def verify_chain(events: list[dict]) -> list[str]:
         return ["the chain does not start with its genesis event"]
     until = genesis["detail"]["legacy_until"]
     sealed = sorted((e for e in legacy if e["at"] <= until), key=lambda e: (e["seq"], e["id"]))
-    h = hashlib.sha256()
-    for e in sealed:
-        h.update(json.dumps({**_content(e), "id": e["id"], "at": e["at"]}, sort_keys=True, default=str).encode())
-    if len(sealed) != genesis["detail"]["legacy_events"] or h.hexdigest() != genesis["detail"]["legacy_digest"]:
+    if len(sealed) != genesis["detail"]["legacy_events"] or _seal(sealed) != genesis["detail"]["legacy_digest"]:
         problems.append("events from before the chain no longer match its genesis seal")
     return problems
 
@@ -73,8 +77,18 @@ def verify_checkpoint(events: list[dict], checkpoint: dict, public_key_b64: str)
         return [f"event {checkpoint['chain_seq']} the checkpoint certifies is not in the export"]
     if event["entry_hash"] != checkpoint["head_hash"]:
         return [f"event {checkpoint['chain_seq']} has changed since the checkpoint"]
-    if by_seq.get(1, {}).get("entry_hash") != checkpoint["genesis_hash"]:
+    genesis = by_seq.get(1, {})
+    if genesis.get("entry_hash") != checkpoint["genesis_hash"]:
         return ["the chain was restarted since the checkpoint"]
+    if "unchained" not in checkpoint:  # version 1 checkpoints predate this coverage
+        return []
+    # Rows the previous code wrote after genesis, during a deploy: covered by digest.
+    unchained, after = checkpoint["unchained"], genesis["detail"]["legacy_until"]
+    rows = sorted((e for e in events if e["chain_seq"] is None and after < e["at"]
+                   and unchained["until"] is not None and e["at"] <= unchained["until"]),
+                  key=lambda e: (e["seq"], e["id"]))
+    if len(rows) != unchained["count"] or _seal(rows) != unchained["digest"]:
+        return ["events written outside the chain during a deploy have changed since the checkpoint"]
     return []
 
 

@@ -23,7 +23,7 @@ from app.auth import Actor, current_actor, deny_read_only
 from app.content.load import load as load_content
 from app.db import get_session
 from app.exceptions import (
-    MAX_DAYS, gap_fingerprint, rule_hash, rule_pressure, state,
+    MAX_DAYS, gap_fingerprint, open_gap_fingerprints, rule_hash, rule_pressure, state,
 )
 from app.models import Evidence, EvidenceControlLink, GapException, GapRow
 
@@ -161,5 +161,5 @@ def revoke_exception(exception_id: str, body: DecisionIn, actor: Actor = Depends
 def list_exceptions(actor: Actor = Depends(current_actor), db: Session = Depends(get_session)):
     rows = [e for e in db.query(GapException).filter_by(org_id=actor.org_id)
             .order_by(GapException.requested_at.desc()) if _visible(db, actor, e.framework, e.clause)]
-    pressure = rule_pressure(rows, CONTENT)
+    pressure = rule_pressure(rows, CONTENT, open_gap_fingerprints(db, actor.org_id))
     return [{**_payload(e), "same_rule": pressure[(e.framework, e.clause, e.attribute)]} for e in rows]

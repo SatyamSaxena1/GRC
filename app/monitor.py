@@ -376,17 +376,17 @@ def exception_pressure(db: Session, org_ids: list[str], content: Content) -> lis
     """Rules with many exceptions across all organisations, for whoever owns the content packs.
     Counts only, never which organisations (Trishul's metric rule): the point is the rule."""
     from app.db import set_tenant
-    from app.exceptions import MISCALIBRATION_THRESHOLD, rule_pressure
+    from app.exceptions import MISCALIBRATION_THRESHOLD, open_gap_fingerprints, rule_pressure
 
     totals: dict[tuple[str, str, str], dict] = {}
     for org_id in org_ids:
         set_tenant(db, org_id)
         rows = db.query(GapException).filter_by(org_id=org_id).all()
-        for key, counts in rule_pressure(rows, content).items():
+        for key, counts in rule_pressure(rows, content, open_gap_fingerprints(db, org_id)).items():
             total = totals.setdefault(key, {"open": 0, "ended": 0, "orgs": 0})
             total["open"] += counts["open"]
             total["ended"] += counts["ended"]
-            total["orgs"] += 1 if counts["open"] else 0
+            total["orgs"] += 1  # every organisation that contributed, open or ended
     return [{"framework": fw, "clause": clause, "attribute": attr, **counts}
             for (fw, clause, attr), counts in sorted(totals.items())
             if counts["open"] + counts["ended"] >= MISCALIBRATION_THRESHOLD]

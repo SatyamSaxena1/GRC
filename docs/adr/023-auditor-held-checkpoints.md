@@ -48,6 +48,12 @@ This product's own pitch says the auditor, not the vendor, holds the record of w
 - The **Activity** page shows the chain's status, and lets an auditor download a checkpoint or
   export the chain, and anyone verify a checkpoint file.
 
+**Rows written outside the chain during a deploy.** An instance still running the previous
+code writes rows outside the chain, without a lock. Format 2 checkpoints therefore sign an
+`unchained` block: the count and digest of such rows up to a cutoff 60 seconds before issue.
+No checkpoint is issued while such rows are still arriving, so none can land behind a signed
+cutoff. Version 1 checkpoints, which predate the block, still verify.
+
 ## Consequences
 - Protection covers what precedes the latest checkpoint an auditor holds. Events after it are
   covered only by the database's append-only trigger, so auditors should take one at milestones

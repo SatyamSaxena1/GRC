@@ -166,3 +166,26 @@ def _walk(node):
     elif isinstance(node, list):
         for v in node:
             yield from _walk(v)
+
+
+def test_a_name_with_a_line_break_still_exports_valid_oscal(client, org, db):
+    """OSCAL titles are single-line markup; free-text names are folded onto one line."""
+    from app.models import Organization
+    db.get(Organization, org).name = "Acme\nLtd"
+    db.commit()
+    document = _export(client, org).json()
+    assert not list(validator().iter_errors(document))
+    assert document["assessment-results"]["metadata"]["title"].startswith("Acme Ltd:")
+
+
+def test_the_auditors_own_engagement_is_the_one_exported(client, bootstrap, monkeypatch):
+    org_id, first = bootstrap(client, frameworks=["SOC-2"])
+    firm = client.post("/admin/audit-firms", json={"name": "Other"}).json()["id"]
+    second = client.post("/admin/engagements", json={"audit_firm_id": firm, "org_id": org_id,
+                                                     "frameworks": ["SOC-2"]}).json()["id"]
+    _sync(client, monkeypatch, org_id)
+    for engagement in (first, second):
+        doc = client.get("/export/oscal/assessment-results.json", params={"framework": "SOC-2"},
+                         headers={"authorization": f"auditor:{engagement}"}).json()["assessment-results"]
+        plan = doc["back-matter"]["resources"][0]
+        assert engagement in plan["title"]
