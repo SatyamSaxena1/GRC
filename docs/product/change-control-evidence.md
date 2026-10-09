@@ -113,3 +113,22 @@ Next, roughly in order of value:
 Run the collector against this repository for the last 90 days, put the snapshot through the
 platform, and walk an auditor through the result. This repository is a good first customer: most
 of its merges are AI co-authored, and ADR-019 already predicts what the snapshot will find.
+
+## Turning on scheduled collection (GitHub)
+The six-hourly *DPDP monitor* workflow can collect change control itself. No collector needs to
+be hosted anywhere: it runs the read-only collector, serves the JSON on the runner's loopback,
+and syncs and evaluates it for the organisations you name.
+
+1. **Token.** Create a fine-grained token with read-only *Contents*, *Pull requests*,
+   *Commit statuses*, *Checks*, *Actions* and *Metadata* on the repositories to watch. Add
+   *Administration: read* to read classic branch protection; without it, protection reads as
+   off, a possible false gap, never a false pass. Save it as the repo secret
+   `CHANGE_CONTROL_GITHUB_TOKEN`.
+2. **Variables** (Settings → Secrets and variables → Actions → Variables):
+   `CHANGE_CONTROL_REPOS` (`owner/name`, space-separated) and `CHANGE_CONTROL_ORG_IDS` (the
+   organisation id(s) these repositories belong to). Only those organisations receive the
+   snapshot: a collector URL is platform-wide, so it must never be left unscoped.
+3. **Storage.** `S3_BUCKET`, `S3_ENDPOINT_URL`, `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`
+   as repo secrets, the same values the web service uses.
+
+Then run the workflow from `main`. The log says `github: synced and evaluated (n controls)`.

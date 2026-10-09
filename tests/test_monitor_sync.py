@@ -69,3 +69,19 @@ def test_an_evaluation_failure_fails_the_run(client, bootstrap, monkeypatch):
     with Session(db_module.engine) as db:
         results = monitor.sync_all_connectors(db, org_id)
     assert any("evaluation failed" in r and "failed" in r for r in results), results
+
+
+def test_a_scoped_sync_reaches_only_the_named_organisations(client, bootstrap, monkeypatch):
+    """A collector URL is platform-wide; --org keeps one client's repositories from reaching
+    every other client on the platform."""
+    mine, _ = bootstrap(client, frameworks=["SOC-2"])
+    other, _ = bootstrap(client, frameworks=["SOC-2"])
+    snapshot = gcc.summarize([{"protection": PROTECTED, "pulls": [_pr(["bob"])], "default_commits": []}])
+    monkeypatch.setenv(connectors._env_key("github", "URL"), "https://collector.test/github")
+    monkeypatch.setattr(connectors.requests, "get", lambda url, **_: _Response(snapshot))
+
+    assert monitor._sync_connectors({mine}, {"github"}) == 0
+    with Session(db_module.engine) as db:
+        assert db.query(Evidence).filter_by(org_id=mine, artefact_type="CHANGE_CONTROL_SNAPSHOT").count() == 1
+        assert db.query(Evidence).filter_by(org_id=other).count() == 0
+    assert monitor._sync_connectors({"no-such-org"}, {"github"}) == 1
