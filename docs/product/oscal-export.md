@@ -10,7 +10,7 @@ other GRC tools can import.
 | GRC | OSCAL |
 |---|---|
 | Clause | `control-id` token `<framework>_<clause>`, lowercased (`pci-dss_6.5.1`, `soc-2_cc8.1`); the original clause is a prop. These are GRC tokens, not ids from a NIST catalog |
-| Current evidence × clause | `observation`: method `TEST` for connector snapshots, `EXAMINE` for documents; props carry the verdict, the engine's verdict, the auditor's verdict, lock state and the ADR-022 rule and evaluation hashes |
+| Current evidence × clause | `observation`: method `TEST` for connector snapshots, `EXAMINE` for documents; props carry the verdict, the engine's verdict, the auditor's verdict, lock state and the ADR-022 rule and evaluation hashes; when a model checked the document, the ADR-025 decision hashes (`ai-type-check-hash`, `ai-quote-check-hash`) and `ai-decision-model` |
 | Evidence file | `back-matter` resource whose `rlinks.hashes` hold its SHA-256 |
 | Control verdict | `finding` with target `objective-id`, state `satisfied` (PASS) or `not-satisfied` |
 | Open gap | `risk`: `open`; `deviation-requested` while an exception is requested; `deviation-approved` with `deadline` = the exception's expiry while one is active (ADR-021) |

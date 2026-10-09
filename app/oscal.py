@@ -28,7 +28,7 @@ from app import provenance
 from app.auth import Actor
 from app.content.load import Content
 from app.exceptions import gap_fingerprint
-from app.models import Engagement, Evidence, EvidenceControlLink, GapException, GapRow, Organization
+from app.models import AiRun, Engagement, Evidence, EvidenceControlLink, GapException, GapRow, Organization
 
 OSCAL_VERSION = "1.2.3"
 NS = "https://github.com/SatyamSaxena1/GRC/ns/oscal"
@@ -117,7 +117,7 @@ def build(db: Session, actor: Actor, content: Content, framework: str, controls:
                                 engine_verdict=link.engine_verdict, auditor_verdict=link.auditor_verdict,
                                 locked="true" if link.locked else "false",
                                 rule_hash=link.rule_hash, engine_version=link.engine_version,
-                                evaluation_hash=link.evaluation_hash),
+                                evaluation_hash=link.evaluation_hash, **_ai_checks(db, evidence.id)),
                 "methods": ["TEST" if evidence.mime_type == CONNECTOR_MIME else "EXAMINE"],
                 "types": ["control-objective"],
                 "relevant-evidence": [{"href": f"#{resource_id}",
@@ -196,6 +196,21 @@ def build(db: Session, actor: Actor, content: Content, framework: str, controls:
     digest = hashlib.sha256(json.dumps(document, sort_keys=True).encode()).hexdigest()
     document["metadata"]["version"] = digest[:16]
     return {"assessment-results": {"uuid": _uuid("document", digest), **document}}
+
+
+_AI_CHECK_PROPS = {"artefact_type_check": "ai_type_check_hash", "quote_support_check": "ai_quote_check_hash"}
+
+
+def _ai_checks(db: Session, evidence_id: str) -> dict:
+    """The typed decisions the platform asked about this evidence (ADR-025): suggestions and
+    flags for a human, never part of the verdict, so they travel as props an importer can trace."""
+    props = {}
+    runs = (db.query(AiRun).filter(AiRun.evidence_id == evidence_id, AiRun.decision_hash.isnot(None))
+            .order_by(AiRun.created_at, AiRun.id).all())
+    for run in runs:  # latest of each check wins
+        props[_AI_CHECK_PROPS.get(run.operation, "ai_check_hash")] = run.decision_hash
+        props["ai_decision_model"] = run.model
+    return props
 
 
 def _risk(db: Session, actor: Actor, gap: dict, stamps: list[datetime]) -> dict:

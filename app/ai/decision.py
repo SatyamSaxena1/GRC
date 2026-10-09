@@ -10,6 +10,8 @@ called.
 
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
 import math
 import string
@@ -116,3 +118,31 @@ def top(probabilities: dict[str, float], threshold: float = 0.0) -> str | None:
         return None
     key = max(probabilities, key=probabilities.get)
     return key if probabilities[key] >= threshold else None
+
+
+def digest(text: str) -> str:
+    """sha256 of a prompt part. AiRun keeps no document text, only this: anyone holding the
+    document can rebuild the state, hash it and check it is the one the model was shown."""
+    return hashlib.sha256(text.encode()).hexdigest()
+
+
+def decision_hash(operation: str, prompt_version: str, model: str, inputs: dict, output: dict) -> str:
+    """ADR-025: what was asked of which model, and what it answered, as one hash. No ids and
+    no timestamps, so the same question answered the same way hashes the same."""
+    body = {"operation": operation, "prompt_version": prompt_version, "model": model,
+            "inputs": inputs, "output": output}
+    return digest(json.dumps(body, sort_keys=True, separators=(",", ":"), ensure_ascii=False, default=str))
+
+
+def brier(probabilities: dict[str, float], truth: str, options=None) -> float:
+    """Multi-class Brier score halved to 0..1: 0 is certain and right, 1 certain and wrong.
+    No answer counts as the uniform distribution over `options`: it said nothing."""
+    keys = list(options if options is not None else probabilities)
+    p = probabilities or {k: 1 / len(keys) for k in keys}
+    return sum((p.get(k, 0.0) - (k == truth)) ** 2 for k in keys) / 2
+
+
+def options_digest(options: dict[str, str]) -> str:
+    """The options exactly as the model sees them, keys and descriptions in order: a changed
+    description is a different question even when every key is the same."""
+    return digest(json.dumps(list(options.items()), ensure_ascii=False))
