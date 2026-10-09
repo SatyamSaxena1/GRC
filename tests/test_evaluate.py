@@ -260,3 +260,20 @@ def test_extraction_prompt_names_the_yes_no_attributes_from_the_packs():
     # A model once reported affected_person_notification=true from the quote "No specific
     # notification process ... is mentioned"; the hint must rule that reading out.
     assert "affirmatively states" in prompt and "never true" in prompt
+
+
+def test_an_ai_policy_must_commit_to_fairness():
+    """GOVERN 1.2: a policy naming valid, safe, secure and transparent but saying nothing about
+    fairness or harmful bias is not enough; the same policy that does say it passes."""
+    def govern_1_2(characteristics):
+        links = evaluate({"trustworthy_ai_characteristics_addressed": characteristics},
+                         "AI_POLICY", ["NIST-AI-RMF"], CONTENT)
+        return next(l for l in links if l.clause == "GOVERN 1.2")
+
+    without = govern_1_2(["valid and reliable", "safe", "secure and resilient", "transparent and accountable"])
+    assert without.verdict == "PARTIAL"
+    assert [(g.kind, g.attribute) for g in without.gaps] == [("DELTA", "trustworthy_ai_characteristics_addressed")]
+
+    with_fairness = govern_1_2(["valid and reliable", "safe", "secure and resilient",
+                                "transparent and accountable", "fairness and harmful bias management"])
+    assert with_fairness.verdict == "PASS" and not with_fairness.gaps

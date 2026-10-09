@@ -79,6 +79,12 @@ proving a review happened — the same two-artefact shape that ADR-013 introduce
   several paragraphs per subcategory, and a remediation task is not where someone reads an
   essay. The `source_url` in the pack header points at the Playbook for anyone who wants it.
 
+**Amendment: GOVERN 1.2 requires fairness.** The trustworthy-characteristics check now demands five
+of the seven, adding "fair". A policy is where an organisation commits to "fair with harmful bias
+managed". Measuring bias stays out of scope with MEASURE. Verdicts judged under the old rule are
+flagged "rules changed since" by their recorded rule hash (ADR-022) and are re-judged on
+reprocessing.
+
 ## Consequences
 - `app/content/uco.yaml` gains nine `AI_GOVERNANCE` objectives; UCO count goes 8 → 17.
 - The evidence upload form gains `AI_POLICY` and `AI_INVENTORY`
