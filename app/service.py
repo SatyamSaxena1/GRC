@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 from app import audit_log, ciso_sync, provenance
 from app import events, normalize
 from app.ai import decision
+from app.ai.provider import decision_gateway
 from app.ai.prompts import NUTSHELL_PROMPT_VERSION
 from app.ai.schemas import ExtractedField, ExtractionRun, Source
 from app.content.load import Content
@@ -93,11 +94,25 @@ def classify_artefact(gateway, filename: str, text: str) -> dict[str, float]:
         return {}
     # 3 rotated orderings, averaged: the guard can send an upload to review on
     # this answer, so it must not hinge on which option happened to be listed first.
-    return decision.choose(
-        gateway, "Which kind of compliance evidence is this document?",
-        f"Filename: {filename}\n\nDocument start:\n{text[:CLASSIFY_MAX_CHARS]}", ARTEFACT_TYPES,
-        orders=CLASSIFY_ORDERS,
-    )
+    return decision.choose(gateway, CLASSIFY_QUESTION, classify_state(filename, text), ARTEFACT_TYPES,
+                           orders=CLASSIFY_ORDERS)
+
+
+CLASSIFY_QUESTION = "Which kind of compliance evidence is this document?"
+
+
+def classify_state(filename: str, text: str) -> str:
+    return f"Filename: {filename}\n\nDocument start:\n{text[:CLASSIFY_MAX_CHARS]}"
+
+
+def mismatch(probabilities: dict[str, float], declared: str) -> str | None:
+    """The type the document reads as when it is confidently not `declared`, else None.
+    The wrong-document guard's rule, shared with evaluation/decisions.py."""
+    top = decision.top(probabilities)
+    if (top and top != declared and probabilities[top] >= MISMATCH_TOP
+            and probabilities.get(declared, 0.0) <= MISMATCH_DECLARED_MAX):
+        return top
+    return None
 
 
 def _type_mismatch(db: Session, gateway, evidence: Evidence, text: str) -> str:
@@ -114,8 +129,7 @@ def _type_mismatch(db: Session, gateway, evidence: Evidence, text: str) -> str:
         confidence=probabilities[top], latency_ms=getattr(gateway, "last_latency_ms", 0),
     ))
     declared = evidence.artefact_type
-    if (top != declared and probabilities[top] >= MISMATCH_TOP
-            and probabilities.get(declared, 0.0) <= MISMATCH_DECLARED_MAX):
+    if mismatch(probabilities, declared):
         return (f"uploaded as {declared}, but reads like a {top} "
                 f"({round(probabilities[top] * 100)}%) — if so, upload it again as a new "
                 f"version with the right type")
@@ -145,6 +159,10 @@ SUPPORT_QUESTION = (
 )
 
 
+def support_state(name: str, value, quote: str) -> str:
+    return f"Attribute: {name}\nValue: {value!r}\nQuoted passage: {quote}"
+
+
 def _restore_cadence_words(run) -> None:
     """Undo a model's own "quarterly" -> 90 on review-cadence attributes (see
     normalize.cadence_word_for). Only *_frequency_days names: log_retention_days and the like
@@ -167,10 +185,8 @@ def _unsupported_values(db: Session, gateway, evidence: Evidence, run) -> list[s
         quote = " … ".join(s.quote for s in field.sources if s.quote)
         if field.value is None or not quote:
             continue  # nothing claimed, or nothing cited to check it against
-        probabilities = decision.choose(
-            gateway, SUPPORT_QUESTION,
-            f"Attribute: {name}\nValue: {field.value!r}\nQuoted passage: {quote}", SUPPORT_OPTIONS,
-        )
+        probabilities = decision.choose(gateway, SUPPORT_QUESTION, support_state(name, field.value, quote),
+                                        SUPPORT_OPTIONS)
         if not probabilities:
             return []  # model gone mid-way: judge nothing rather than half
         checked[name] = probabilities
@@ -555,10 +571,13 @@ def _run_pipeline(db: Session, content: Content, evidence: Evidence, actor_label
     # gets evaluated as declared (that is what was asked for), it just can't
     # land as READY without a human looking at the type.
     type_mismatch, unsupported = "", []
-    if method != "connector" and run.status != "UNAVAILABLE":
-        type_mismatch = _type_mismatch(db, gateway, evidence, text)
-    if method != "connector" and run.status == "OK":
-        unsupported = _unsupported_values(db, gateway, evidence, run)
+    if method != "connector":
+        # A Jev-class decision model when one is configured (ADR-025), else the extraction one.
+        decider = decision_gateway(gateway)
+        if run.status != "UNAVAILABLE":
+            type_mismatch = _type_mismatch(db, decider, evidence, text)
+        if run.status == "OK":
+            unsupported = _unsupported_values(db, decider, evidence, run)
 
     confidences = [f.confidence for f in run.fields.values() if f.confidence is not None]
     db.add(AiRun(

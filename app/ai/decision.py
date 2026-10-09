@@ -28,26 +28,51 @@ def choose(gateway, question: str, state: str, options: dict[str, str],
     models favour early letters, and a confidence that only holds in one order
     was never real. Measured 2026-09-24 (qwen2.5vl:7b): one PCI attestation
     read SCAN_REPORT at 0.98 in one order and 0.71 reversed. Costs `orders`
-    calls; any failed pass returns {} rather than a partial average.
+    calls; any failed pass returns {} rather than a partial average, and so does an
+    answer whose top option changes with the order (see `stable`).
     """
+    return combine(passes(gateway, question, state, options, orders))
+
+
+def passes(gateway, question: str, state: str, options: dict[str, str],
+           orders: int = 1) -> list[dict[str, float]]:
+    """One distribution per ordering, keys in `options` order; [] on any failure.
+    `choose` is `combine(passes(...))`; evaluation/decisions.py reads the passes themselves
+    to measure how often a model's answer depends on the order."""
     keys = list(options)
     if not keys or len(keys) > len(string.ascii_uppercase):
-        return {}
+        return []
     try:
         if not gateway.available():
-            return {}
+            return []
     except Exception:  # noqa: BLE001 - a suggestion must never break its caller
-        return {}
+        return []
 
-    passes = max(1, min(orders, len(keys)))
-    totals = dict.fromkeys(keys, 0.0)
-    for ordering in _orderings(keys, passes):
+    results, models = [], set()
+    for ordering in _orderings(keys, max(1, min(orders, len(keys)))):
         probabilities = _one_pass(gateway, question, state, options, ordering)
         if not probabilities:
-            return {}
-        for k, p in probabilities.items():
-            totals[k] += p
-    return {k: totals[k] / passes for k in keys}
+            return []
+        results.append({k: probabilities[k] for k in keys})
+        models.add(getattr(gateway, "model", ""))
+    # A failover mid-way (app/ai/failover.py) would average two models' answers: no answer.
+    return results if len(models) <= 1 else []
+
+
+def stable(results: list[dict[str, float]]) -> bool:
+    """Every ordering put the same option on top. A position-biased model asked in three
+    orders can average to anything; an answer that changes with the listing is no answer."""
+    return len({top(r) for r in results}) <= 1
+
+
+def combine(results: list[dict[str, float]]) -> dict[str, float]:
+    """The per-option mean of the passes, or {} when there are none or they disagree."""
+    if not results:
+        return {}
+    if not stable(results):
+        logger.info("decision_unstable tops=%s", [top(r) for r in results])
+        return {}
+    return {k: sum(r[k] for r in results) / len(results) for k in results[0]}
 
 
 def _orderings(keys: list[str], passes: int) -> list[list[str]]:

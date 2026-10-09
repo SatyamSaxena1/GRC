@@ -16,7 +16,8 @@ from app.content.load import load as load_content
 from app.db import get_session, session_scope, set_tenant
 from app.evaluate import checks_for
 from app.ai import decision
-from app.ingest import available_models, extract_text, gateway_for
+from app.ai.provider import decision_gateway
+from app.ingest import available_models, extract_text
 from app.models import (
     TERMINAL_EVIDENCE_STATUSES, Evidence, EvidenceAttribute, EvidenceControlLink, GapRow,
 )
@@ -178,7 +179,7 @@ def suggest_artefact_type(file: UploadFile, actor: Actor = Depends(current_actor
     except Exception:  # noqa: BLE001 - an unparseable file just gets no suggestion
         text = ""
     # images/scans: native text only here, no vision pass -> no suggestion
-    probabilities = classify_artefact(gateway_for(None), upload.original_filename, text)
+    probabilities = classify_artefact(decision_gateway(), upload.original_filename, text)
     return {"probabilities": probabilities,
             "suggested": decision.top(probabilities, SUGGEST_THRESHOLD)}
 

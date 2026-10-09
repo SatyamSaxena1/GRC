@@ -1,0 +1,16 @@
+{
+  "about": "A data principal's own words and the kind of request they are (app/routers/rights_requests.py KIND_OPTIONS). Includes messages that are not requests at all. Ground truth; never edited to make a model pass.",
+  "cases": [
+    {"details": "Please send me a copy of all the personal data you hold about me and tell me who you have shared it with.", "expected": "ACCESS"},
+    {"details": "What information do you have on me? I would like to know how it is being used.", "expected": "ACCESS"},
+    {"details": "My address on file is wrong. I moved to 14 Park Street last year, please update it.", "expected": "CORRECTION"},
+    {"details": "The date of birth in my account is incorrect; it should be 3 May 1990.", "expected": "CORRECTION"},
+    {"details": "I withdraw my consent. Delete my account and everything you have about me.", "expected": "ERASURE"},
+    {"details": "Please erase my phone number and email address from your records permanently.", "expected": "ERASURE"},
+    {"details": "If anything happens to me, I want my daughter Priya Sharma to be able to manage my data with you.", "expected": "NOMINATION"},
+    {"details": "I asked for my data 45 days ago and nobody has replied. This is unacceptable and I want to complain.", "expected": "GRIEVANCE"},
+    {"details": "Your staff shared my medical details with my employer without asking me. I am filing a complaint.", "expected": "GRIEVANCE"},
+    {"details": "Hello, is this the right email address for customer support?", "expected": "NOT_A_REQUEST"},
+    {"details": "Thanks for the quick delivery, great service!", "expected": "NOT_A_REQUEST"}
+  ]
+}

@@ -33,22 +33,26 @@ def _options(**extra) -> dict:
     return {"temperature": 0, "seed": SEED, "num_ctx": NUM_CTX, **extra}
 
 
-def _headers() -> dict[str, str]:
+def _headers(api_key: str | None = None) -> dict[str, str]:
     """Ollama has no auth of its own. When it sits behind a reverse proxy on
-    another host (deploy/llm/), the proxy checks this bearer token."""
-    return {"Authorization": f"Bearer {API_KEY}"} if API_KEY else {}
+    another host (deploy/llm/), the proxy checks this bearer token. `api_key`
+    is a gateway's own (a decision server's, ADR-025); None means OLLAMA_API_KEY."""
+    key = API_KEY if api_key is None else api_key
+    return {"Authorization": f"Bearer {key}"} if key else {}
 
 
 class OllamaGateway:
     provider = "ollama"
 
-    def __init__(self, model: str = MODEL, base_url: str = BASE_URL, vision_model: str | None = None):
+    def __init__(self, model: str = MODEL, base_url: str = BASE_URL, vision_model: str | None = None,
+                 api_key: str | None = None):
         self.model = model
         self.base_url = base_url
         # None means "use the module default" (VISION_MODEL, itself falling
         # back to `model` if OLLAMA_VISION_MODEL isn't set) — an explicit
         # per-instance override (app/ingest.py::gateway_for) takes priority.
         self.vision_model = vision_model
+        self.api_key = api_key
         self.last_latency_ms = 0
         # Token accounting of the latest call; `last_truncated` is True when the
         # prompt filled the context window or generation stopped on the length cap.
@@ -63,7 +67,7 @@ class OllamaGateway:
         multiplied into tens of seconds per upload during an outage."""
         if self._available is None:
             try:
-                resp = requests.get(f"{self.base_url}/api/tags", headers=_headers(), timeout=5)
+                resp = requests.get(f"{self.base_url}/api/tags", headers=_headers(self.api_key), timeout=5)
                 resp.raise_for_status()
                 names = {m["name"] for m in resp.json().get("models", [])}
                 self._available = bool(self.model) and self.model in names
@@ -104,7 +108,7 @@ class OllamaGateway:
         }
         self.last_truncated = False
         start = time.monotonic()
-        with requests.post(f"{self.base_url}/api/chat", json=payload, headers=_headers(),
+        with requests.post(f"{self.base_url}/api/chat", json=payload, headers=_headers(self.api_key),
                            timeout=TIMEOUT_S, stream=True) as resp:
             resp.raise_for_status()
             for line in resp.iter_lines():
@@ -154,7 +158,7 @@ class OllamaGateway:
         start = time.monotonic()
         try:
             resp = requests.post(f"{self.base_url}/api/chat", json=payload,
-                                 headers=_headers(), timeout=TIMEOUT_S)
+                                 headers=_headers(self.api_key), timeout=TIMEOUT_S)
             resp.raise_for_status()
             first = resp.json()["logprobs"][0]
             alternatives = first.get("top_logprobs") or [first]
@@ -181,7 +185,7 @@ class OllamaGateway:
             start = time.monotonic()
             try:
                 resp = requests.post(f"{self.base_url}/api/chat", json=payload,
-                                     headers=_headers(), timeout=TIMEOUT_S)
+                                     headers=_headers(self.api_key), timeout=TIMEOUT_S)
                 resp.raise_for_status()
                 body = resp.json()
                 content = body["message"]["content"]
