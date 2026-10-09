@@ -80,6 +80,8 @@ def verify_checkpoint(events: list[dict], checkpoint: dict, public_key_b64: str)
     genesis = by_seq.get(1, {})
     if genesis.get("entry_hash") != checkpoint["genesis_hash"]:
         return ["the chain was restarted since the checkpoint"]
+    if "unchained" not in checkpoint:  # version 1 checkpoints predate this coverage
+        return []
     # Rows the previous code wrote after genesis, during a deploy: covered by digest.
     unchained, after = checkpoint["unchained"], genesis["detail"]["legacy_until"]
     rows = sorted((e for e in events if e["chain_seq"] is None and after < e["at"]

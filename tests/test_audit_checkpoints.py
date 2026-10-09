@@ -12,6 +12,9 @@ import pytest
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.serialization import Encoding, NoEncryption, PrivateFormat
 
+from datetime import timedelta
+
+from app import checkpoints
 from app.models import AuditEvent
 
 _spec = importlib.util.spec_from_file_location(
@@ -135,11 +138,13 @@ def _deploy_switchover_row(db, org_id):
     return row
 
 
-def test_rows_written_outside_the_chain_during_a_deploy_are_covered(client, engaged, signed, db, tmp_path):
+def test_rows_written_outside_the_chain_during_a_deploy_are_covered(client, engaged, signed, db, tmp_path,
+                                                                    monkeypatch):
     """Review fix: a row the previous code wrote after genesis is outside the hash chain, so the
     checkpoint covers it by digest; changing it afterwards is caught, online and offline."""
     org_id, engagement_id = engaged
     row = _deploy_switchover_row(db, org_id)
+    monkeypatch.setattr(checkpoints, "SETTLE", timedelta(0))  # the switchover has settled
     checkpoint = _issue(client, engagement_id)
     assert checkpoint["unchained"]["count"] == 1
     assert _verify(client, org_id, checkpoint)["verified"] is True
@@ -163,3 +168,32 @@ def test_a_malformed_checkpoint_fails_verification_instead_of_erroring(client, e
     org_id, _ = engaged
     response = client.post("/audit/checkpoints/verify", headers={"authorization": f"org:{org_id}"}, json=junk)
     assert response.status_code == 200 and response.json()["verified"] is False
+
+
+def test_no_checkpoint_while_a_deploy_is_still_writing_outside_the_chain(client, engaged, signed, db):
+    """Review fix: rows the previous code writes carry no lock, so a checkpoint is refused until
+    they have settled; none can then land behind its signed cutoff."""
+    org_id, engagement_id = engaged
+    _deploy_switchover_row(db, org_id)
+    response = client.post("/audit/checkpoints", headers=_auditor(engagement_id))
+    assert response.status_code == 409 and "deploy" in response.json()["detail"]
+
+
+def test_a_version_1_checkpoint_still_verifies(client, engaged, monkeypatch, tmp_path):
+    """Review fix: a checkpoint an auditor already holds keeps verifying after the format moved on."""
+    org_id, engagement_id = engaged
+    key = _new_key()
+    monkeypatch.setenv("AUDIT_CHECKPOINT_SIGNING_KEY", key)
+    current = _issue(client, engagement_id)
+    body = {k: v for k, v in current.items() if k not in ("signature", "unchained")}
+    body["format"] = "grc-audit-checkpoint/1"
+    private = Ed25519PrivateKey.from_private_bytes(base64.b64decode(key))
+    v1 = {**body, "signature": {**current["signature"],
+                                "value": base64.b64encode(private.sign(checkpoints.canonical(body))).decode()}}
+    assert _verify(client, org_id, v1)["verified"] is True
+
+    public = client.get("/audit/checkpoint-keys").json()["keys"][0]["public_key"]
+    events_file, checkpoint_file = tmp_path / "e.ndjson", tmp_path / "c.json"
+    events_file.write_text(client.get("/audit/events.ndjson", headers=_auditor(engagement_id)).text)
+    checkpoint_file.write_text(json.dumps(v1))
+    assert offline.main([str(events_file), str(checkpoint_file), "--public-key", public]) == 0

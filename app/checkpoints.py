@@ -19,7 +19,7 @@ import base64
 import hashlib
 import json
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
@@ -29,7 +29,13 @@ from sqlalchemy.orm import Session
 from app import audit_log
 from app.models import AuditEvent
 
-FORMAT = "grc-audit-checkpoint/1"
+FORMAT = "grc-audit-checkpoint/2"
+# Version 1 had no `unchained` block. Still verified, so a checkpoint an auditor already holds
+# never stops verifying because the format moved on.
+FORMATS = {"grc-audit-checkpoint/1", FORMAT}
+# Rows the previous code writes during a deploy carry no lock, so a checkpoint covers them only
+# up to a cutoff this far in the past: long enough for any such transaction to have committed.
+SETTLE = timedelta(seconds=60)
 
 
 class NotConfigured(RuntimeError):
@@ -83,9 +89,14 @@ def _unchained_rows(db: Session, chain: str, genesis: AuditEvent, until: str | N
 
 
 def _unchained(db: Session, chain: str, genesis: AuditEvent) -> dict:
+    """Signed coverage of rows written outside the chain: everything up to a cutoff SETTLE ago.
+    While such rows are still arriving (a deploy switchover in progress) no checkpoint is issued,
+    so no row can land behind the cutoff after it is signed."""
+    cutoff = audit_log._ts(datetime.now(timezone.utc).replace(tzinfo=None) - SETTLE)
     rows = _unchained_rows(db, chain, genesis)
-    return {"count": len(rows), "digest": audit_log._legacy_digest(rows),
-            "until": max((audit_log._ts(e.at) for e in rows), default=None)}
+    if any(audit_log._ts(e.at) > cutoff for e in rows):
+        raise ValueError("a deploy is still writing events outside the chain; try again in a minute")
+    return {"count": len(rows), "digest": audit_log._legacy_digest(rows), "until": cutoff}
 
 
 def _previous(db: Session, chain: str) -> dict | None:
@@ -133,6 +144,8 @@ def _well_formed(checkpoint) -> bool:
     if not isinstance(checkpoint, dict) or not isinstance(checkpoint.get("signature"), dict):
         return False
     unchained = checkpoint.get("unchained")
+    if checkpoint.get("format") == "grc-audit-checkpoint/1" and unchained is None:
+        unchained = {"count": 0, "digest": "", "until": None}  # version 1 predates the block
     return (isinstance(checkpoint.get("chain_seq"), int) and not isinstance(checkpoint.get("chain_seq"), bool)
             and all(isinstance(checkpoint.get(k), str) for k in ("org_id", "head_hash", "genesis_hash"))
             and isinstance(unchained, dict) and isinstance(unchained.get("count"), int)
@@ -142,7 +155,7 @@ def _well_formed(checkpoint) -> bool:
 
 
 def verify_signature(checkpoint: dict) -> list[str]:
-    if not isinstance(checkpoint, dict) or checkpoint.get("format") != FORMAT:
+    if not isinstance(checkpoint, dict) or checkpoint.get("format") not in FORMATS:
         return [f"not a {FORMAT} checkpoint"]
     if not _well_formed(checkpoint):
         return ["the checkpoint is malformed: a field is missing or has the wrong type"]
@@ -176,7 +189,7 @@ def verify(db: Session, org_id: str, checkpoint: dict) -> dict:
             genesis = db.query(AuditEvent).filter_by(chain=chain, chain_seq=1).one_or_none()
             if genesis is None or genesis.entry_hash != checkpoint.get("genesis_hash"):
                 problems.append("the chain was restarted since the checkpoint")
-            else:
+            elif "unchained" in checkpoint:  # absent only from version 1
                 unchained = checkpoint["unchained"]
                 rows = (_unchained_rows(db, chain, genesis, unchained["until"])
                         if unchained["until"] else [])
