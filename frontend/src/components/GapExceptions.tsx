@@ -33,7 +33,7 @@ export function GapExceptions({ framework, clause, isAuditor, canRequest }: {
 
   const mine = (g: GapRow) => g.framework === framework && g.clause === clause;
   const openGaps = (gaps.data ?? []).filter(mine);
-  const rows = (exceptions.data ?? []).filter((e) => e.framework === framework && e.clause === clause);
+  const rows = (Array.isArray(exceptions.data) ? exceptions.data : []).filter((e) => e.framework === framework && e.clause === clause);
   if (!openGaps.length && !rows.length) return null;
 
   const run = async (fn: () => Promise<unknown>) => {
