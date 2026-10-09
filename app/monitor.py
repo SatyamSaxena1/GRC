@@ -36,7 +36,8 @@ from sqlalchemy.orm import Session
 from app import audit_log
 from app.content.load import Content
 from app.evaluate import evaluate
-from app.service import process_evidence
+from app.ai import decision
+from app.service import UNSUPPORTED_MIN, mismatch, process_evidence
 from app.models import (
     TERMINAL_EVIDENCE_STATUSES, AiRun, BreachEvent, Evidence, EvidenceControlLink, GapException, Organization,
     RightsRequest,
@@ -368,6 +369,7 @@ def _main() -> int:
 
         problems += _report_chain(db, audit_log.PLATFORM)
         _report_exception_pressure(db, orgs, content)
+        _report_decision_calibration(db, orgs)
 
     print(f"\n{problems} item(s) need attention")
     return 1 if problems else 0
@@ -400,6 +402,70 @@ def _report_exception_pressure(db: Session, orgs: list, content: Content) -> Non
     for r in rows:
         print(f"  {r['framework']} {r['clause']} {r['attribute']}: {r['open']} open, "
               f"{r['ended']} ended, in {r['orgs']} organisation(s)")
+
+
+CALIBRATION_DAYS = 30
+SETTLE_DAYS = 7  # a type nobody corrected within a week is taken as the right one
+
+
+def decision_calibration(db: Session, org_ids: list[str], now: datetime | None = None) -> list[dict]:
+    """How the typed decisions of the last CALIBRATION_DAYS held up, per check and model (ADR-025).
+
+    The artefact-type check is scored against what people did afterwards: the type of the
+    version that superseded the document, or, once SETTLE_DAYS passed with no new version, the
+    type it was filed as. The quote check has no such outcome yet (nobody corrects an extracted
+    value in place), so only how often it flagged is reported. Counts only, never which
+    organisations: the point is the model, as with exception pressure."""
+    from app.db import set_tenant
+
+    now = (now or datetime.now(timezone.utc)).replace(tzinfo=None)
+    since, settled_before = now - timedelta(days=CALIBRATION_DAYS), now - timedelta(days=SETTLE_DAYS)
+    totals: dict[tuple[str, str], dict] = {}
+    for org_id in org_ids:
+        set_tenant(db, org_id)
+        runs = (db.query(AiRun).filter(AiRun.org_id == org_id, AiRun.decision_hash.isnot(None),
+                                       AiRun.created_at >= since).all())
+        for run in runs:
+            row = totals.setdefault((run.operation, run.model), {"asked": 0, "settled": 0, "right": 0,
+                                                                 "brier": 0.0, "flagged": 0})
+            output = run.validated_output or {}
+            if run.operation == "quote_support_check":
+                row["asked"] += len(output)
+                row["flagged"] += sum(1 for p in output.values() if p.get("NO", 0.0) >= UNSUPPORTED_MIN)
+                continue
+            row["asked"] += 1
+            declared = (run.detail or {}).get("declared", "")
+            row["flagged"] += mismatch(output, declared) is not None
+            truth = _settled_type(db, run, declared, settled_before)
+            if truth is not None:
+                row["settled"] += 1
+                row["right"] += decision.top(output) == truth
+                row["brier"] += decision.brier(output, truth)
+    return [{"operation": op, "model": model, **row,
+             "accuracy": row["right"] / row["settled"] if row["settled"] else None,
+             "brier": row["brier"] / row["settled"] if row["settled"] else None}
+            for (op, model), row in sorted(totals.items())]
+
+
+def _settled_type(db: Session, run: AiRun, declared: str, settled_before: datetime) -> str | None:
+    """The type people settled on for the run's document, or None while it may still change."""
+    newer = (db.query(Evidence).filter_by(org_id=run.org_id, supersedes_id=run.evidence_id)
+             .order_by(Evidence.created_at).first())
+    if newer is not None:
+        return newer.artefact_type
+    return declared if declared and run.created_at <= settled_before else None
+
+
+def _report_decision_calibration(db: Session, orgs: list) -> None:
+    rows = decision_calibration(db, [o.id for o in orgs])
+    if rows:
+        print(f"\nAI decision calibration, last {CALIBRATION_DAYS} days (ADR-025):")
+    for r in rows:
+        line = f"  {r['operation']} {r['model'] or '?'}: {r['asked']} asked, {r['flagged']} flagged"
+        if r["operation"] != "quote_support_check":
+            line += (f", {r['settled']} settled" + (f", accuracy {r['accuracy']:.0%}, brier {r['brier']:.3f}"
+                                                  if r["settled"] else ""))
+        print(line)
 
 
 def _report_chain(db: Session, chain: str) -> int:

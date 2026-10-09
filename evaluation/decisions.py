@@ -82,12 +82,7 @@ def asks(task: str) -> list[dict]:
 
 # ---------------------------------------------------------------- metrics
 
-def brier(probabilities: dict[str, float], truth: str, options) -> float:
-    """Multi-class Brier score halved to 0..1: 0 is certain and right, 1 certain and wrong.
-    No answer counts as the uniform distribution: it said nothing, so it knew nothing."""
-    keys = list(options)
-    p = probabilities or {k: 1 / len(keys) for k in keys}
-    return sum((p.get(k, 0.0) - (k == truth)) ** 2 for k in keys) / 2
+brier = decision.brier  # one definition, shared with the nightly calibration report
 
 
 def ece(points: list[tuple[float, bool]], bins: int = 10) -> float:

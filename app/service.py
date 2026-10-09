@@ -115,19 +115,36 @@ def mismatch(probabilities: dict[str, float], declared: str) -> str | None:
     return None
 
 
-def _type_mismatch(db: Session, gateway, evidence: Evidence, text: str) -> str:
+def _decision_run(db: Session, gateway, evidence: Evidence, operation: str, prompt_version: str,
+                  inputs: dict, output: dict, trail: list | None, **fields) -> None:
+    """One typed decision's AiRun, with its decision hash (ADR-025). `trail` collects
+    {operation, model, decision_hash} for the EVIDENCE_PROCESSED audit event, so the hash
+    sits in the tamper-evident chain and under any checkpoint an auditor holds."""
+    model = getattr(gateway, "model", "")
+    digest = decision.decision_hash(operation, prompt_version, model, inputs, output)
+    db.add(AiRun(
+        org_id=evidence.org_id, evidence_id=evidence.id, operation=operation,
+        provider=getattr(gateway, "provider", ""), model=model, prompt_template_version=prompt_version,
+        validated_output=output, latency_ms=getattr(gateway, "last_latency_ms", 0),
+        decision_hash=digest, detail=inputs, **fields,
+    ))
+    if trail is not None:
+        trail.append({"operation": operation, "model": model, "decision_hash": digest})
+
+
+def _type_mismatch(db: Session, gateway, evidence: Evidence, text: str, trail: list | None = None) -> str:
     """'' when the declared type is plausible; otherwise the NEEDS_REVIEW detail.
     Logged as an AiRun either way it was asked, so a flag can be explained."""
-    probabilities = classify_artefact(gateway, evidence.original_filename or evidence.filename, text)
+    filename = evidence.original_filename or evidence.filename
+    probabilities = classify_artefact(gateway, filename, text)
     if not probabilities:
         return ""
     top = decision.top(probabilities)
-    db.add(AiRun(
-        org_id=evidence.org_id, evidence_id=evidence.id, operation="artefact_type_check",
-        provider=getattr(gateway, "provider", ""), model=getattr(gateway, "model", ""),
-        prompt_template_version="artefact_type:v1", validated_output=probabilities,
-        confidence=probabilities[top], latency_ms=getattr(gateway, "last_latency_ms", 0),
-    ))
+    _decision_run(db, gateway, evidence, "artefact_type_check", "artefact_type:v1",
+                  {"question_sha256": decision.digest(CLASSIFY_QUESTION), "options": list(ARTEFACT_TYPES),
+                   "orders": CLASSIFY_ORDERS, "declared": evidence.artefact_type,
+                   "state_sha256": decision.digest(classify_state(filename, text))},
+                  probabilities, trail, confidence=probabilities[top])
     declared = evidence.artefact_type
     if mismatch(probabilities, declared):
         return (f"uploaded as {declared}, but reads like a {top} "
@@ -176,29 +193,29 @@ def _restore_cadence_words(run) -> None:
             run.fields[name] = field.model_copy(update={"value": word})
 
 
-def _unsupported_values(db: Session, gateway, evidence: Evidence, run) -> list[str]:
+def _unsupported_values(db: Session, gateway, evidence: Evidence, run, trail: list | None = None) -> list[str]:
     """Attributes whose extracted value its own cited quote does not state —
     a hallucination check on extraction, one yes/no per quoted field."""
     checked: dict[str, dict] = {}
+    states: dict[str, str] = {}
     unsupported = []
     for name, field in run.fields.items():
         quote = " … ".join(s.quote for s in field.sources if s.quote)
         if field.value is None or not quote:
             continue  # nothing claimed, or nothing cited to check it against
-        probabilities = decision.choose(gateway, SUPPORT_QUESTION, support_state(name, field.value, quote),
-                                        SUPPORT_OPTIONS)
+        state = support_state(name, field.value, quote)
+        probabilities = decision.choose(gateway, SUPPORT_QUESTION, state, SUPPORT_OPTIONS)
         if not probabilities:
             return []  # model gone mid-way: judge nothing rather than half
         checked[name] = probabilities
+        states[name] = decision.digest(state)
         if probabilities.get("NO", 0.0) >= UNSUPPORTED_MIN:
             unsupported.append(name)
     if checked:
-        db.add(AiRun(
-            org_id=evidence.org_id, evidence_id=evidence.id, operation="quote_support_check",
-            provider=getattr(gateway, "provider", ""), model=getattr(gateway, "model", ""),
-            prompt_template_version="quote_support:v3", requested_attributes=list(checked),
-            validated_output=checked, latency_ms=getattr(gateway, "last_latency_ms", 0),
-        ))
+        _decision_run(db, gateway, evidence, "quote_support_check", "quote_support:v3",
+                      {"question_sha256": decision.digest(SUPPORT_QUESTION), "options": list(SUPPORT_OPTIONS),
+                       "orders": 1, "state_sha256": states},
+                      checked, trail, requested_attributes=list(checked))
     return unsupported
 
 
@@ -570,14 +587,14 @@ def _run_pipeline(db: Session, content: Content, evidence: Evidence, actor_label
     # Asked before evaluating, acted on only at the end: a mistyped file still
     # gets evaluated as declared (that is what was asked for), it just can't
     # land as READY without a human looking at the type.
-    type_mismatch, unsupported = "", []
+    type_mismatch, unsupported, ai_checks = "", [], []
     if method != "connector":
         # A Jev-class decision model when one is configured (ADR-025), else the extraction one.
         decider = decision_gateway(gateway)
         if run.status != "UNAVAILABLE":
-            type_mismatch = _type_mismatch(db, decider, evidence, text)
+            type_mismatch = _type_mismatch(db, decider, evidence, text, ai_checks)
         if run.status == "OK":
-            unsupported = _unsupported_values(db, decider, evidence, run)
+            unsupported = _unsupported_values(db, decider, evidence, run, ai_checks)
 
     confidences = [f.confidence for f in run.fields.values() if f.confidence is not None]
     db.add(AiRun(
@@ -685,7 +702,8 @@ def _run_pipeline(db: Session, content: Content, evidence: Evidence, actor_label
         db, actor=actor_label, action="EVIDENCE_PROCESSED", entity_type="evidence",
         entity=evidence.id, org_id=evidence.org_id,
         detail={"attributes": list(attributes), "extraction_status": run.status,
-                "quality_score": quality.score, "evaluations": provenance_trail},
+                "quality_score": quality.score, "evaluations": provenance_trail,
+                "ai_checks": ai_checks},
         request_id=request_id,
     )
     # An unusable extraction is flagged for a human, never quietly accepted.

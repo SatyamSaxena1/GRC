@@ -44,6 +44,22 @@ and self-hosting keeps every document on our own servers.
 
   Self-hosted cost is the machine's, so it is not scored.
 
+- **Every decision is provable afterwards.** Each typed decision the pipeline asks gets a
+  `decision_hash` on its AiRun. The hash covers the operation, the prompt version, the
+  model, the inputs and the answer. The inputs are the question and state as sha256 digests,
+  never document text, plus the options and the number of orders. Anyone holding the
+  document can rebuild the state and recompute the hash.
+  - The hashes go into the `EVIDENCE_PROCESSED` audit event (`ai_checks`), so they sit in
+    the tamper-evident chain and under any checkpoint an auditor holds (ADR-023).
+  - They also appear on OSCAL observations as props.
+- **Measured in production too.** The nightly monitor prints how the last 30 days of
+  decisions held up, per check and per model, with counts only and no organisation ids.
+  - **Artefact-type check:** scored against what people did afterwards. The truth is the type
+    of the version that superseded the document, or, after 7 days with no new version, the
+    type it was filed as. The report gives accuracy, Brier score and how many it flagged.
+  - **Quote check:** only how often it flagged. Nobody corrects an extracted value in place
+    yet, so there is no outcome to score it against.
+
 ## Consequences
 - **A different model can need different thresholds.** `MISMATCH_TOP` and `UNSUPPORTED_MIN`
   were measured on qwen2.5vl:7b. The evaluation prints what they would do for the candidate;

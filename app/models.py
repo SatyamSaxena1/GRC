@@ -545,6 +545,10 @@ class AiRun(Base):
     confidence: Mapped[float | None] = mapped_column(default=None)
     latency_ms: Mapped[int] = mapped_column(default=0)
     status: Mapped[str] = mapped_column(String, default="OK")  # OK|UNAVAILABLE|INVALID_OUTPUT|ERROR
+    # Typed decisions only (ADR-025): the hash of question, options, state digest, model and
+    # answer, and those inputs (digests, never document text) so the hash can be recomputed.
+    decision_hash: Mapped[str | None] = mapped_column(String, default=None)
+    detail: Mapped[dict | None] = mapped_column(JSON, default=None)
     created_at: Mapped[datetime] = mapped_column(default=_now)
 
 
