@@ -413,7 +413,7 @@ def _report_chain(db: Session, chain: str) -> int:
     return 0
 
 
-def sync_all_connectors(db: Session, org_id: str) -> list[str]:
+def sync_all_connectors(db: Session, org_id: str, sources: set[str] | None = None) -> list[str]:
     """Sync every configured, in-scope DPDP connector source for one org —
     the batch counterpart to POST /connectors/{source}/sync, sharing its
     implementation via app.routers.connectors::sync_connector_for_org so
@@ -426,6 +426,8 @@ def sync_all_connectors(db: Session, org_id: str) -> list[str]:
     na_sources = set(org.dpdp_na_sources) if org else set()
     results = []
     for source in connectors.SOURCES:
+        if sources is not None and source not in sources:
+            continue
         if not os.environ.get(connectors._env_key(source, "URL")):
             continue
         if source in na_sources:
@@ -450,7 +452,7 @@ def sync_all_connectors(db: Session, org_id: str) -> list[str]:
     return results
 
 
-def _sync_connectors() -> int:
+def _sync_connectors(org_ids: set[str] | None = None, sources: set[str] | None = None) -> int:
     """Periodic connector sync for every org — the batch/cron counterpart to
     clicking "Collect evidence" (app/routers/connectors.py). No in-process
     scheduler (ADR-006): cron/Task Scheduler already solves recurrence."""
@@ -458,9 +460,17 @@ def _sync_connectors() -> int:
 
     problems = 0
     with session_scope() as db:
-        for org in db.query(Organization).order_by(Organization.name).all():
+        orgs = db.query(Organization).order_by(Organization.name).all()
+        if org_ids is not None:
+            # A collector URL is platform-wide: a client's own repositories must reach only that client.
+            unknown = org_ids - {o.id for o in orgs}
+            if unknown:
+                print(f"unknown organisation id(s): {', '.join(sorted(unknown))}")
+                return 1
+            orgs = [o for o in orgs if o.id in org_ids]
+        for org in orgs:
             set_tenant(db, org.id)  # RLS scopes each pass (no-op on SQLite)
-            results = sync_all_connectors(db, org.id)
+            results = sync_all_connectors(db, org.id, sources)
             if not results:
                 continue
             print(f"\n{org.name} ({org.id})")
@@ -479,5 +489,12 @@ if __name__ == "__main__":
     if "--retry-extractions" in sys.argv:
         raise SystemExit(_retry_extractions())
     if "--sync-connectors" in sys.argv:
-        raise SystemExit(_sync_connectors())
+        import argparse
+        parser = argparse.ArgumentParser(prog="python -m app.monitor --sync-connectors")
+        parser.add_argument("--sync-connectors", action="store_true")
+        parser.add_argument("--org", action="append", help="only these organisation ids; repeatable")
+        parser.add_argument("--source", action="append", help="only these connector sources; repeatable")
+        args = parser.parse_args()
+        raise SystemExit(_sync_connectors(set(args.org) if args.org else None,
+                                          set(args.source) if args.source else None))
     raise SystemExit(_main())
