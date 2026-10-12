@@ -112,3 +112,18 @@ def test_the_connector_accepts_the_new_attributes():
     allowed = connectors.SOURCES["github"][2]
     assert {"ai_reviewed_merges", "merges_without_ai_review", "merges_with_unresolved_ai_review_findings",
             "merges_without_linked_ticket"} <= set(allowed)
+
+
+def test_unread_or_uncollected_sources_are_unknown_never_no_review():
+    """Review fix: a comments read that failed, or a collector that gathers no comments at all
+    (GitLab, Bitbucket), must not be counted as "no AI review"."""
+    unread = {**_pr(), "comment_authors": None}
+    assert gcc.ai_reviewed(unread) is None
+    assert gcc.ai_reviewed({**unread, "reviews": [{"user": {"login": "coderabbitai", "is_bot": True},
+                                                   "state": "COMMENTED", "commit_id": HEAD}]}) is True
+    gitlab_shaped = {k: v for k, v in _pr().items() if k not in ("comment_authors", "review_threads")}
+    assert gcc.ai_reviewed(gitlab_shaped) is None
+    counts = gcc.summarize([{"protection": PROTECTED, "pulls": [gitlab_shaped, _pr(number=2)], "default_commits": []}])
+    assert counts["ai_reviewed_merges"] is None and counts["merges_without_ai_review"] is None
+    assert "AI review: unknown" in change_gate._advisory_line(
+        {"ai_reviewed": None, "unresolved_ai_findings": None, "linked_tickets": None})

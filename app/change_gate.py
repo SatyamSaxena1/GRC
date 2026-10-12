@@ -120,8 +120,9 @@ def _advisory_line(advisory: dict) -> str:
     """Advisory facts (ADR-026): they inform the reviewer and never change the gate's result."""
     unresolved = advisory.get("unresolved_ai_findings")
     tickets = advisory.get("linked_tickets")
-    review = ("AI review: " + ("yes" if advisory.get("ai_reviewed") else "none seen")
-              + ("" if not advisory.get("ai_reviewed") else
+    reviewed = advisory.get("ai_reviewed")
+    review = ("AI review: " + {True: "yes", False: "none seen", None: "unknown"}[reviewed]
+              + ("" if not reviewed else
                  f", {'unknown' if unresolved is None else unresolved} unresolved finding"
                  f"{'' if unresolved == 1 else 's'}"))
     ticket = ("Ticket: " + (", ".join(tickets) if tickets else ("unknown" if tickets is None else "none linked")))

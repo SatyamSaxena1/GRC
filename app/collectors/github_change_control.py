@@ -130,13 +130,17 @@ def _is_ai_reviewer(login, extra: Iterable[str] = ()) -> bool:
     return raw.endswith("[bot]") and _login(raw) in AI_REVIEWERS
 
 
-def ai_reviewed(pr: dict, extra_reviewers: Iterable[str] = ()) -> bool:
-    """An AI code reviewer reviewed, commented on, or opened a thread on the pull request."""
+def ai_reviewed(pr: dict, extra_reviewers: Iterable[str] = ()) -> bool | None:
+    """An AI code reviewer reviewed, commented on, or opened a thread on the pull request.
+    None when no source shows one and a source could not be read, or was never collected
+    (the GitLab and Bitbucket collectors gather no comment authors): unknown, never "no"."""
     extra = tuple(extra_reviewers)
+    comments, threads = pr.get("comment_authors"), pr.get("review_threads")
     seen = [_bot_login(r.get("user")) for r in pr.get("reviews", [])]
-    seen += list(pr.get("comment_authors", []))
-    seen += [t.get("author") for t in pr.get("review_threads") or []]
-    return any(_is_ai_reviewer(login, extra) for login in seen)
+    seen += list(comments or []) + [t.get("author") for t in threads or []]
+    if any(_is_ai_reviewer(login, extra) for login in seen):
+        return True
+    return None if comments is None or threads is None else False
 
 
 def _bot_login(user: dict | None) -> str:
@@ -384,9 +388,10 @@ def summarize(repos: Iterable[dict]) -> dict[str, Any]:
         "gate_checks_never_seen_failing": sum(not g["failures"] for g in gates),
         # Advisory (ADR-026): what AI code review and ticket linkage show. No content pack fails a
         # clause on these; an AI review is never the independent approval.
-        "ai_reviewed_merges": sum(ai_reviewed(pr, _reviewers(r)) for r in repos for pr in r.get("pulls", [])),
-        "merges_without_ai_review": sum(
-            not ai_reviewed(pr, _reviewers(r)) for r in repos for pr in r.get("pulls", [])),
+        "ai_reviewed_merges": _count_known(
+            [_flag(ai_reviewed(pr, _reviewers(r))) for r in repos for pr in r.get("pulls", [])]),
+        "merges_without_ai_review": _count_known(
+            [_flag(ai_reviewed(pr, _reviewers(r)), negate=True) for r in repos for pr in r.get("pulls", [])]),
         "merges_with_unresolved_ai_review_findings": _count_known(
             [unresolved_ai_findings(pr, _reviewers(r)) for r in repos for pr in r.get("pulls", [])]),
         "merges_without_linked_ticket": _count_known(
@@ -396,6 +401,10 @@ def summarize(repos: Iterable[dict]) -> dict[str, Any]:
 
 def _reviewers(repo: dict) -> tuple[str, ...]:
     return tuple(repo.get("extra_ai_reviewers", ()))
+
+
+def _flag(value: bool | None, negate: bool = False) -> int | None:
+    return None if value is None else int(value != negate)
 
 
 def _count_known(values: list[int | None]) -> int | None:
@@ -714,7 +723,7 @@ def pull_facts(session, repo: str, raw: dict) -> dict:
         ],
         "checks": head_checks,
         # ADR-026, advisory: AI reviewers' comments and threads, and what authorised the change.
-        "comment_authors": _comment_authors(session, repo, number) or [],
+        "comment_authors": _comment_authors(session, repo, number),  # None: unreadable, so unknown
         "review_threads": graph["threads"] if graph else None,
         # Ticket keys only. Without GraphQL a missing key is unknown, not "no ticket".
         "linked_tickets": sorted(set(keys + graph["closing"])) if graph else (keys or None),
