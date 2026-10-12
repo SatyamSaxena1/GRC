@@ -1,0 +1,20 @@
+name: Change management
+description: >
+  Changes stay small enough to review, and gate files (CI, ownership, tests) are changed with care.
+owner: Engineering management
+on_incomplete: warn
+rules:
+  - id: reviewable-size
+    title: Changes stay reviewable
+    kind: max_change
+    max_added_lines: 800
+    severity: low
+    action: warn
+  - id: ci-changes-need-tests
+    title: CI changes come with an explanation in docs or tests
+    kind: require_companion
+    paths: [".github/workflows/*", ".gitlab-ci.yml", "Jenkinsfile"]
+    companions: ["docs/*", "tests/*", "*.md"]
+    severity: medium
+    action: warn
+    clauses: ["SOC-2 CC8.1"]

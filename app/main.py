@@ -17,7 +17,7 @@ from app.ai.provider import make_gateway
 from app.db import engine, init_db
 from app.routers import (
     activity, admin, analytics, audit, breach, ciso, connectors, content, controls, evidence, exceptions, export, firm,
-    glossary, notifications, rights_requests,
+    glossary, notifications, review, rights_requests,
 )
 
 logging.basicConfig(
@@ -134,6 +134,7 @@ app.include_router(ciso.router)
 app.include_router(connectors.router)
 app.include_router(breach.router)
 app.include_router(rights_requests.router)
+app.include_router(review.router)
 
 
 @app.get("/health/live")

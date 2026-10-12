@@ -1,0 +1,14 @@
+name: Dependency controls
+description: >
+  Banned packages stay out of every manifest. Replace the example list with your own.
+owner: Platform engineering
+on_incomplete: warn
+rules:
+  - id: banned-packages
+    title: Banned dependencies are not added
+    kind: forbid_dependency
+    packages: [left-pad, event-stream, flatmap-stream, colors-unsafe]
+    severity: high
+    action: block
+    clauses: ["SOC-2 CC8.1"]
+    rationale: Each of these has shipped malicious or abandoned code; use the approved alternative.

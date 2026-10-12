@@ -21,6 +21,7 @@ import { DpdpPage } from "./pages/Dpdp";
 import { DpdpOperationsPage } from "./pages/DpdpOperations";
 import { CisoSyncPage } from "./pages/CisoSync";
 import { EvidenceMapPage } from "./pages/EvidenceMap";
+import { CodeReviewPage } from "./pages/CodeReview";
 import { DemoGate } from "./demo/DemoGate";
 
 function RequireAuth({ children }: { children: JSX.Element }) {
@@ -75,6 +76,7 @@ export function App() {
         <Route path="/dpdp/operations" element={<DpdpOperationsPage />} />
         <Route path="/ciso-sync" element={<CisoSyncPage />} />
         <Route path="/map" element={<EvidenceMapPage />} />
+        <Route path="/code-review" element={<CodeReviewPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
