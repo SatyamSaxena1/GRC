@@ -236,3 +236,35 @@ def test_findings_carry_a_category_and_producer_for_benchmark_scoring():
     title: S
     kind: secret_scan
     category: vibes""")
+
+
+def test_a_secret_past_the_first_2000_characters_is_still_found():
+    """Review fix: minified files and compact JSON put credentials far along a line."""
+    line = "x" * 5000 + ' "AKIAABCDEFGHIJKLMNOP"'
+    result = engine.review(_std(SECRETS_BLOCK), _files(("dist/app.min.js", [line])))
+    assert result.outcome == "violated"
+
+
+def test_an_organisation_pattern_on_a_very_long_line_is_incomplete_not_a_pass():
+    result = engine.review(_std(FORBID_PRINT), _files(("app/x.py", ["y = 1" + " " * 3000 + "print(1)"])))
+    rule = result.rules[0]
+    assert rule.truncated_lines == 1 and not rule.complete and result.outcome == "incomplete"
+
+
+def test_a_deleted_test_does_not_satisfy_a_companion_rule():
+    rule = """  - id: tests
+    title: Code needs tests
+    kind: require_companion
+    paths: ["app/*"]
+    action: block"""
+    assert engine.review(_std(rule), _files(("app/x.py", ["x"]), ("tests/test_x.py", [], "deleted"))).blocking
+
+
+def test_poetry_table_dependencies_are_read():
+    rule = """  - id: banned
+    title: Banned packages
+    kind: forbid_dependency
+    packages: [left-pad]
+    action: block"""
+    files = _files(("pyproject.toml", ['left-pad = "^1.3"', 'left_pad = { version = "1.3", optional = true }']))
+    assert [f.line for f in engine.review(_std(rule), files).findings] == [1, 2]

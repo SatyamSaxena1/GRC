@@ -34,7 +34,7 @@ ENGINE_VERSION = "1"
 PRODUCER = f"grc-rules/{ENGINE_VERSION}"
 REGEX_TIMEOUT_S = 0.25      # per added line: an organisation's regex must not stall the reviewer
 REGEX_BUDGET_S = 10.0       # for all of a review's regex work together
-MAX_LINE_CHARS = 2000       # minified bundles: look at the start of a line, not all of it
+MAX_LINE_CHARS = 2000       # an organisation's regex sees this much of a line; longer lines make it incomplete
 MAX_ADDED_LINES = 200_000   # beyond this a change is reviewed only in part, and says so
 
 # Built-in secret detectors. Platform-owned patterns, so the standard library `re` is enough.
@@ -49,6 +49,7 @@ _DETECTORS = {
 }
 _REQUIREMENT = re.compile(r"^\s*([A-Za-z0-9][A-Za-z0-9._-]*)")
 _QUOTED_NAME = re.compile(r"[\"']\s*(@?[A-Za-z0-9][A-Za-z0-9._/-]*)")
+_TOML_KEY = re.compile(r"^\s*[\"']?([A-Za-z0-9][A-Za-z0-9._-]*)[\"']?\s*=")
 # Rules that read added lines cannot judge a file whose content was not read.
 _READS_CONTENT = {"forbid_added", "secret_scan", "forbid_dependency", "max_change"}
 
@@ -85,10 +86,11 @@ class RuleResult:
     reason: str | None = None
     evaluated_files: int = 0
     skipped_files: int = 0
+    truncated_lines: int = 0              # lines an organisation's pattern saw only the start of
 
     @property
     def complete(self) -> bool:
-        return self.outcome in ("pass", "violation") and self.skipped_files == 0
+        return self.outcome in ("pass", "violation") and self.skipped_files == 0 and self.truncated_lines == 0
 
     def as_dict(self) -> dict:
         return asdict(self)
@@ -222,6 +224,8 @@ def review(standard: Standard, files: list[FileDiff], timeout: float = REGEX_TIM
             results.append(RuleResult(rule_id=rule.id, action=rule.action, outcome="not_evaluated",
                                       reason="checked by the model reviewer (Phase 2)"))
             continue
+        truncated = (sum(1 for _, _, text in _lines(readable) if len(text) > MAX_LINE_CHARS)
+                     if rule.kind == "forbid_added" else 0)
         try:
             found = _run(rule, readable, scoped, files, timeout, budget)
         except _RuleError as exc:
@@ -234,8 +238,11 @@ def review(standard: Standard, files: list[FileDiff], timeout: float = REGEX_TIM
                                        "message": f"rule '{rule.id}' could not be checked: {exc}"}))
             continue
         findings += found
-        reason = f"{skipped} file(s) in scope were not read" if skipped else None
-        results.append(RuleResult(**base, outcome="violation" if found else "pass", reason=reason))
+        reasons = ([f"{skipped} file(s) in scope were not read"] if skipped else []) + (
+            [f"{truncated} line(s) longer than {MAX_LINE_CHARS} characters were checked only in part"]
+            if truncated else [])
+        results.append(RuleResult(**base, outcome="violation" if found else "pass",
+                                  reason="; ".join(reasons) or None, truncated_lines=truncated))
     findings.sort(key=lambda f: (f.path, f.line or 0, f.rule_id))
     skipped_files = tuple(sorted((f.path, f.skipped) for f in files if f.skipped))
     return Result(tuple(findings), tuple(results), standard.on_incomplete, skipped_files)
@@ -296,7 +303,9 @@ def _secret_scan(rule: Rule, files: list[FileDiff]) -> list[Finding]:
         texts[(path, number)] = text
         for name in detectors:
             pattern, what = _DETECTORS[name]
-            if pattern.search(text[:MAX_LINE_CHARS]):
+            # The whole line: these platform patterns run in linear time, and a credential at
+            # character 5,000 of a minified file is still a credential.
+            if pattern.search(text):
                 # The detector and the place, never the value or a hash of it: nothing a check
                 # annotation, an audit event or a log line repeats can leak the credential.
                 out.append(_finding(rule, path, number, f"added line contains {what} ({name})", text))
@@ -317,7 +326,11 @@ def _dependency_names(path: str, text: str) -> set[str]:
         match = re.match(r'^\s*"(@?[A-Za-z0-9][A-Za-z0-9._/-]*)"\s*:\s*"', text)
         return {match.group(1)} if match else set()
     if name == "pyproject.toml":
-        return {m.group(1) for m in _QUOTED_NAME.finditer(text)}
+        # PEP 621 lists ("left-pad>=1") and Poetry tables (left-pad = "^1.3", or = { version … })
+        names = {m.group(1) for m in _QUOTED_NAME.finditer(text)}
+        if key := _TOML_KEY.match(text):
+            names.add(key.group(1))
+        return names
     return set()
 
 
@@ -336,7 +349,8 @@ def _require_companion(rule: Rule, scoped: list[FileDiff], every: list[FileDiff]
     if not changed:
         return []
     companions = rule.companions or TEST_GLOBS
-    if any(fnmatch.fnmatchcase(f.path, g) for f in every for g in companions):
+    # Deleting a test is not supplying one.
+    if any(fnmatch.fnmatchcase(f.path, g) for f in every if f.status != "deleted" for g in companions):
         return []
     shown = ", ".join(f.path for f in changed[:3]) + (f" (+{len(changed) - 3} more)" if len(changed) > 3 else "")
     return [_finding(rule, changed[0].path, None,

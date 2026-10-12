@@ -13,6 +13,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app import audit_log
@@ -50,6 +51,17 @@ def active_standard(db: Session, org_id: str) -> tuple[standards.Standard, str, 
         std = standards.default()
         return std, standards.body_hash(std), None
     return standards.Standard(**row.body), row.body_hash, row.version
+
+
+def _flush_or_409(db: Session) -> None:
+    """Two publishes racing past the version check meet the database's unique constraints;
+    the loser gets the same 409 as a stale editor, never a 500."""
+    try:
+        db.flush()
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(409, "another change to the review standard landed at the same time; "
+                                 "reload and reapply your change") from exc
 
 
 @router.get("/standards")
@@ -96,12 +108,12 @@ def publish_standard(body: StandardIn, actor: Actor = Depends(current_actor), db
     version = (db.query(func.max(ReviewStandard.version)).filter_by(org_id=actor.org_id).scalar() or 0) + 1
     if previous is not None:
         previous.is_active = False
-        db.flush()  # the one-active index must see the old version retired first
+        _flush_or_409(db)  # the one-active index must see the old version retired first
     row = ReviewStandard(org_id=actor.org_id, name=std.name, version=version, body=standards.body(std),
                          source_yaml=body.yaml, body_hash=standards.body_hash(std), is_active=True,
                          created_by=actor.label())
     db.add(row)
-    db.flush()
+    _flush_or_409(db)
     audit_log.record(db, actor=actor.label(), action="REVIEW_STANDARD_PUBLISHED", entity_type="review_standard",
                      entity=row.id, org_id=actor.org_id, request_id=actor.request_id,
                      detail={"name": row.name, "version": version, "body_hash": row.body_hash,
@@ -121,8 +133,9 @@ def activate_standard(standard_id: str, body: ActivateIn | None = None, actor: A
     previous = _check_expected(db, actor.org_id, body.expected_active_version if body else None)
     if previous is not None and previous.id != row.id:
         previous.is_active = False
-        db.flush()  # retire the old version before the one-active index sees the new one
+        _flush_or_409(db)  # retire the old version before the one-active index sees the new one
     row.is_active = True
+    _flush_or_409(db)
     audit_log.record(db, actor=actor.label(), action="REVIEW_STANDARD_ACTIVATED", entity_type="review_standard",
                      entity=row.id, org_id=actor.org_id, request_id=actor.request_id,
                      detail={"version": row.version, "body_hash": row.body_hash,
@@ -154,5 +167,9 @@ def try_standard(body: TryIn, actor: Actor = Depends(current_actor), db: Session
     else:
         std, digest, _ = active_standard(db, actor.org_id)
     files = diffs.parse(body.diff)
+    if not files:
+        # Reviewing nothing would read as a pass: say the input was not a diff instead.
+        raise HTTPException(422, {"problems": [{"line": None, "message":
+                                                "no file changes found: paste the output of `git diff`"}]})
     return {"standard": {"name": std.name, "body_hash": digest}, "files": len(files),
             **engine.review(std, files).as_dict()}

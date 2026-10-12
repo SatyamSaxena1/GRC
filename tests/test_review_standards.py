@@ -172,3 +172,21 @@ def test_built_in_packs_are_valid_starting_points(client, bootstrap):
         standards.parse(pack["yaml"], load_content())  # every clause exists in a loaded pack
     published = client.post("/review/standards", headers=_h(org_id), json={"yaml": packs[0]["yaml"]})
     assert published.status_code == 201 and published.json()["body_hash"] == packs[0]["body_hash"]
+
+
+def test_input_that_is_not_a_diff_is_rejected_not_passed(client, bootstrap):
+    org_id, _ = bootstrap(client)
+    response = client.post("/review/standards/test", headers=_h(org_id), json={"diff": "not a diff"})
+    assert response.status_code == 422 and "no file changes" in response.json()["detail"]["problems"][0]["message"]
+
+
+def test_a_publish_that_loses_a_race_is_a_409_not_a_500(client, bootstrap, monkeypatch):
+    """Review fix: two publishes past the version check meet the unique constraints."""
+    from app.routers import review as review_router
+    org_id, _ = bootstrap(client)
+    client.post("/review/standards", headers=_h(org_id), json={"yaml": GOOD})
+    real_max = review_router.func.max
+    # The racing request read max(version) before the other one committed.
+    monkeypatch.setattr(review_router, "func", type("F", (), {"max": staticmethod(lambda col: real_max(col) - 1)}))
+    response = client.post("/review/standards", headers=_h(org_id), json={"yaml": GOOD})
+    assert response.status_code == 409
