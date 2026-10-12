@@ -118,9 +118,14 @@ never affected.
   - Offline evaluation only; nothing in production calls a model.
 
 ## How it was checked
-- Every PR went through CI (backend, Postgres RLS, frontend, change-control gate) and a Codex
-  review before merging. Codex findings were fixed and their threads answered on #20, #26, #27,
-  #28 and #29: 2, 2, 2 and 5 findings on the last four.
+- Every PR went through CI (backend, Postgres RLS, frontend, change-control gate) before
+  merging.
+- **Codex review:**
+  - #15, #17 and #18 were merged before their Codex reviews arrived; those findings were fixed
+    in #20.
+  - Every PR since then waited for its review before merging.
+  - Findings were fixed and their threads answered on #26, #27, #28 and #29 (2, 2, 2 and 5
+    findings).
 - At the last merge: **766 backend tests** and **15 Postgres row-level-security tests** pass,
   and the frontend builds.
 - After each merge the Render deploy was checked:
