@@ -9,7 +9,7 @@ from __future__ import annotations
 import uuid
 from datetime import date, datetime, timezone
 
-from sqlalchemy import ForeignKey, Integer, JSON, String, Text, UniqueConstraint
+from sqlalchemy import ForeignKey, Index, Integer, JSON, String, Text, UniqueConstraint, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -600,3 +600,26 @@ class AuditEvent(Base):
     chain: Mapped[str | None] = mapped_column(String, default=None)
     chain_seq: Mapped[int | None] = mapped_column(Integer, default=None)
     hash_version: Mapped[int | None] = mapped_column(Integer, default=None)
+
+
+class ReviewStandard(Base):
+    """One immutable version of an organisation's Review Standard (ADR-027). Editing publishes a
+    new version; exactly one version per organisation is active. `body_hash` is the canonical
+    hash of `body`, so a review result names the exact rules it was judged by."""
+    __tablename__ = "review_standards"
+    __table_args__ = (
+        UniqueConstraint("org_id", "version"),
+        # The database, not only the API, allows one active version per organisation.
+        Index("uq_review_standards_one_active", "org_id", unique=True,
+              sqlite_where=text("is_active"), postgresql_where=text("is_active")),
+    )
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"))
+    name: Mapped[str] = mapped_column(String)
+    version: Mapped[int] = mapped_column(Integer)
+    body: Mapped[dict] = mapped_column(JSON)
+    source_yaml: Mapped[str] = mapped_column(Text, default="")  # as the admin wrote it, comments kept
+    body_hash: Mapped[str] = mapped_column(String)
+    is_active: Mapped[bool] = mapped_column(default=False)
+    created_by: Mapped[str] = mapped_column(String, default="")
+    created_at: Mapped[datetime] = mapped_column(default=_now)

@@ -28,3 +28,5 @@
 | [024](024-pre-merge-change-gate.md) | A pre-merge change-control gate that runs the audit's own rules in the client's CI | Proposed |
 | [025](025-jev-class-decision-model.md) | Typed decisions get their own Jev-class model, measured on our own cases | Proposed |
 | [026](026-ai-code-review-evidence.md) | AI code review is evidence, not approval | Proposed |
+| [027](027-grc-reviews-code.md) | GRC reviews code: Review Standards, a rule engine, and what it may read and keep | Proposed |
+| [028](028-code-review-github-app.md) | The code-review GitHub App: tenant binding, durable jobs, check outcomes | Proposed |

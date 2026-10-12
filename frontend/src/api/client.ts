@@ -948,3 +948,77 @@ export const requestException = (gapId: string, body: { justification: string; c
   request<GapException>("POST", `/gaps/${gapId}/exceptions`, { json: body });
 export const decideException = (id: string, action: "approve" | "reject" | "revoke", note: string) =>
   request<GapException>("POST", `/exceptions/${id}/${action}`, { json: { note } });
+
+// ---------------------------------------------------------------- code review (ADR-027)
+
+export type ReviewStandardVersion = {
+  id: string;
+  name: string;
+  version: number;
+  body_hash: string;
+  is_active: boolean;
+  created_by: string;
+  created_at: string;
+  source_yaml: string;
+  rules: string[];
+};
+export type ReviewStandards = {
+  versions: ReviewStandardVersion[];
+  default: { name: string; body_hash: string; source_yaml: string; in_force: boolean };
+};
+export type ReviewProblem = { line: number | null; message: string };
+export type ReviewFinding = {
+  rule_id: string;
+  kind: string;
+  category: string;
+  severity: "low" | "medium" | "high" | "critical";
+  action: "block" | "warn" | "info";
+  blocking: boolean;
+  path: string;
+  line: number | null;
+  end_line: number | null;
+  message: string;
+  fingerprint: string | null;
+  producer: string;
+};
+export type ReviewRuleResult = {
+  rule_id: string;
+  action: "block" | "warn" | "info";
+  outcome: "pass" | "violation" | "not_evaluated" | "error";
+  reason: string | null;
+  evaluated_files: number;
+  skipped_files: number;
+};
+export type ReviewResult = {
+  standard: { name: string; body_hash: string };
+  files: number;
+  engine_version: string;
+  outcome: "passed" | "violated" | "incomplete" | "error";
+  blocks_merge: boolean;
+  on_incomplete: "block" | "warn";
+  blocking: boolean;
+  rules: ReviewRuleResult[];
+  skipped: { path: string; reason: string }[];
+  findings: ReviewFinding[];
+  findings_hash: string;
+  not_evaluated: string[];
+  not_reviewed: string[];
+};
+export const listReviewStandards = () => request<ReviewStandards>("GET", "/review/standards");
+export type ReviewPack = { id: string; name: string; description: string; rules: number; yaml: string; body_hash: string };
+export const listReviewPacks = () => request<ReviewPack[]>("GET", "/review/packs");
+/** `expected_active_version` is the version the editor started from (0: none active): a
+ *  concurrent change by another admin answers 409 instead of being overwritten. */
+export const publishReviewStandard = (yaml: string, expected_active_version: number) =>
+  request<ReviewStandardVersion>("POST", "/review/standards", { json: { yaml, expected_active_version } });
+export const activateReviewStandard = (id: string, expected_active_version: number) =>
+  request<ReviewStandardVersion>("POST", `/review/standards/${id}/activate`, { json: { expected_active_version } });
+export const tryReviewStandard = (diff: string, yaml?: string) =>
+  request<ReviewResult>("POST", "/review/standards/test", { json: { diff, yaml } });
+
+/** A rejected standard's problems, one per line, from a 422's detail. */
+export function reviewProblems(err: unknown): ReviewProblem[] | null {
+  if (!(err instanceof ApiError) || err.status !== 422) return null;
+  const detail = err.detail as { problems?: ReviewProblem[] } | undefined;
+  return Array.isArray(detail?.problems) ? detail!.problems : null;
+}

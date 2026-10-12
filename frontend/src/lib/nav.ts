@@ -60,6 +60,10 @@ export const ORG_NAV: NavItem[] = [
     to: "/map", label: "Evidence map",
     hint: "Every artefact and every control it satisfies, as one 3D graph: see which single upload is carrying the most frameworks and where the red verdicts cluster.",
   },
+  {
+    to: "/code-review", label: "Code review",
+    hint: "Your organisation's review standard: versioned, hashed rules every pull request is checked against. Rules decide; a model only advises.",
+  },
 ];
 
 // Org-wide read, no setup surface — see docs/adr/017-compliance-officer-persona.md.
@@ -75,6 +79,7 @@ export const OWNER_NAV: NavItem[] = [
   ORG_NAV[9],
   ORG_NAV[10],
   ORG_NAV[12],
+  ORG_NAV[13],
 ];
 
 export const FIRM_NAV: NavItem[] = [
@@ -95,6 +100,7 @@ export const AUDITOR_NAV: NavItem[] = [
   ORG_NAV[9],
   ORG_NAV[10],
   ORG_NAV[12],
+  ORG_NAV[13],
 ];
 
 export function isAuditorIdentity(identity: Identity | null): boolean {
@@ -120,7 +126,7 @@ export function navFor(identity: Identity | null): NavItem[] {
 // rendered separately (AppShell's NotificationsLink), so it is listed here too.
 const STAGE: Record<string, string> = {
   "/evidence": "Collect", "/map": "Collect",
-  "/overview": "Assess", "/controls": "Assess", "/gaps": "Assess",
+  "/overview": "Assess", "/controls": "Assess", "/gaps": "Assess", "/code-review": "Assess",
   "/tasks": "Act", "/notifications": "Act", "/dpdp/operations": "Act", "/admin": "Act",
   "/firm": "Assure", "/activity": "Assure", "/ciso-sync": "Assure",
   "/ai-compliance": "Regulate", "/dpdp": "Regulate", "/glossary": "Regulate",

@@ -1,0 +1,20 @@
+name: Testing standards
+description: >
+  Code changes come with test changes, and nothing switches tests off quietly.
+owner: Engineering
+on_incomplete: warn
+rules:
+  - id: code-needs-tests
+    title: Code changes come with test changes
+    kind: require_companion
+    paths: ["*.py", "*.ts", "*.tsx", "*.js", "*.go", "*.java", "*.rb", "*.cs"]
+    exclude: ["docs/*", "*.md", "migrations/*", "*/migrations/*"]
+    severity: medium
+    action: warn
+  - id: no-skipped-tests
+    title: Tests are not skipped without a reason
+    kind: forbid_added
+    pattern: '@pytest\.mark\.skip\(\s*\)|\.skip\(|\bxit\(|\bxdescribe\('
+    severity: medium
+    action: warn
+    category: test-quality

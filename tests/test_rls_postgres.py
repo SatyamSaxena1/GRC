@@ -313,3 +313,17 @@ def test_an_auditor_checkpoint_issues_and_verifies_under_rls(client, monkeypatch
     result = client.post("/audit/checkpoints/verify", headers={"authorization": f"org:{org}"},
                          json=issued.json()).json()
     assert result["verified"] is True, result
+
+
+def test_review_standards_publish_under_rls_and_stay_with_their_tenant(client, engine):
+    """ADR-027: a standard published by one organisation is invisible to another, both through
+    the API and at the database."""
+    standard = "name: Acme\nrules:\n  - {id: no-secrets, title: No secrets, kind: secret_scan, action: block}\n"
+    acme, other = _org(client, "Acme rules"), _org(client, "Other rules")
+    published = client.post("/review/standards", headers={"authorization": f"org:{acme}"}, json={"yaml": standard})
+    assert published.status_code == 201, published.text
+    assert client.get("/review/standards", headers={"authorization": f"org:{other}"}).json()["versions"] == []
+    for tenant, expected in ((other, 0), (acme, 1)):
+        with engine.begin() as conn:  # transaction-local binding, as the app does
+            conn.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": tenant})
+            assert conn.execute(text("SELECT count(*) FROM review_standards")).scalar_one() == expected

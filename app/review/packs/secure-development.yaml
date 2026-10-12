@@ -1,0 +1,30 @@
+name: Secure development
+description: >
+  Credentials never enter a repository, and code that bypasses safety checks is called out.
+  A starting point: copy it, then tighten actions as your teams adopt it.
+owner: Security
+on_incomplete: warn
+rules:
+  - id: no-secrets
+    title: No credentials in code
+    kind: secret_scan
+    severity: critical
+    action: block
+    clauses: ["SOC-2 CC8.1", "ISO-27001 A.8.32", "PCI-DSS 6.5.1"]
+    rationale: A credential committed to a repository is exposed to everyone who can read it, forever.
+  - id: no-dynamic-eval
+    title: No eval or exec on dynamic input
+    kind: forbid_added
+    pattern: '\b(eval|exec)\s*\('
+    paths: ["*.py", "*.js", "*.ts"]
+    exclude: ["tests/*", "*/tests/*", "*.test.*", "*.spec.*"]
+    severity: high
+    action: warn
+    category: security
+  - id: no-tls-verify-off
+    title: TLS verification stays on
+    kind: forbid_added
+    pattern: 'verify\s*=\s*False|rejectUnauthorized\s*:\s*false|InsecureSkipVerify\s*:\s*true'
+    severity: high
+    action: warn
+    category: security
