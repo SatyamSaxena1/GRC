@@ -132,3 +132,26 @@ and syncs and evaluates it for the organisations you name.
    as repo secrets, the same values the web service uses.
 
 Then run the workflow from `main`. The log says `github: synced and evaluated (n controls)`.
+
+## AI code review as evidence (ADR-026)
+If a client runs an AI code reviewer, the snapshot records what that reviewer did, as
+**advisory** facts. Supported reviewers include Qodo Merge, the open-source PR-Agent, CodeRabbit,
+Copilot review, Codex and Gemini Code Assist. No verdict changes, and an AI review is never
+the independent approval.
+
+| Attribute | Meaning |
+|---|---|
+| `ai_reviewed_merges` / `merges_without_ai_review` | An AI reviewer reviewed or commented on the PR, or none did |
+| `merges_with_unresolved_ai_review_findings` | Merges with an AI-review thread still unresolved when collected; empty means unknown |
+| `merges_without_linked_ticket` | No closing issue and no ticket key (`ABC-123`, `#45`) in the title or branch |
+
+Each such merge is also listed as a `PULL_REQUEST_ADVISORY` row for the auditor to ask about.
+These rows fill only the room left after rule failures, so they never push out a failed rule.
+
+**Adding a reviewer the defaults don't know.** PR-Agent run as a GitHub Action posts as
+whichever account runs it. Pass `--ai-reviewer <login>` to the collector and the gate, or
+set `CHANGE_CONTROL_AI_REVIEWERS=login1,login2`.
+
+**Token.** No new permission is needed. Thread resolution and linked issues come from
+GraphQL, which reads with the same *Pull requests: read*. If GraphQL cannot be read, the
+facts are reported as unknown, never as clean.

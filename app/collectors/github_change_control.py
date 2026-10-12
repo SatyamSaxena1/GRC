@@ -56,6 +56,10 @@ ATTRIBUTES = (
     "deployments_of_unreviewed_changes",
     "gate_checks_observed",
     "gate_checks_never_seen_failing",
+    "ai_reviewed_merges",
+    "merges_without_ai_review",
+    "merges_with_unresolved_ai_review_findings",
+    "merges_without_linked_ticket",
 )
 
 PASSING_CONCLUSIONS = {"success", "neutral", "skipped"}
@@ -71,6 +75,21 @@ _AI_MARKERS = re.compile(
     re.IGNORECASE,
 )
 _CO_AUTHOR = re.compile(r"^co-authored-by:\s*(.+)$", re.IGNORECASE | re.MULTILINE)
+
+# AI code reviewers, by bot login (ADR-026). An AI review is evidence that a reviewer looked,
+# never an approval: _review_outcome still discards every bot. Extended per collector run
+# with --ai-reviewer / CHANGE_CONTROL_AI_REVIEWERS (PR-Agent run as an Action posts as
+# whatever account runs it). Defaults match bot accounts only.
+AI_REVIEWERS = frozenset(("qodo-merge-pro", "qodo-merge", "qodo-ai", "codiumai-pr-agent", "pr-agent",
+                "coderabbitai", "copilot-pull-request-reviewer", "chatgpt-codex-connector",
+                "claude", "gemini-code-assist", "sourcery-ai", "greptile-apps"))
+# Ticket keys as people write them (ABC-123) and GitHub issue numbers (#123). Only the keys
+# are kept: no title, no branch name, no description (ADR-020, data minimisation).
+_TICKET_KEY = re.compile(r"\b[A-Z][A-Z0-9]{1,9}-\d+\b")
+_ISSUE_REF = re.compile(r"(?<![\w&])#(\d+)\b")
+# Things that look like ticket keys and are not: algorithms, encodings, standards, CVE ids.
+_NOT_TICKETS = {"SHA", "UTF", "ISO", "IEC", "CVE", "CWE", "RFC", "TLS", "SSL", "AES", "RSA", "MD",
+                "HTTP", "GPT", "PCI", "SOC", "NIST", "FIPS", "X", "ES", "PS", "HS", "ECDSA", "ED"}
 
 # The account GitHub uses as committer for merges and web edits; it is never a person.
 _PLATFORM_COMMITTERS = {"web-flow", "github"}
@@ -93,6 +112,65 @@ def is_ai_assisted(pr: dict) -> bool:
             if _AI_MARKERS.search(co_author):
                 return True
     return False
+
+
+def _login(login) -> str:
+    login = str(login or "").lower()
+    return login[:-len("[bot]")] if login.endswith("[bot]") else login
+
+
+def _is_ai_reviewer(login, extra: Iterable[str] = ()) -> bool:
+    """A default reviewer only as a bot account ("claude" could be a person's login); a login
+    the operator names explicitly counts as given, since PR-Agent can post as any account."""
+    raw = str(login or "").lower()
+    if not raw:
+        return False
+    if _login(raw) in {_login(r) for r in extra if r}:
+        return True
+    return raw.endswith("[bot]") and _login(raw) in AI_REVIEWERS
+
+
+def ai_reviewed(pr: dict, extra_reviewers: Iterable[str] = ()) -> bool | None:
+    """An AI code reviewer reviewed, commented on, or opened a thread on the pull request.
+    None when no source shows one and a source could not be read, or was never collected
+    (the GitLab and Bitbucket collectors gather no comment authors): unknown, never "no"."""
+    extra = tuple(extra_reviewers)
+    comments, threads = pr.get("comment_authors"), pr.get("review_threads")
+    seen = [_bot_login(r.get("user")) for r in pr.get("reviews", [])]
+    seen += list(comments or []) + [t.get("author") for t in threads or []]
+    if any(_is_ai_reviewer(login, extra) for login in seen):
+        return True
+    return None if comments is None or threads is None else False
+
+
+def _bot_login(user: dict | None) -> str:
+    """REST marks app accounts with type Bot; keep that visible as the "[bot]" suffix."""
+    login = str((user or {}).get("login") or "")
+    return login + "[bot]" if (user or {}).get("is_bot") and not login.endswith("[bot]") else login
+
+
+def unresolved_ai_findings(pr: dict, extra_reviewers: Iterable[str] = ()) -> int | None:
+    """Review threads an AI reviewer opened that were still unresolved when collected; None
+    when the threads could not be read, which is unknown, never zero."""
+    threads = pr.get("review_threads")
+    if threads is None:
+        return None
+    extra = tuple(extra_reviewers)
+    return sum(1 for t in threads if _is_ai_reviewer(t.get("author"), extra) and not t.get("resolved"))
+
+
+def has_linked_ticket(pr: dict) -> bool | None:
+    """None when ticket links were not collected (an older snapshot, or GraphQL unreadable)."""
+    tickets = pr.get("linked_tickets")
+    return None if tickets is None else bool(tickets)
+
+
+def ticket_keys(*texts: str | None) -> list[str]:
+    keys = set()
+    for text in filter(None, texts):
+        keys.update(k for k in _TICKET_KEY.findall(text) if k.split("-")[0] not in _NOT_TICKETS)
+        keys.update(f"#{n}" for n in _ISSUE_REF.findall(text))
+    return sorted(keys)
 
 
 def _contributors(pr: dict) -> set[str]:
@@ -308,7 +386,30 @@ def summarize(repos: Iterable[dict]) -> dict[str, Any]:
         # GATE_CHECK rows for the auditor to ask for a canary.
         "gate_checks_observed": len(gates),
         "gate_checks_never_seen_failing": sum(not g["failures"] for g in gates),
+        # Advisory (ADR-026): what AI code review and ticket linkage show. No content pack fails a
+        # clause on these; an AI review is never the independent approval.
+        "ai_reviewed_merges": _count_known(
+            [_flag(ai_reviewed(pr, _reviewers(r))) for r in repos for pr in r.get("pulls", [])]),
+        "merges_without_ai_review": _count_known(
+            [_flag(ai_reviewed(pr, _reviewers(r)), negate=True) for r in repos for pr in r.get("pulls", [])]),
+        "merges_with_unresolved_ai_review_findings": _count_known(
+            [unresolved_ai_findings(pr, _reviewers(r)) for r in repos for pr in r.get("pulls", [])]),
+        "merges_without_linked_ticket": _count_known(
+            [None if (t := has_linked_ticket(pr)) is None else int(not t) for pr in pulls]),
     }
+
+
+def _reviewers(repo: dict) -> tuple[str, ...]:
+    return tuple(repo.get("extra_ai_reviewers", ()))
+
+
+def _flag(value: bool | None, negate: bool = False) -> int | None:
+    return None if value is None else int(value != negate)
+
+
+def _count_known(values: list[int | None]) -> int | None:
+    """How many merges the fact applies to; None when it is unknown for any of them."""
+    return None if any(v is None for v in values) else sum(1 for v in values if v)
 
 
 # Per-merge detail for the auditor. Capped so one noisy repository cannot push the
@@ -324,7 +425,7 @@ def exceptions(repos: Iterable[dict], limit: int = MAX_EXCEPTIONS) -> tuple[list
     Rows carry identifiers, links and logins, never titles or diffs: the auditor opens
     the PR on GitHub for the content (ADR-020, data minimisation)."""
     repos = list(repos)
-    rows = []
+    rows, advisory_rows = [], []
     for repo in repos:
         name = repo.get("repo")
         for pr in repo.get("pulls", []):
@@ -356,6 +457,22 @@ def exceptions(repos: Iterable[dict], limit: int = MAX_EXCEPTIONS) -> tuple[list
                     "author": (pr.get("author") or {}).get("login"),
                     "ai_assisted": is_ai_assisted(pr), "reasons": reasons,
                 })
+            advisory = []
+            if unresolved := unresolved_ai_findings(pr, _reviewers(repo)):
+                advisory.append({"rule": "AI_FINDINGS_UNRESOLVED",
+                                 "detail": f"{unresolved} AI review thread{'s' if unresolved != 1 else ''} "
+                                           "unresolved; ask how each was handled"})
+            if has_linked_ticket(pr) is False:
+                advisory.append({"rule": "NO_LINKED_TICKET",
+                                 "detail": "no linked issue or ticket key; ask what authorised the change"})
+            if advisory:
+                # Kept apart from PULL_REQUEST rows, which exist exactly when a rule fails.
+                advisory_rows.append({
+                    "kind": "PULL_REQUEST_ADVISORY", "repo": name, "ref": f"#{pr.get('number')}",
+                    "url": pr.get("url"), "at": pr.get("merged_at"),
+                    "author": (pr.get("author") or {}).get("login"),
+                    "ai_assisted": is_ai_assisted(pr), "reasons": advisory,
+                })
         for commit in repo.get("default_commits", []):
             if not commit.get("has_pull"):
                 rows.append({
@@ -385,7 +502,11 @@ def exceptions(repos: Iterable[dict], limit: int = MAX_EXCEPTIONS) -> tuple[list
         for repo in repos for g in gate_liveness(repo) if g["runs"] and not g["failures"]
     ][:limit]
     kept = rows[:max(0, limit - len(gate_rows))]
-    return kept + gate_rows, len(rows) - len(kept)
+    # Advisory rows only fill what room is left: they never push out a rule that failed.
+    advisory_rows.sort(key=lambda r: r.get("at") or "", reverse=True)
+    advisory_kept = advisory_rows[:max(0, limit - len(gate_rows) - len(kept))]
+    left_out = len(rows) - len(kept) + len(advisory_rows) - len(advisory_kept)
+    return kept + advisory_kept + gate_rows, left_out
 
 
 # --- GitHub REST -> the dicts above -------------------------------------------------
@@ -579,6 +700,8 @@ def pull_facts(session, repo: str, raw: dict) -> dict:
     number, head = raw["number"], raw["head"]["sha"]
     commits = list(_paged(session, f"{API}/repos/{repo}/pulls/{number}/commits"))
     head_checks = _checks(session, repo, head)
+    graph = _pr_graph(session, repo, number)
+    keys = ticket_keys(raw.get("title"), (raw.get("head") or {}).get("ref"))
     return {
         "number": number,
         "url": raw.get("html_url"),
@@ -599,6 +722,11 @@ def pull_facts(session, repo: str, raw: dict) -> dict:
             for c in commits
         ],
         "checks": head_checks,
+        # ADR-026, advisory: AI reviewers' comments and threads, and what authorised the change.
+        "comment_authors": _comment_authors(session, repo, number),  # None: unreadable, so unknown
+        "review_threads": graph["threads"] if graph else None,
+        # Ticket keys only. Without GraphQL a missing key is unknown, not "no ticket".
+        "linked_tickets": sorted(set(keys + graph["closing"])) if graph else (keys or None),
         "files": [
             {"filename": f.get("filename"), "status": f.get("status"),
              "previous_filename": f.get("previous_filename")}
@@ -610,6 +738,50 @@ def pull_facts(session, repo: str, raw: dict) -> dict:
             check for c in commits[-MAX_COMMITS_CHECKED:] if c["sha"] != head
             for check in _checks(session, repo, c["sha"])],
     }
+
+
+GRAPHQL = API + "/graphql"
+# Read-only: a query, never a mutation. Review-thread resolution and closing-issue links are
+# not in the REST API. Only logins, flags and issue numbers come back, never comment text.
+_PR_GRAPH = """query($owner: String!, $name: String!, $number: Int!) {
+  repository(owner: $owner, name: $name) { pullRequest(number: $number) {
+    reviewThreads(first: 100) { pageInfo { hasNextPage }
+      nodes { isResolved comments(first: 1) { nodes { author { login __typename } } } } }
+    closingIssuesReferences(first: 25) { nodes { number } } } } }"""
+
+
+def _pr_graph(session, repo: str, number: int) -> dict | None:
+    """{"threads": [...] | None, "closing": [...]} or None when GraphQL could not be read.
+    Unknown stays unknown: a failed read is never "no unresolved findings"."""
+    owner, name = repo.split("/", 1)
+    try:
+        response = session.post(GRAPHQL, json={"query": _PR_GRAPH, "variables": {
+            "owner": owner, "name": name, "number": number}}, timeout=30)
+        response.raise_for_status()
+        body = response.json()
+        if body.get("errors"):
+            return None
+        pr = body["data"]["repository"]["pullRequest"]
+        threads = pr["reviewThreads"]
+        nodes = []
+        for t in threads["nodes"]:
+            author = (t["comments"]["nodes"] or [{}])[0].get("author") or {}
+            login = author.get("login") or ""
+            # GraphQL drops the "[bot]" suffix REST shows; restore it from the type.
+            nodes.append({"author": login + "[bot]" if author.get("__typename") == "Bot" else login,
+                          "resolved": bool(t["isResolved"])})
+        return {"threads": None if threads["pageInfo"]["hasNextPage"] else nodes,
+                "closing": [f"#{i['number']}" for i in pr["closingIssuesReferences"]["nodes"]]}
+    except Exception:  # noqa: BLE001 - any failure reads as unknown, never as clean
+        return None
+
+
+def _comment_authors(session, repo: str, number: int) -> list[str] | None:
+    try:
+        return sorted({(c.get("user") or {}).get("login") or ""
+                       for c in _paged(session, f"{API}/repos/{repo}/issues/{number}/comments")} - {""})
+    except Exception:  # noqa: BLE001 - PR-Agent and Qodo post here; unreadable is not fatal
+        return None
 
 
 def fetch(session, repo: str, since: datetime, environments: Iterable[str] = ("production",),
@@ -657,7 +829,12 @@ def main(argv: list[str] | None = None) -> int:
                         help="name of a CI job whose successful run deploys to production; repeatable")
     parser.add_argument("--gate-path", action="append", default=[],
                         help="extra gate file pattern (fnmatch), added to the defaults; repeatable")
+    parser.add_argument("--ai-reviewer", action="append", default=[],
+                        help="extra AI code-review bot login, added to the defaults; repeatable "
+                             "(also CHANGE_CONTROL_AI_REVIEWERS, comma-separated)")
     args = parser.parse_args(argv)
+    reviewers = args.ai_reviewer + [r.strip() for r in
+                                    os.environ.get("CHANGE_CONTROL_AI_REVIEWERS", "").split(",") if r.strip()]
 
     session = requests.Session()
     session.headers.update({"Accept": "application/vnd.github+json",
@@ -666,7 +843,7 @@ def main(argv: list[str] | None = None) -> int:
         session.headers["Authorization"] = f"Bearer {token}"
     since = datetime.now(timezone.utc) - timedelta(days=args.days)
     repos = [dict(fetch(session, repo, since, args.environment or ["production"], args.deploy_job),
-                  extra_gate_patterns=args.gate_path)
+                  extra_gate_patterns=args.gate_path, extra_ai_reviewers=reviewers)
              for repo in args.repo]
     rows, left_out = exceptions(repos)
     json.dump({"attributes": summarize(repos), "exceptions": rows,

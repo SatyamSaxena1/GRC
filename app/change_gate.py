@@ -57,7 +57,7 @@ _PENDING_STATES = {"queued", "in_progress", "pending", "requested", "waiting", "
 
 
 def judge(pr: dict, frameworks: list[str], self_checks: set[str], extra_gate_patterns=(),
-          content=None) -> dict:
+          content=None, extra_ai_reviewers=()) -> dict:
     """Pure: the gate's verdict on one pull request's facts."""
     content = content or load_content()
     checks = [c for c in pr.get("checks", []) if c.get("name") not in self_checks]
@@ -84,7 +84,11 @@ def judge(pr: dict, frameworks: list[str], self_checks: set[str], extra_gate_pat
     return {"status": status, "pull_request": pr.get("number"), "head_sha": pr.get("head_sha"),
             "frameworks": frameworks, "findings": list(findings.values()), "pending_checks": pending,
             "independent_approvers": gcc.independent_approvers(pr),
-            "ai_assisted": gcc.is_ai_assisted(pr), "not_evaluated": list(NOT_EVALUATED)}
+            "ai_assisted": gcc.is_ai_assisted(pr), "not_evaluated": list(NOT_EVALUATED),
+            # ADR-026: shown to the reviewer, never part of the status. An AI review is not an approval.
+            "advisory": {"ai_reviewed": gcc.ai_reviewed(pr, extra_ai_reviewers),
+                         "unresolved_ai_findings": gcc.unresolved_ai_findings(pr, extra_ai_reviewers),
+                         "linked_tickets": pr.get("linked_tickets")}}
 
 
 _HEADLINE = {PASS: "✅ Merging this adds no change-control gap",
@@ -106,9 +110,23 @@ def markdown(result: dict) -> str:
         lines += [f"Still running: {', '.join(result['pending_checks'])}.", ""]
     lines += [f"Independent approvers: {', '.join(result['independent_approvers']) or 'none'}"
               + (" · AI-assisted" if result["ai_assisted"] else ""), "",
+              _advisory_line(result.get("advisory") or {}), "",
               "Not evaluated here (repository settings, judged by the period audit): "
               + ", ".join(f"`{a}`" for a in result["not_evaluated"]) + "."]
     return "\n".join(lines) + "\n"
+
+
+def _advisory_line(advisory: dict) -> str:
+    """Advisory facts (ADR-026): they inform the reviewer and never change the gate's result."""
+    unresolved = advisory.get("unresolved_ai_findings")
+    tickets = advisory.get("linked_tickets")
+    reviewed = advisory.get("ai_reviewed")
+    review = ("AI review: " + {True: "yes", False: "none seen", None: "unknown"}[reviewed]
+              + ("" if not reviewed else
+                 f", {'unknown' if unresolved is None else unresolved} unresolved finding"
+                 f"{'' if unresolved == 1 else 's'}"))
+    ticket = ("Ticket: " + (", ".join(tickets) if tickets else ("unknown" if tickets is None else "none linked")))
+    return f"Advisory, not part of the result: {review} · {ticket}"
 
 
 def _session(token: str | None):
@@ -127,7 +145,8 @@ def run(args: argparse.Namespace, session=None) -> tuple[int, dict | str]:
     raw = gcc._get(session, f"{gcc.API}/repos/{args.repo}/pulls/{args.pr}")
     pr = gcc.pull_facts(session, args.repo, raw)  # reviews, commits, files: read once
     while True:
-        result = judge(pr, args.framework, set(args.self_check), args.gate_path)
+        result = judge(pr, args.framework, set(args.self_check), args.gate_path,
+                       extra_ai_reviewers=args.ai_reviewer)
         if result["status"] != PENDING or time.monotonic() >= deadline:
             return result["status"], result
         time.sleep(min(args.poll, max(0.0, deadline - time.monotonic())))
@@ -145,6 +164,8 @@ def main(argv: list[str] | None = None, session=None) -> int:
     parser.add_argument("--self-check", action="append", default=["change-control gate"],
                         help="this gate's own check name, so it does not wait for itself; repeatable")
     parser.add_argument("--gate-path", action="append", default=[], help="extra gate file pattern; repeatable")
+    parser.add_argument("--ai-reviewer", action="append", default=[],
+                        help="extra AI code-review bot login (advisory only); repeatable")
     parser.add_argument("--wait", type=float, default=0, help="seconds to wait for other checks to finish")
     parser.add_argument("--poll", type=float, default=15, help="seconds between polls while waiting")
     parser.add_argument("--warn-only", action="store_true",
