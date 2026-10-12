@@ -29,11 +29,13 @@ class _GitHub:
     """One open PR (#9) by alice, head h9. Reviews, checks and files are set per test."""
 
     def __init__(self, reviews=(), checks=(("ci", "success"),), files=("app/main.py",), ai=False,
-                 status=200):
+                 status=200, threads=(), closing=(), title="change", comments=()):
         message = "change\n\nCo-Authored-By: Claude <noreply@anthropic.com>" if ai else "change"
         self.routes = {
             R + "/pulls/9": {"number": 9, "html_url": "https://github.com/acme/app/pull/9", "merged_at": None,
-                             "user": {"login": "alice", "type": "User"}, "head": {"sha": "h9"}},
+                             "title": title, "user": {"login": "alice", "type": "User"},
+                             "head": {"sha": "h9", "ref": "feature"}},
+            R + "/issues/9/comments": [{"user": {"login": who}} for who in comments],
             R + "/pulls/9/commits": [{"sha": "h9", "commit": {"message": message},
                                       "author": {"login": "alice", "type": "User"},
                                       "committer": {"login": "web-flow", "type": "User"}}],
@@ -46,14 +48,23 @@ class _GitHub:
         }
         self.status = status
         self.writes = 0
+        self.graph = {"data": {"repository": {"pullRequest": {
+            "reviewThreads": {"pageInfo": {"hasNextPage": False}, "nodes": [
+                {"isResolved": resolved, "comments": {"nodes": [{"author": {"login": who, "__typename": "Bot"}}]}}
+                for who, resolved in threads]},
+            "closingIssuesReferences": {"nodes": [{"number": n} for n in closing]}}}}}
 
     def get(self, url, params=None, timeout=None):
         if self.status != 200:
             return _Response({"message": "Bad credentials"}, self.status)
         return _Response(self.routes[url])
 
-    def post(self, *a, **k):  # pragma: no cover — the gate must never write
-        self.writes += 1
+    def post(self, url, json=None, timeout=None):
+        # GraphQL reads go by POST; anything else, or a mutation, would be a write.
+        if url != gcc.GRAPHQL or "mutation" in (json or {}).get("query", ""):
+            self.writes += 1
+            return _Response({}, 403)
+        return _Response(self.graph)
 
 
 def _run(api, *extra, capsys=None):

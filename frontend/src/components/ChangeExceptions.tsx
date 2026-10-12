@@ -11,10 +11,13 @@ const RULE_LABELS: Record<string, string> = {
   DIRECT_PUSH: "Direct push",
   GATE_FILE_REMOVED: "Gate file removed (advisory)",
   GATE_NEVER_FAILED: "Check never seen failing (advisory)",
+  AI_FINDINGS_UNRESOLVED: "AI review findings unresolved (advisory)",
+  NO_LINKED_TICKET: "No linked ticket (advisory)",
 };
 
 const KIND_LABELS: Record<string, string> = {
   PULL_REQUEST: "pull request",
+  PULL_REQUEST_ADVISORY: "pull request",
   DIRECT_PUSH: "push",
   GATE_CHECK: "check",
   DEPLOYMENT: "deployment",
@@ -56,7 +59,8 @@ export function ChangeExceptions({ evidenceId }: { evidenceId: string }) {
               Every merge, push or production deployment that failed a rule, newest first. Open each one on GitHub to test it;
               the counts above are decided from the same rules. Checks that never went red during the period
               are listed last: advisory only, they do not change a verdict, but an auditor relying on a check
-              should see it fail once.
+              should see it fail once. Merges an AI code reviewer flagged without resolution, or with no linked
+              ticket, are advisory too: an AI review is never an approval.
             </p>
             {counts.size > 1 && (
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
