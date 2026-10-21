@@ -1,0 +1,714 @@
+framework: eu-ai-act
+model: google/gemma-4-e4b
+prompt_sha256: 35e785303e6d241eda4c90c91a002ad710415cefb9e7a4813fb7a74d1d11dc35
+drafts:
+- provision: eu-ai-act:art4
+  ref: Art. 4
+  sha256: a000da620ed8e126907f4d9336d9e884bc2cdd781b3d0802b7bcbc410f69027a
+  status: pending
+  verdict_basis: documentable
+  reason: The provision requires documenting measures taken regarding staff literacy concerning AI use.
+  new_artefact_types: []
+  requirement:
+    clause: Art. 4
+    title: AI Literacy Measures Documentation
+    text: Providers and deployers of AI systems shall take measures to ensure, to their best extent, a
+      sufficient level of AI literacy of their staff and other persons dealing with the operation and
+      use of AI systems on their behalf, taking into account their technical knowledge, experience, education
+      and training and the context the AI systems are to be used in, and considering the persons or groups
+      of persons on whom the AI systems are to be used.
+    evidence_requirements:
+    - artefact_type: POLICY
+      required_attributes:
+      - ai_literacy_measures_defined
+      - staff_training_scope_documented
+      - contextual_assessment_performed
+      evidence_validity: null
+    mappings:
+    - uco: UCO-AIGOV-005
+      coverage: FULL
+      confidence: 1.0
+      source: AI
+      delta_conditions: []
+    guidance: Document the specific measures implemented to ensure that staff and relevant persons have
+      sufficient AI literacy, detailing how these measures account for technical knowledge, experience,
+      education, training, and the context of use.
+- provision: eu-ai-act:art5.1
+  ref: Art. 5(1)
+  sha256: c8fee614f543d3fb74af2613966c32b820b58b88bd2c4c52d6f08b0964865295
+  status: schema_rejected
+  verdict_basis: documentable
+  reason: The provision lists several prohibited AI practices, which can be documented by stating that
+    the organization has assessed its systems against these specific prohibitions.
+  new_artefact_types: []
+  error: 'delta_conditions: Extra inputs are not permitted'
+  raw: "{\n  \"verdict_basis\": \"documentable\",\n  \"reason\": \"The provision lists several prohibited\
+    \ AI practices, which can be documented by stating that the organization has assessed its systems\
+    \ against these specific prohibitions.\",\n  \"new_artefact_types\": [],\n  \"requirement\": {\n \
+    \   \"title\": \"Prohibition of High-Risk AI Practices\",\n    \"guidance\": \"Document an assessment\
+    \ confirming that no deployed or planned AI system falls into any of the prohibited categories listed\
+    \ in Article 5(1) (a) through (h).\",\n    \"evidence_requirements\": [\n      {\n        \"artefact_type\"\
+    : \"AI_POLICY\",\n        \"required_attributes\": [\n          \"prohibited_ai_practices_assessed\"\
+    \n        ]\n      }\n    ],\n    \"mappings\": [\n      {\n        \"uco\": \"UCO-AIGOV-002\",\n\
+    \        \"coverage\": \"FULL\",\n        \"confidence\": 1.0\n      }\n    ],\n    \"delta_conditions\"\
+    : [\n      {\n        \"attribute\": \"prohibited_ai_practices_assessed\",\n        \"operator\":\
+    \ \"==\",\n        \"value\": true\n      }\n    ]\n  }\n}"
+- provision: eu-ai-act:art5.2
+  ref: Art. 5(2)
+  sha256: ef03f02f6e5f9ecdcce7d0f314e23821a754d34cb6eb185e94b9983f24d97228
+  status: pending
+  verdict_basis: documentable
+  reason: The provision mandates specific conditions and authorizations for using real-time remote biometric
+    identification systems, which can be documented through policies or records.
+  new_artefact_types: []
+  requirement:
+    clause: Art. 5(2)
+    title: Real-Time Remote Biometric Identification System Use Authorization
+    text: '2. The use of ‘real-time’ remote biometric identification systems in publicly accessible spaces
+      for the purposes of law enforcement for any of the objectives referred to in paragraph 1, first
+      subparagraph, point (h), shall be deployed for the purposes set out in that point only to confirm
+      the identity of the specifically targeted individual, and it shall take into account the following
+      elements: (a) the nature of the situation giving rise to the possible use, in particular the seriousness,
+      probability and scale of the harm that would be caused if the system were not used; (b) the consequences
+      of the use of the system for the rights and freedoms of all persons concerned, in particular the
+      seriousness, probability and scale of those consequences. In addition, the use of ‘real-time’ remote
+      biometric identification systems in publicly accessible spaces for the purposes of law enforcement
+      for any of the objectives referred to in paragraph 1, first subparagraph, point (h), of this Article
+      shall comply with necessary and proportionate safeguards and conditions in relation to the use in
+      accordance with the national law authorising the use thereof, in particular as regards the temporal,
+      geographic and personal limitations. The use of the ‘real-time’ remote biometric identification
+      system in publicly accessible spaces shall be authorised only if the law enforcement authority has
+      completed a fundamental rights impact assessment as provided for in Article 27 and has registered
+      the system in the EU database according to Article 49. However, in duly justified cases of urgency,
+      the use of such systems may be commenced without the registration in the EU database, provided that
+      such registration is completed without undue delay.'
+    evidence_requirements:
+    - artefact_type: AI_POLICY
+      required_attributes:
+      - biometric_system_use_scope
+      - public_space_usage_restrictions
+      - fundamental_rights_impact_assessment_completed
+      - eu_database_registration_status
+      evidence_validity: null
+    mappings:
+    - uco: UCO-AIGOV-006
+      coverage: FULL
+      confidence: 1.0
+      source: AI
+      delta_conditions: []
+    guidance: Document the process by which authorization for using real-time remote biometric identification
+      systems in public spaces is obtained, including evidence of fundamental rights impact assessments
+      and registration status.
+- provision: eu-ai-act:art5.3
+  ref: Art. 5(3)
+  sha256: e327079d5dc3e7c8e981109fcc1ced7b8b120479e8ca72666952a8fabdf05d46
+  status: pending
+  verdict_basis: documentable
+  reason: The provision mandates specific conditions (necessity, proportionality, scope limitation) and
+    procedural steps (prior authorization, handling rejection) that must be documented to prove compliance.
+  new_artefact_types: []
+  requirement:
+    clause: Art. 5(3)
+    title: Authorization for Real-Time Remote Biometric Identification Systems
+    text: 3. For the purposes of paragraph 1, first subparagraph, point (h) and paragraph 2, each use
+      for the purposes of law enforcement of a ‘real-time’ remote biometric identification system in publicly
+      accessible spaces shall be subject to a prior authorisation granted by a judicial authority or an
+      independent administrative authority whose decision is binding of the Member State in which the
+      use is to take place, issued upon a reasoned request and in accordance with the detailed rules of
+      national law referred to in paragraph 5. However, in a duly justified situation of urgency, the
+      use of such system may be commenced without an authorisation provided that such authorisation is
+      requested without undue delay, at the latest within 24 hours. If such authorisation is rejected,
+      the use shall be stopped with immediate effect and all the data, as well as the results and outputs
+      of that use shall be immediately discarded and deleted. The competent judicial authority or an independent
+      administrative authority whose decision is binding shall grant the authorisation only where it is
+      satisfied, on the basis of objective evidence or clear indications presented to it, that the use
+      of the ‘real-time’ remote biometric identification system concerned is necessary for, and proportionate
+      to, achieving one of the objectives specified in paragraph 1, first subparagraph, point (h), as
+      identified in the request and, in particular, remains limited to what is strictly necessary concerning
+      the period of time as well as the geographic and personal scope. In deciding on the request, that
+      authority shall take into account the elements referred to in paragraph 2. No decision that produces
+      an adverse legal effect on a person may be taken based solely on the output of the ‘real-time’ remote
+      biometric identification system.
+    evidence_requirements:
+    - artefact_type: POLICY
+      required_attributes:
+      - biometric_system_authorization_process_documented
+      - necessity_and_proportionality_assessment_required
+      evidence_validity: null
+    mappings:
+    - uco: UCO-AIGOV-002
+      coverage: FULL
+      confidence: 1.0
+      source: AI
+      delta_conditions: []
+    guidance: Document the process by which prior judicial or independent administrative authorization
+      is obtained, detailing the justification of necessity and proportionality, and outlining immediate
+      actions upon rejection.
+- provision: eu-ai-act:art5.4
+  ref: Art. 5(4)
+  sha256: 213ce8cefde42b97b978b1ea11a23dfb03742861131860dc4772c9f4080eb3ea
+  status: pending
+  verdict_basis: documentable
+  reason: The provision mandates a specific notification action that requires documenting whether this
+    notification has occurred.
+  new_artefact_types: []
+  requirement:
+    clause: Art. 5(4)
+    title: Notification of Real-Time Remote Biometric Identification System Use for Law Enforcement
+    text: 4. Without prejudice to paragraph 3, each use of a ‘real-time’ remote biometric identification
+      system in publicly accessible spaces for law enforcement purposes shall be notified to the relevant
+      market surveillance authority and the national data protection authority in accordance with the
+      national rules referred to in paragraph 5. The notification shall, as a minimum, contain the information
+      specified under paragraph 6 and shall not include sensitive operational data.
+    evidence_requirements:
+    - artefact_type: POLICY
+      required_attributes:
+      - notification_to_market_surveillance_authority_documented
+      - notification_to_data_protection_authority_documented
+      evidence_validity: null
+    mappings:
+    - uco: UCO-AIGOV-002
+      coverage: FULL
+      confidence: 1.0
+      source: AI
+      delta_conditions: []
+    guidance: Document the process and evidence of notifying the relevant market surveillance authority
+      and national data protection authority regarding any use of a real-time remote biometric identification
+      system in publicly accessible spaces for law enforcement.
+- provision: eu-ai-act:art5.5
+  ref: Art. 5(5)
+  sha256: 8868fea7c96e52bd0bd7c4a86bff73533047c0efb158306e7f7677519c99ceb0
+  status: schema_rejected
+  verdict_basis: documentable
+  reason: The provision requires Member States to lay down detailed national rules concerning authorizations
+    and reporting for real-time remote biometric identification systems.
+  new_artefact_types: []
+  error: 'delta_conditions: Extra inputs are not permitted'
+  raw: "{\n  \"verdict_basis\": \"documentable\",\n  \"reason\": \"The provision requires Member States\
+    \ to lay down detailed national rules concerning authorizations and reporting for real-time remote\
+    \ biometric identification systems.\",\n  \"new_artefact_types\": [],\n  \"requirement\": {\n    \"\
+    title\": \"National Rules for Real-Time Remote Biometric Identification Systems\",\n    \"guidance\"\
+    : \"Document the specific national laws or regulations detailing the rules for requesting, issuing,\
+    \ exercising, supervising, and reporting on authorizations for real-time remote biometric identification\
+    \ systems used by law enforcement.\",\n    \"evidence_requirements\": [\n      {\n        \"artefact_type\"\
+    : \"POLICY\",\n        \"required_attributes\": [\n          \"biometric_system_authorization_rules_documented\"\
+    \n        ]\n      }\n    ],\n    \"mappings\": [\n      {\n        \"uco\": \"UCO-AIGOV-002\",\n\
+    \        \"coverage\": \"FULL\",\n        \"confidence\": 1.0\n      }\n    ],\n    \"delta_conditions\"\
+    : []\n  }\n}"
+- provision: eu-ai-act:art5.6
+  ref: Art. 5(6)
+  sha256: 669d631e02cec230f8cc05404be88ad35a7d2adb341d5937e8d7692620dd6894
+  status: pending
+  verdict_basis: not documentable
+  reason: The provision mandates reporting to a Commission based on annual reports submitted by national
+    authorities, which describes an external regulatory reporting mechanism rather than an internal organizational
+    control or policy that can be documented.
+  new_artefact_types: []
+- provision: eu-ai-act:art5.7
+  ref: Art. 5(7)
+  sha256: 69e85225f7ef95ebeee10b482c6cedc42978ce96c0a41bab797a508e761d85ed
+  status: pending
+  verdict_basis: not documentable
+  reason: The provision mandates the publication of an annual report based on aggregated data, but it
+    does not specify a checkable fact or attribute that an organization must document about its own processes
+    or systems.
+  new_artefact_types: []
+- provision: eu-ai-act:art5.8
+  ref: Art. 5(8)
+  sha256: 724271d78182d5ed579c39dd550fea56c4721e3e6e83e50997d070280566d230
+  status: pending
+  verdict_basis: not documentable
+  reason: The provision only states that it does not affect existing prohibitions, which is a legal statement
+    of scope rather than a requirement for the organization to implement or document a specific control.
+  new_artefact_types: []
+- provision: eu-ai-act:art26.1
+  ref: Art. 26(1)
+  sha256: d195ddadea691635410c69fa132bfbd21b65d11963260c78392ebcd2676b6577
+  status: pending
+  verdict_basis: documentable
+  reason: The provision requires documenting adherence to 'instructions for use,' which implies a documented
+    process or policy.
+  new_artefact_types: []
+  requirement:
+    clause: Art. 26(1)
+    title: Adherence to Instructions for Use for High-Risk AI Systems
+    text: 1. Deployers of high-risk AI systems shall take appropriate technical and organisational measures
+      to ensure they use such systems in accordance with the instructions for use accompanying the systems,
+      pursuant to paragraphs 3 and 6.
+    evidence_requirements:
+    - artefact_type: AI_POLICY
+      required_attributes:
+      - instructions_for_use_documented
+      evidence_validity: null
+    mappings:
+    - uco: UCO-AIGOV-006
+      coverage: FULL
+      confidence: 1.0
+      source: AI
+      delta_conditions: []
+    guidance: Document the specific instructions for use that must accompany and govern the operation
+      of any high-risk AI system deployed by the organization.
+- provision: eu-ai-act:art26.2
+  ref: Art. 26(2)
+  sha256: 987e04e8a8d12b8b0e55df63692fd8e7c90ba20b6a75745fe15e6be86c21acfb
+  status: pending
+  verdict_basis: documentable
+  reason: The provision requires assigning human oversight with specific attributes (competence, training,
+    authority, support), which can be documented in a policy or assignment record.
+  new_artefact_types: []
+  requirement:
+    clause: Art. 26(2)
+    title: Assignment of Human Oversight for AI Systems
+    text: 2. Deployers shall assign human oversight to natural persons who have the necessary competence,
+      training and authority, as well as the necessary support.
+    evidence_requirements:
+    - artefact_type: AI_POLICY
+      required_attributes:
+      - human_oversight_assigned
+      - overseer_competence_documented
+      - overseer_training_verified
+      - overseer_authority_defined
+      - support_mechanisms_documented
+      evidence_validity: null
+    mappings:
+    - uco: UCO-AIGOV-004
+      coverage: FULL
+      confidence: 1.0
+      source: AI
+      delta_conditions: []
+    guidance: Document who is assigned as the human overseer for each deployed AI system, detailing their
+      competence, training status, authority level, and available support mechanisms.
+- provision: eu-ai-act:art26.3
+  ref: Art. 26(3)
+  sha256: 7443e37fe264159c637fb7e7f768721956f6e335993891e92195273c41c574f7
+  status: pending
+  verdict_basis: not documentable
+  reason: The provision refers to 'other deployer obligations' and the 'freedom to organise its own resources',
+    which are too broad or dependent on external law/internal organization structure to be captured by
+    a single, specific documented requirement.
+  new_artefact_types: []
+- provision: eu-ai-act:art26.4
+  ref: Art. 26(4)
+  sha256: 7f84902a6e893128d2e2c4ab0072816d0e1834d19827811cda9fcb22b0991a00
+  status: pending
+  verdict_basis: documentable
+  reason: The provision requires documenting whether the deployer exercises control over the input data
+    and, if so, what measures are taken to ensure its relevance and representativeness.
+  new_artefact_types: []
+  requirement:
+    clause: Art. 26(4)
+    title: Input Data Relevance and Representativeness for High-Risk AI Systems
+    text: 4. Without prejudice to paragraphs 1 and 2, to the extent the deployer exercises control over
+      the input data, that deployer shall ensure that input data is relevant and sufficiently representative
+      in view of the intended purpose of the high-risk AI system.
+    evidence_requirements:
+    - artefact_type: AI_POLICY
+      required_attributes:
+      - input_data_control_exercised
+      - input_data_relevance_assessment_documented
+      - input_data_representativeness_assessment_documented
+      evidence_validity: null
+    mappings:
+    - uco: UCO-AIGOV-006
+      coverage: FULL
+      confidence: 0.9
+      source: AI
+      delta_conditions: []
+    guidance: Document whether the deployer exercises control over the input data for high-risk AI systems.
+      If control is exercised, document the process or evidence demonstrating that the input data is relevant
+      and sufficiently representative of the intended purpose.
+- provision: eu-ai-act:art26.5
+  ref: Art. 26(5)
+  sha256: efe55551b5687a2b433a90a3672f0520a3239ba9c8b677a6d8102e7d78e94461
+  status: schema_rejected
+  verdict_basis: documentable
+  reason: The provision mandates monitoring actions and specific reporting obligations based on risk assessment
+    or incident identification, which can be documented through policies and records.
+  new_artefact_types: []
+  error: condition on ['human_oversight_assigned'], which no evidence requirement asks the document to
+    state
+  raw: "{\n  \"verdict_basis\": \"documentable\",\n  \"reason\": \"The provision mandates monitoring actions\
+    \ and specific reporting obligations based on risk assessment or incident identification, which can\
+    \ be documented through policies and records.\",\n  \"new_artefact_types\": [],\n  \"requirement\"\
+    : {\n    \"title\": \"Monitoring and Incident Reporting for High-Risk AI Systems\",\n    \"guidance\"\
+    : \"Document the process by which deployers monitor high-risk AI systems against their instructions\
+    \ for use, including procedures for notifying providers/authorities when risks are identified or serious\
+    \ incidents occur. Also document any specific exemptions or alternative compliance paths (e.g., financial\
+    \ institutions).\",\n    \"evidence_requirements\": [\n      {\n        \"artefact_type\": \"AI_POLICY\"\
+    ,\n        \"required_attributes\": [\n          \"monitoring_procedure_defined\",\n          \"risk_assessment_trigger_documented\"\
+    ,\n          \"notification_process_documented\"\n        ]\n      },\n      {\n        \"artefact_type\"\
+    : \"REVIEW_RECORD\",\n        \"required_attributes\": [\n          \"monitoring_activity_performed\"\
+    ,\n          \"date_of_review\"\n        ]\n      }\n    ],\n    \"mappings\": [\n      {\n      \
+    \  \"uco\": \"UCO-AIGOV-001\",\n        \"coverage\": \"FULL\",\n        \"confidence\": 0.9,\n  \
+    \      \"delta_conditions\": []\n      },\n      {\n        \"uco\": \"UCO-AIGOV-004\",\n        \"\
+    coverage\": \"PARTIAL\",\n        \"confidence\": 0.85,\n        \"delta_conditions\": [\n       \
+    \   {\n            \"attribute\": \"human_oversight_assigned\",\n            \"operator\": \"==\"\
+    ,\n            \"value\": true\n          }\n        ]\n      },\n      {\n        \"uco\": \"UCO-AIGOV-007\"\
+    ,\n        \"coverage\": \"FULL\",\n        \"confidence\": 0.95,\n        \"delta_conditions\": []\n\
+    \      }\n    ]\n  }\n}"
+- provision: eu-ai-act:art26.6
+  ref: Art. 26(6)
+  sha256: 945af85b9edc7c36c1aa4c7646ed60c99fad1b9c86ee6e758166c0a478595eca
+  status: schema_rejected
+  verdict_basis: documentable
+  reason: The provision mandates keeping automatically generated logs for a specified period, which can
+    be documented by stating the retention requirement.
+  new_artefact_types: []
+  error: condition on ['ai_log_retention_months'], which no evidence requirement asks the document to
+    state
+  raw: "{\n  \"verdict_basis\": \"documentable\",\n  \"reason\": \"The provision mandates keeping automatically\
+    \ generated logs for a specified period, which can be documented by stating the retention requirement.\"\
+    ,\n  \"new_artefact_types\": [],\n  \"requirement\": {\n    \"title\": \"High-Risk AI System Log Retention\"\
+    ,\n    \"guidance\": \"Document the mandatory log retention period for high-risk AI systems, specifying\
+    \ the minimum duration and any exceptions or specific requirements for financial institutions.\",\n\
+    \    \"evidence_requirements\": [\n      {\n        \"artefact_type\": \"AI_POLICY\",\n        \"\
+    required_attributes\": [\n          \"ai_system_risk_level\",\n          \"log_retention_period_minimum_months\"\
+    ,\n          \"financial_institution_exception_clause\"\n        ]\n      }\n    ],\n    \"mappings\"\
+    : [\n      {\n        \"uco\": \"UCO-LOG-001\",\n        \"coverage\": \"FULL\",\n        \"confidence\"\
+    : 0.95,\n        \"delta_conditions\": [\n          {\n            \"attribute\": \"ai_log_retention_months\"\
+    ,\n            \"operator\": \">=\",\n            \"value\": 6\n          }\n        ]\n      }\n\
+    \    ]\n  }\n}"
+- provision: eu-ai-act:art26.7
+  ref: Art. 26(7)
+  sha256: 63b6dfd5c32978d2ca0d6dcab81d6f99f3613e1294f2e0d4cb75413eb0a30bc3
+  status: pending
+  verdict_basis: documentable
+  reason: The provision requires informing workers' representatives and affected workers about the use
+    of a high-risk AI system, which can be documented by stating that this notification process has occurred.
+  new_artefact_types: []
+  requirement:
+    clause: Art. 26(7)
+    title: Notification of High-Risk AI System Use at Workplace
+    text: 7. Before putting into service or using a high-risk AI system at the workplace, deployers who
+      are employers shall inform workers’ representatives and the affected workers that they will be subject
+      to the use of the high-risk AI system. This information shall be provided, where applicable, in
+      accordance with the rules and procedures laid down in Union and national law and practice on information
+      of workers and their representatives.
+    evidence_requirements:
+    - artefact_type: POLICY
+      required_attributes:
+      - high_risk_ai_system_deployed
+      - notification_to_workers_representatives_provided
+      - notification_to_affected_workers_provided
+      evidence_validity: null
+    mappings:
+    - uco: UCO-AIGOV-001
+      coverage: FULL
+      confidence: 0.9
+      source: AI
+      delta_conditions: []
+    - uco: UCO-PRIV-001
+      coverage: SUPPORTING
+      confidence: 0.7
+      source: AI
+      delta_conditions: []
+    guidance: Document the communication made to workers' representatives and affected workers regarding
+      the deployment or use of a high-risk AI system, referencing any specific national law procedures
+      followed.
+- provision: eu-ai-act:art26.8
+  ref: Art. 26(8)
+  sha256: 4db0ba5cdb3ae95a29d27fc05575b1cacba4a1f84804fa1ffc291438f2f91e14
+  status: schema_rejected
+  verdict_basis: documentable
+  reason: The provision mandates a specific action (not using the system and informing parties) when a
+    condition (system not being registered) is met, which can be documented.
+  new_artefact_types: []
+  error: 'delta_conditions: Extra inputs are not permitted'
+  raw: "{\n  \"verdict_basis\": \"documentable\",\n  \"reason\": \"The provision mandates a specific action\
+    \ (not using the system and informing parties) when a condition (system not being registered) is met,\
+    \ which can be documented.\",\n  \"new_artefact_types\": [],\n  \"requirement\": {\n    \"title\"\
+    : \"High-Risk AI System Registration Check for Public Authorities\",\n    \"guidance\": \"Document\
+    \ the process by which public authorities verify if a high-risk AI system they plan to use is registered\
+    \ in the EU database, and document the resulting decision (use or do not use).\",\n    \"evidence_requirements\"\
+    : [\n      {\n        \"artefact_type\": \"AI_POLICY\",\n        \"required_attributes\": [\n    \
+    \      \"high_risk_system_registration_check_performed\",\n          \"non_registered_system_action_taken\"\
+    \n        ]\n      }\n    ],\n    \"mappings\": [\n      {\n        \"uco\": \"UCO-AIGOV-001\",\n\
+    \        \"coverage\": \"FULL\",\n        \"confidence\": 0.9,\n        \"delta_conditions\": []\n\
+    \      }\n    ],\n    \"delta_conditions\": [\n      {\n        \"attribute\": \"high_risk_system_registration_check_performed\"\
+    ,\n        \"operator\": \"==\",\n        \"value\": true\n      },\n      {\n        \"attribute\"\
+    : \"non_registered_system_action_taken\",\n        \"operator\": \"==\",\n        \"value\": true\n\
+    \      }\n    ]\n  }\n}"
+- provision: eu-ai-act:art26.9
+  ref: Art. 26(9)
+  sha256: 803547f25a70ba9103eb26b2b2eb64f9d5192cebe3c729905fe20bfc0d0daaed
+  status: schema_rejected
+  verdict_basis: documentable
+  reason: The provision mandates the use of information from a specific article to fulfill an obligation,
+    which can be documented by referencing the existence and content of that information.
+  new_artefact_types: []
+  error: 'delta_conditions: Extra inputs are not permitted'
+  raw: "{\n  \"verdict_basis\": \"documentable\",\n  \"reason\": \"The provision mandates the use of information\
+    \ from a specific article to fulfill an obligation, which can be documented by referencing the existence\
+    \ and content of that information.\",\n  \"new_artefact_types\": [],\n  \"requirement\": {\n    \"\
+    title\": \"Data Protection Impact Assessment (DPIA) Information Use for High-Risk AI Systems\",\n\
+    \    \"guidance\": \"Document evidence showing how the information provided under Article 13 of the\
+    \ EU AI Act was used to conduct or inform a Data Protection Impact Assessment (DPIA) as required by\
+    \ GDPR or ePrivacy.\",\n    \"evidence_requirements\": [\n      {\n        \"artefact_type\": \"AI_POLICY\"\
+    ,\n        \"required_attributes\": [\n          \"dpi_assessment_conducted_using_ai_act_info\"\n\
+    \        ]\n      }\n    ],\n    \"mappings\": [\n      {\n        \"uco\": \"UCO-PRIV-003\",\n  \
+    \      \"coverage\": \"FULL\",\n        \"confidence\": 1.0\n      }\n    ],\n    \"delta_conditions\"\
+    : []\n  }\n}"
+- provision: eu-ai-act:art26.10
+  ref: Art. 26(10)
+  sha256: 4706a0994dd4e70d72427acdc1a447a3c74843c441587af74f1eaa0bad20f5bc
+  status: pending
+  verdict_basis: documentable
+  reason: The provision mandates that every use of a high-risk AI system for post-remote biometric identification
+    must be documented in the relevant police file and made available to specific authorities upon request.
+  new_artefact_types: []
+  requirement:
+    clause: Art. 26(10)
+    title: Documentation of Post-Remote Biometric Identification Use
+    text: 10. Without prejudice to Directive (EU) 2016/680, in the framework of an investigation for the
+      targeted search of a person suspected or convicted of having committed a criminal offence, the deployer
+      of a high-risk AI system for post-remote biometric identification shall request an authorisation,
+      ex ante, or without undue delay and no later than 48 hours, by a judicial authority or an administrative
+      authority whose decision is binding and subject to judicial review, for the use of that system,
+      except when it is used for the initial identification of a potential suspect based on objective
+      and verifiable facts directly linked to the offence. Each use shall be limited to what is strictly
+      necessary for the investigation of a specific criminal offence. If the authorisation requested pursuant
+      to the first subparagraph is rejected, the use of the post-remote biometric identification system
+      linked to that requested authorisation shall be stopped with immediate effect and the personal data
+      linked to the use of the high-risk AI system for which the authorisation was requested shall be
+      deleted. In no case shall such high-risk AI system for post-remote biometric identification be used
+      for law enforcement purposes in an untargeted way, without any link to a criminal offence, a criminal
+      proceeding, a genuine and present or genuine and foreseeable threat of a criminal offence, or the
+      search for a specific missing person. It shall be ensured that no decision that produces an adverse
+      legal effect on a person may be taken by the law enforcement authorities based solely on the output
+      of such post-remote biometric identification systems. This paragraph is without prejudice to Article
+      9 of Regulation (EU) 2016/679 and Article 10 of Directive (EU) 2016/680 for the processing of biometric
+      data. Regardless of the purpose or deployer, each use of such high-risk AI systems shall be documented
+      in the relevant police file and shall be made available to the relevant market surveillance authority
+      and the national data protection authority upon request, excluding the disclosure of sensitive operational
+      data related to law enforcement. This subparagraph shall be without prejudice to the powers conferred
+      by Directive (EU) 2016/680 on supervisory authorities. Deployers shall submit annual reports to
+      the relevant market surveillance and national data protection authorities on their use of post-remote
+      biometric identification systems, excluding the disclosure of sensitive operational data related
+      to law enforcement. The reports may be aggregated to cover more than one deployment. Member States
+      may introduce, in accordance with Union law, more restrictive laws on the use of post-remote biometric
+      identification systems.
+    evidence_requirements:
+    - artefact_type: REPORT
+      required_attributes:
+      - ai_system_used
+      - use_date
+      - purpose_of_use
+      - authorisation_status
+      - data_deleted_if_rejected
+      evidence_validity: null
+    mappings:
+    - uco: UCO-AIGOV-001
+      coverage: FULL
+      confidence: 0.9
+      source: AI
+      delta_conditions: []
+    - uco: UCO-LOG-001
+      coverage: SUPPORTING
+      confidence: 0.85
+      source: AI
+      delta_conditions: []
+    guidance: Maintain a record detailing every instance where a high-risk AI system for post-remote biometric
+      identification is used, ensuring this documentation can be provided to relevant market surveillance
+      and national data protection authorities upon request.
+- provision: eu-ai-act:art26.11
+  ref: Art. 26(11)
+  sha256: a58d08b8127eecdb746f59f3fc774b384894a67641602cf7b19935e7b1e0c33d
+  status: pending
+  verdict_basis: documentable
+  reason: The provision requires deployers to inform natural persons about the use of high-risk AI systems,
+    which can be documented via a policy or notice.
+  new_artefact_types: []
+  requirement:
+    clause: Art. 26(11)
+    title: Notification of High-Risk AI System Use
+    text: 11. Without prejudice to Article 50 of this Regulation, deployers of high-risk AI systems referred
+      to in Annex III that make decisions or assist in making decisions related to natural persons shall
+      inform the natural persons that they are subject to the use of the high-risk AI system. For high-risk
+      AI systems used for law enforcement purposes Article 13 of Directive (EU) 2016/680 shall apply.
+    evidence_requirements:
+    - artefact_type: AI_POLICY
+      required_attributes:
+      - high_risk_ai_system_notification_procedure_defined
+      evidence_validity: null
+    - artefact_type: PRIVACY_NOTICE
+      required_attributes:
+      - high_risk_ai_system_use_disclosed
+      evidence_validity: null
+    mappings:
+    - uco: UCO-PRIV-001
+      coverage: FULL
+      confidence: 0.95
+      source: AI
+      delta_conditions: []
+    guidance: The organization must document that it informs natural persons about the use of high-risk
+      AI systems, especially those making decisions or assisting in decision-making. If the system is
+      for law enforcement, specific requirements from Directive (EU) 2016/680 must also be addressed.
+- provision: eu-ai-act:art26.12
+  ref: Art. 26(12)
+  sha256: 3424989be5d5cac7caae92c32542650c6574580c7bbefb23f917b9e16eb9cfda
+  status: pending
+  verdict_basis: documentable
+  reason: The provision requires cooperation, which can be documented by stating a process or commitment
+    to cooperate with competent authorities.
+  new_artefact_types: []
+  requirement:
+    clause: Art. 26(12)
+    title: Cooperation with Competent Authorities for High-Risk AI Systems
+    text: 12. Deployers shall cooperate with the relevant competent authorities in any action those authorities
+      take in relation to the high-risk AI system in order to implement this Regulation.
+    evidence_requirements:
+    - artefact_type: AI_POLICY
+      required_attributes:
+      - cooperation_with_authorities_procedure_documented
+      evidence_validity: null
+    mappings:
+    - uco: UCO-AIGOV-002
+      coverage: FULL
+      confidence: 0.9
+      source: AI
+      delta_conditions: []
+    guidance: Document the procedures and commitments outlining how the organization will cooperate with
+      relevant competent authorities regarding high-risk AI systems.
+- provision: eu-ai-act:art27.1
+  ref: Art. 27(1)
+  sha256: 7f57ae668096f45727273bd98935f95404c7f146b2fcdeda409375b574c6c7bd
+  status: pending
+  verdict_basis: documentable
+  reason: The provision requires a deployer to perform an impact assessment that mandates documenting
+    several specific details about the system's use, which can be captured in policy or report artifacts.
+  new_artefact_types: []
+  requirement:
+    clause: Art. 27(1)
+    title: High-Risk AI Impact Assessment Documentation
+    text: '1. Prior to deploying a high-risk AI system referred to in Article 6(2), with the exception
+      of high-risk AI systems intended to be used in the area listed in point 2 of Annex III, deployers
+      that are bodies governed by public law, or are private entities providing public services, and deployers
+      of high-risk AI systems referred to in points 5 (b) and (c) of Annex III, shall perform an assessment
+      of the impact on fundamental rights that the use of such system may produce. For that purpose, deployers
+      shall perform an assessment consisting of: (a) a description of the deployer’s processes in which
+      the high-risk AI system will be used in line with its intended purpose; (b) a description of the
+      period of time within which, and the frequency with which, each high-risk AI system is intended
+      to be used; (c) the categories of natural persons and groups likely to be affected by its use in
+      the specific context; (d) the specific risks of harm likely to have an impact on the categories
+      of natural persons or groups of persons identified pursuant to point (c) of this paragraph, taking
+      into account the information given by the provider pursuant to Article 13; (e) a description of
+      the implementation of human oversight measures, according to the instructions for use; (f) the measures
+      to be taken in the case of the materialisation of those risks, including the arrangements for internal
+      governance and complaint mechanisms.'
+    evidence_requirements:
+    - artefact_type: REPORT
+      required_attributes:
+      - system_description_of_use
+      - intended_usage_period
+      - intended_usage_frequency
+      - affected_person_categories
+      - specific_risks_of_harm
+      - human_oversight_implementation
+      - risk_mitigation_measures
+      evidence_validity: null
+    mappings:
+    - uco: UCO-AIGOV-001
+      coverage: FULL
+      confidence: 0.9
+      source: AI
+      delta_conditions: []
+    - uco: UCO-AIGOV-004
+      coverage: FULL
+      confidence: 0.95
+      source: AI
+      delta_conditions:
+      - attribute: human_oversight_implementation
+        operator: ==
+        value: true
+    - uco: UCO-AIGOV-003
+      coverage: PARTIAL
+      confidence: 0.85
+      source: AI
+      delta_conditions: []
+    guidance: The document must detail the intended use processes, usage frequency/period, affected groups,
+      specific risks of harm, human oversight implementation, and risk mitigation measures including governance
+      and complaints.
+- provision: eu-ai-act:art27.2
+  ref: Art. 27(2)
+  sha256: b92fb50322d0a2a691f755d5fd0127e53d858dc0dc6fd96177adc9d67f8fa8b4
+  status: pending
+  verdict_basis: documentable
+  reason: The provision requires documenting when a high-risk AI system's elements change or become outdated
+    during use, necessitating an assessment process.
+  new_artefact_types: []
+  requirement:
+    clause: Art. 27(2)
+    title: Assessment of Changes to High-Risk AI System Elements
+    text: 2. The obligation laid down in paragraph 1 applies to the first use of the high-risk AI system.
+      The deployer may, in similar cases, rely on previously conducted fundamental rights impact assessments
+      or existing impact assessments carried out by provider. If, during the use of the high-risk AI system,
+      the deployer considers that any of the elements listed in paragraph 1 has changed or is no longer
+      up to date, the deployer shall take the necessary steps to update the information.
+    evidence_requirements:
+    - artefact_type: REVIEW_RECORD
+      required_attributes:
+      - high_risk_ai_system_identified
+      - assessment_date
+      - change_detected
+      - update_steps_taken
+      evidence_validity: null
+    mappings:
+    - uco: UCO-AIGOV-001
+      coverage: FULL
+      confidence: 0.9
+      source: AI
+      delta_conditions: []
+    - uco: UCO-AIGOV-002
+      coverage: PARTIAL
+      confidence: 0.85
+      source: AI
+      delta_conditions: []
+    guidance: Document the process by which deployers assess whether any element of a high-risk AI system
+      has changed or is no longer up to date during its use, and record the steps taken to update the
+      information if changes are identified.
+- provision: eu-ai-act:art27.3
+  ref: Art. 27(3)
+  sha256: 690ced4ddb9ac44407342ee440c2282042693259009cd1126b76380368e95bd3
+  status: pending
+  verdict_basis: documentable
+  reason: The provision mandates a specific action (notification) based on a preceding assessment, and
+    the required submission is defined by a template.
+  new_artefact_types: []
+  requirement:
+    clause: Art. 27(3)
+    title: Notification of AI Assessment Results to Market Surveillance Authority
+    text: 3. Once the assessment referred to in paragraph 1 of this Article has been performed, the deployer
+      shall notify the market surveillance authority of its results, submitting the filled-out template
+      referred to in paragraph 5 of this Article as part of the notification. In the case referred to
+      in Article 46(1), deployers may be exempt from that obligation to notify.
+    evidence_requirements:
+    - artefact_type: REPORT
+      required_attributes:
+      - assessment_results_submitted
+      - market_surveillance_authority_notified
+      - notification_template_used
+      evidence_validity: null
+    mappings:
+    - uco: UCO-AIGOV-002
+      coverage: FULL
+      confidence: 1.0
+      source: AI
+      delta_conditions: []
+    guidance: The deployer must maintain documentation confirming that the results of the mandatory assessment
+      were submitted to the market surveillance authority using the specified template.
+- provision: eu-ai-act:art27.4
+  ref: Art. 27(4)
+  sha256: efbfe8ca16f683904b91960b52241246b685eefae12664261069889872e1f893
+  status: pending
+  verdict_basis: not documentable
+  reason: The provision describes a relationship between two assessments (DPIA and FRIA) and does not
+    mandate the creation or documentation of a specific, checkable organizational control.
+  new_artefact_types: []
+- provision: eu-ai-act:art27.5
+  ref: Art. 27(5)
+  sha256: 6f2d3917dfb891be62573273747626a815aef95dc9376befd25cf44a2bbc74a2
+  status: pending
+  verdict_basis: not documentable
+  reason: The provision describes an action to be taken by the AI Office (developing a template) rather
+    than setting out a direct, checkable obligation for the deployer organization.
+  new_artefact_types: []
