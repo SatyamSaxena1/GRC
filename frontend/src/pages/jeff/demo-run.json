@@ -1,0 +1,1057 @@
+{
+ "run_date": "2026-10-21",
+ "policy_v1": {
+  "text": "ASTERON SYSTEMS PVT. LTD. - AI GOVERNANCE POLICY\nDocument ID: AIG-001 | Version 1.0\nDemo run: 5592c2\n\nDocument Control\nApproved by: Meera Khanna, Chief Information Security Officer\nApproval Date: 21 September 2026\nStatus: Approved and Published\n\n1. Purpose and legal requirements\nThis policy governs every AI system Asteron builds, buys or uses, including the AI agents that approve vendor purchases. The legal and regulatory requirements that apply to our AI systems are documented and kept current by the Legal team. Applicable regulations: EU AI Act, GDPR, Digital Personal Data Protection Act 2023.\n\n2. Trustworthy AI\nAsteron's AI systems must be valid and reliable, safe, secure and resilient, and transparent and explainable.\n\n3. Risk tolerance and tiering\nAsteron's AI risk tolerance is defined and approved by the Risk Committee. Risk tiering criteria: impact on customers, autonomy of the system, and financial exposure per decision.\n\n4. Review\nThis policy and the AI governance programme are reviewed every 365 days.\n\n5. Roles\nEach AI system has a named business owner responsible for its decisions.\n\n6. Human oversight\nA named person oversees every high-impact AI system, including the purchasing agent.\n\n7. Training\nAll staff who build, buy or operate AI systems complete AI risk training every 365 days.\n\n8. Incidents\nAI incidents and failures follow a defined incident process. Report them to ai-incidents@asteron.example.\n\n9. Third-party AI\nThird-party AI systems, models and data are risk-assessed before purchase and annually after, under a defined third-party AI risk policy. Intellectual-property terms of every AI vendor are reviewed by Legal.",
+  "verdicts": [
+   {
+    "framework": "NIST-AI-RMF",
+    "clause": "GOVERN 1.1",
+    "verdict": "PASS",
+    "locked": false,
+    "auditor_verdict": null,
+    "rule_hash": "0f3d0cd20177809034ac06270de4a4bab0fce045150bc3bd4e45bb44eed8668a",
+    "gaps": [],
+    "checked": [
+     {
+      "attribute": "ai_applicable_regulations",
+      "expected": null,
+      "actual": [
+       "EU AI Act",
+       "GDPR",
+       "Digital Personal Data Protection Act 2023"
+      ],
+      "met": true,
+      "operator": "present"
+     },
+     {
+      "attribute": "ai_legal_requirements_documented",
+      "expected": true,
+      "actual": true,
+      "met": true,
+      "operator": "=="
+     }
+    ],
+    "title": "Legal and regulatory requirements involving AI are understood, managed and documented"
+   },
+   {
+    "framework": "NIST-AI-RMF",
+    "clause": "GOVERN 1.2",
+    "verdict": "PARTIAL",
+    "locked": false,
+    "auditor_verdict": null,
+    "rule_hash": "f57004679cac0ea1bd5c946df5ca247cac08fed10d70160b4bb517d8bcf81f9b",
+    "gaps": [],
+    "checked": [
+     {
+      "attribute": "trustworthy_ai_characteristics_addressed",
+      "expected": [
+       "valid",
+       "safe",
+       "secure",
+       "transparent",
+       "fair"
+      ],
+      "actual": [
+       "valid and reliable",
+       "safe",
+       "secure",
+       "resilient",
+       "transparent",
+       "explainable"
+      ],
+      "met": false,
+      "operator": "contains_all"
+     }
+    ],
+    "title": "The characteristics of trustworthy AI are integrated into organizational policies"
+   },
+   {
+    "framework": "NIST-AI-RMF",
+    "clause": "GOVERN 1.3",
+    "verdict": "PASS",
+    "locked": false,
+    "auditor_verdict": null,
+    "rule_hash": "235bc178130d8951d5ab0cd8b3df34e33e27e80f00a45372e97ee5ca15a7ab5c",
+    "gaps": [],
+    "checked": [
+     {
+      "attribute": "ai_risk_tiering_criteria",
+      "expected": null,
+      "actual": "impact on customers, autonomy of the system, and financial exposure per decision",
+      "met": true,
+      "operator": "present"
+     },
+     {
+      "attribute": "ai_risk_tolerance_defined",
+      "expected": true,
+      "actual": true,
+      "met": true,
+      "operator": "=="
+     }
+    ],
+    "title": "Risk management activity is scaled to the organisation's stated risk tolerance"
+   },
+   {
+    "framework": "NIST-AI-RMF",
+    "clause": "GOVERN 1.5",
+    "verdict": "PARTIAL",
+    "locked": false,
+    "auditor_verdict": null,
+    "rule_hash": "83ab048f7c123a4243167c6a98bc080db6e04feb0b55067abe1a1d090d45d24c",
+    "gaps": [],
+    "checked": [
+     {
+      "attribute": "ai_governance_review_frequency_days",
+      "expected": null,
+      "actual": 365,
+      "met": true,
+      "operator": "present"
+     }
+    ],
+    "title": "The AI risk management process is monitored and periodically reviewed"
+   },
+   {
+    "framework": "NIST-AI-RMF",
+    "clause": "GOVERN 1.7",
+    "verdict": "FAIL",
+    "locked": false,
+    "auditor_verdict": null,
+    "rule_hash": "bee9c41fd355c2b0caad44353d715f5c680365e0d1107af22cfe53d04dc31fc9",
+    "gaps": [
+     "ai_decommissioning_process_defined not found in the evidence"
+    ],
+    "checked": [
+     {
+      "attribute": "ai_decommissioning_process_defined",
+      "expected": null,
+      "actual": null,
+      "met": false,
+      "operator": "present"
+     }
+    ],
+    "title": "AI systems are decommissioned safely"
+   },
+   {
+    "framework": "NIST-AI-RMF",
+    "clause": "GOVERN 2.1",
+    "verdict": "PARTIAL",
+    "locked": false,
+    "auditor_verdict": null,
+    "rule_hash": "93a0dc70b4aea883ffac7834b6f654c09990cdcb6b9947701c337b7c48a22327",
+    "gaps": [
+     "ai_escalation_path_defined not found in the evidence"
+    ],
+    "checked": [
+     {
+      "attribute": "ai_escalation_path_defined",
+      "expected": null,
+      "actual": null,
+      "met": false,
+      "operator": "present"
+     },
+     {
+      "attribute": "ai_roles_documented",
+      "expected": true,
+      "actual": true,
+      "met": true,
+      "operator": "=="
+     }
+    ],
+    "title": "Roles, responsibilities and lines of communication for AI risk are documented"
+   },
+   {
+    "framework": "NIST-AI-RMF",
+    "clause": "GOVERN 2.2",
+    "verdict": "PARTIAL",
+    "locked": false,
+    "auditor_verdict": null,
+    "rule_hash": "007566b96f203ed19cf9d5edd3de9cc11e02241964881a819d20c17c5d9e0901",
+    "gaps": [],
+    "checked": [
+     {
+      "attribute": "ai_training_frequency_days",
+      "expected": null,
+      "actual": 365,
+      "met": true,
+      "operator": "present"
+     },
+     {
+      "attribute": "ai_training_audience_defined",
+      "expected": true,
+      "actual": [
+       "staff who build",
+       "staff who buy",
+       "staff who operate AI systems"
+      ],
+      "met": false,
+      "operator": "=="
+     }
+    ],
+    "title": "Personnel receive AI risk management training"
+   },
+   {
+    "framework": "NIST-AI-RMF",
+    "clause": "GOVERN 3.2",
+    "verdict": "PARTIAL",
+    "locked": false,
+    "auditor_verdict": null,
+    "rule_hash": "5d4475fd364b47eafd95ae57e67713f3bd9e5dd96a9eb4861484cc399a302a5d",
+    "gaps": [
+     "human_override_capability not found in the evidence"
+    ],
+    "checked": [
+     {
+      "attribute": "human_override_capability",
+      "expected": null,
+      "actual": null,
+      "met": false,
+      "operator": "present"
+     },
+     {
+      "attribute": "human_oversight_defined",
+      "expected": true,
+      "actual": true,
+      "met": true,
+      "operator": "=="
+     }
+    ],
+    "title": "Human oversight of AI systems is defined"
+   },
+   {
+    "framework": "NIST-AI-RMF",
+    "clause": "GOVERN 4.3",
+    "verdict": "PASS",
+    "locked": false,
+    "auditor_verdict": null,
+    "rule_hash": "88e724cf834422ce398c75fc4753f4922ab2c07bc04678966e13dfa5452cdb02",
+    "gaps": [],
+    "checked": [
+     {
+      "attribute": "ai_incident_reporting_channel",
+      "expected": null,
+      "actual": "ai-incidents@asteron.example",
+      "met": true,
+      "operator": "present"
+     },
+     {
+      "attribute": "ai_incident_process_defined",
+      "expected": true,
+      "actual": true,
+      "met": true,
+      "operator": "=="
+     }
+    ],
+    "title": "AI testing, incident identification and information sharing are enabled"
+   },
+   {
+    "framework": "NIST-AI-RMF",
+    "clause": "GOVERN 6.1",
+    "verdict": "PASS",
+    "locked": false,
+    "auditor_verdict": null,
+    "rule_hash": "d0b458a29e7d46b743b125886c52101991b71a2fa347d0a6e34d9e6612ea0655",
+    "gaps": [],
+    "checked": [
+     {
+      "attribute": "third_party_ai_ip_terms_reviewed",
+      "expected": null,
+      "actual": true,
+      "met": true,
+      "operator": "present"
+     },
+     {
+      "attribute": "third_party_ai_risk_policy_defined",
+      "expected": true,
+      "actual": true,
+      "met": true,
+      "operator": "=="
+     }
+    ],
+    "title": "Third-party AI risks are addressed by policy"
+   }
+  ]
+ },
+ "policy_v2": {
+  "text": "ASTERON SYSTEMS PVT. LTD. - AI GOVERNANCE POLICY\nDocument ID: AIG-001 | Version 2.0\nDemo run: 5592c2\n\nDocument Control\nApproved by: Meera Khanna, Chief Information Security Officer\nApproval Date: 19 October 2026\nStatus: Approved and Published\n\n1. Purpose and legal requirements\nThis policy governs every AI system Asteron builds, buys or uses, including the AI agents that approve vendor purchases. The legal and regulatory requirements that apply to our AI systems are documented and kept current by the Legal team. Applicable regulations: EU AI Act, GDPR, Digital Personal Data Protection Act 2023.\n\n2. Trustworthy AI\nAsteron's AI systems must be valid and reliable, safe, secure and resilient, and transparent and explainable.\n\n3. Risk tolerance and tiering\nAsteron's AI risk tolerance is defined and approved by the Risk Committee. Risk tiering criteria: impact on customers, autonomy of the system, and financial exposure per decision.\n\n4. Review\nThis policy and the AI governance programme are reviewed every 365 days.\n\n5. Roles\nEach AI system has a named business owner responsible for its decisions. An escalation path is defined for every AI decision: the owner first, then the Chief Information Security Officer, then the Risk Committee.\n\n6. Human oversight\nA named person oversees every high-impact AI system, including the purchasing agent. The overseer can override or stop any AI decision at any time, and every override is logged.\n\n7. Training\nAll staff who build, buy or operate AI systems complete AI risk training every 365 days.\n\n8. Incidents\nAI incidents and failures follow a defined incident process. Report them to ai-incidents@asteron.example.\n\n9. Third-party AI\nThird-party AI systems, models and data are risk-assessed before purchase and annually after, under a defined third-party AI risk policy. Intellectual-property terms of every AI vendor are reviewed by Legal.\n\n10. Decommissioning\nAI systems are decommissioned through a defined process: the owner signs off, affected users are told in advance, and the system's records are kept for audit.",
+  "facts": [
+   {
+    "name": "ai_applicable_regulations",
+    "value": [
+     "EU AI Act",
+     "GDPR",
+     "Digital Personal Data Protection Act 2023"
+    ],
+    "quote": "Applicable regulations: EU AI Act, GDPR, Digital Personal Data Protection Act 2023."
+   },
+   {
+    "name": "ai_decommissioning_process_defined",
+    "value": true,
+    "quote": "AI systems are decommissioned through a defined process: the owner signs off, affected users are told in advance, and the system's records are kept for audit."
+   },
+   {
+    "name": "ai_escalation_path_defined",
+    "value": true,
+    "quote": "An escalation path is defined for every AI decision: the owner first, then the Chief Information Security Officer, then the Risk Committee."
+   },
+   {
+    "name": "ai_governance_review_frequency_days",
+    "value": 365,
+    "quote": "This policy and the AI governance programme are reviewed every 365 days."
+   },
+   {
+    "name": "ai_incident_process_defined",
+    "value": true,
+    "quote": "AI incidents and failures follow a defined incident process."
+   },
+   {
+    "name": "ai_incident_reporting_channel",
+    "value": "ai-incidents@asteron.example",
+    "quote": "Report them to ai-incidents@asteron.example."
+   },
+   {
+    "name": "ai_legal_requirements_documented",
+    "value": true,
+    "quote": "The legal and regulatory requirements that apply to our AI systems are documented and kept current by the Legal team."
+   },
+   {
+    "name": "ai_risk_tiering_criteria",
+    "value": [
+     "impact on customers",
+     "autonomy of the system",
+     "financial exposure per decision"
+    ],
+    "quote": "Risk tiering criteria: impact on customers, autonomy of the system, and financial exposure per decision."
+   },
+   {
+    "name": "ai_risk_tolerance_defined",
+    "value": true,
+    "quote": "Asteron's AI risk tolerance is defined and approved by the Risk Committee."
+   },
+   {
+    "name": "ai_roles_documented",
+    "value": true,
+    "quote": "Each AI system has a named business owner responsible for its decisions."
+   },
+   {
+    "name": "ai_training_audience_defined",
+    "value": [
+     "staff who build",
+     "staff who buy",
+     "staff who operate AI systems"
+    ],
+    "quote": "All staff who build, buy or operate AI systems complete AI risk training every 365 days."
+   },
+   {
+    "name": "ai_training_frequency_days",
+    "value": 365,
+    "quote": "All staff who build, buy or operate AI systems complete AI risk training every 365 days."
+   },
+   {
+    "name": "human_override_capability",
+    "value": true,
+    "quote": "The overseer can override or stop any AI decision at any time, and every override is logged."
+   },
+   {
+    "name": "human_oversight_defined",
+    "value": true,
+    "quote": "A named person oversees every high-impact AI system, including the purchasing agent."
+   },
+   {
+    "name": "third_party_ai_ip_terms_reviewed",
+    "value": true,
+    "quote": "Intellectual-property terms of every AI vendor are reviewed by Legal."
+   },
+   {
+    "name": "third_party_ai_risk_policy_defined",
+    "value": true,
+    "quote": "Third-party AI systems, models and data are risk-assessed before purchase and annually after, under a defined third-party AI risk policy."
+   },
+   {
+    "name": "trustworthy_ai_characteristics_addressed",
+    "value": [
+     "valid and reliable",
+     "safe",
+     "secure",
+     "resilient",
+     "transparent",
+     "explainable"
+    ],
+    "quote": "Asteron's AI systems must be valid and reliable, safe, secure and resilient, and transparent and explainable."
+   }
+  ],
+  "verdicts": [
+   {
+    "framework": "NIST-AI-RMF",
+    "clause": "GOVERN 1.1",
+    "verdict": "PASS",
+    "locked": false,
+    "auditor_verdict": null,
+    "rule_hash": "0f3d0cd20177809034ac06270de4a4bab0fce045150bc3bd4e45bb44eed8668a",
+    "gaps": [],
+    "checked": [
+     {
+      "attribute": "ai_applicable_regulations",
+      "expected": null,
+      "actual": [
+       "EU AI Act",
+       "GDPR",
+       "Digital Personal Data Protection Act 2023"
+      ],
+      "met": true,
+      "operator": "present"
+     },
+     {
+      "attribute": "ai_legal_requirements_documented",
+      "expected": true,
+      "actual": true,
+      "met": true,
+      "operator": "=="
+     }
+    ],
+    "title": "Legal and regulatory requirements involving AI are understood, managed and documented"
+   },
+   {
+    "framework": "NIST-AI-RMF",
+    "clause": "GOVERN 1.2",
+    "verdict": "PARTIAL",
+    "locked": false,
+    "auditor_verdict": null,
+    "rule_hash": "f57004679cac0ea1bd5c946df5ca247cac08fed10d70160b4bb517d8bcf81f9b",
+    "gaps": [
+     "trustworthy_ai_characteristics_addressed=['valid and reliable', 'safe', 'secure', 'resilient', 'transparent', 'explainable'] fails trustworthy_ai_characteristics_addressed contains_all ['valid', 'safe', 'secure', 'transparent', 'fair']"
+    ],
+    "checked": [
+     {
+      "attribute": "trustworthy_ai_characteristics_addressed",
+      "expected": [
+       "valid",
+       "safe",
+       "secure",
+       "transparent",
+       "fair"
+      ],
+      "actual": [
+       "valid and reliable",
+       "safe",
+       "secure",
+       "resilient",
+       "transparent",
+       "explainable"
+      ],
+      "met": false,
+      "operator": "contains_all"
+     }
+    ],
+    "title": "The characteristics of trustworthy AI are integrated into organizational policies"
+   },
+   {
+    "framework": "NIST-AI-RMF",
+    "clause": "GOVERN 1.3",
+    "verdict": "PASS",
+    "locked": false,
+    "auditor_verdict": null,
+    "rule_hash": "235bc178130d8951d5ab0cd8b3df34e33e27e80f00a45372e97ee5ca15a7ab5c",
+    "gaps": [],
+    "checked": [
+     {
+      "attribute": "ai_risk_tiering_criteria",
+      "expected": null,
+      "actual": [
+       "impact on customers",
+       "autonomy of the system",
+       "financial exposure per decision"
+      ],
+      "met": true,
+      "operator": "present"
+     },
+     {
+      "attribute": "ai_risk_tolerance_defined",
+      "expected": true,
+      "actual": true,
+      "met": true,
+      "operator": "=="
+     }
+    ],
+    "title": "Risk management activity is scaled to the organisation's stated risk tolerance"
+   },
+   {
+    "framework": "NIST-AI-RMF",
+    "clause": "GOVERN 1.5",
+    "verdict": "PARTIAL",
+    "locked": false,
+    "auditor_verdict": null,
+    "rule_hash": "83ab048f7c123a4243167c6a98bc080db6e04feb0b55067abe1a1d090d45d24c",
+    "gaps": [],
+    "checked": [
+     {
+      "attribute": "ai_governance_review_frequency_days",
+      "expected": null,
+      "actual": 365,
+      "met": true,
+      "operator": "present"
+     }
+    ],
+    "title": "The AI risk management process is monitored and periodically reviewed"
+   },
+   {
+    "framework": "NIST-AI-RMF",
+    "clause": "GOVERN 1.7",
+    "verdict": "PASS",
+    "locked": false,
+    "auditor_verdict": null,
+    "rule_hash": "bee9c41fd355c2b0caad44353d715f5c680365e0d1107af22cfe53d04dc31fc9",
+    "gaps": [],
+    "checked": [
+     {
+      "attribute": "ai_decommissioning_process_defined",
+      "expected": true,
+      "actual": true,
+      "met": true,
+      "operator": "=="
+     }
+    ],
+    "title": "AI systems are decommissioned safely"
+   },
+   {
+    "framework": "NIST-AI-RMF",
+    "clause": "GOVERN 2.1",
+    "verdict": "PASS",
+    "locked": true,
+    "auditor_verdict": "PASS",
+    "rule_hash": "93a0dc70b4aea883ffac7834b6f654c09990cdcb6b9947701c337b7c48a22327",
+    "gaps": [],
+    "checked": [
+     {
+      "attribute": "ai_escalation_path_defined",
+      "expected": null,
+      "actual": true,
+      "met": true,
+      "operator": "present"
+     },
+     {
+      "attribute": "ai_roles_documented",
+      "expected": true,
+      "actual": true,
+      "met": true,
+      "operator": "=="
+     }
+    ],
+    "title": "Roles, responsibilities and lines of communication for AI risk are documented"
+   },
+   {
+    "framework": "NIST-AI-RMF",
+    "clause": "GOVERN 2.2",
+    "verdict": "PARTIAL",
+    "locked": false,
+    "auditor_verdict": null,
+    "rule_hash": "007566b96f203ed19cf9d5edd3de9cc11e02241964881a819d20c17c5d9e0901",
+    "gaps": [
+     "ai_training_audience_defined=['staff who build', 'staff who buy', 'staff who operate AI systems'] fails ai_training_audience_defined == True"
+    ],
+    "checked": [
+     {
+      "attribute": "ai_training_frequency_days",
+      "expected": null,
+      "actual": 365,
+      "met": true,
+      "operator": "present"
+     },
+     {
+      "attribute": "ai_training_audience_defined",
+      "expected": true,
+      "actual": [
+       "staff who build",
+       "staff who buy",
+       "staff who operate AI systems"
+      ],
+      "met": false,
+      "operator": "=="
+     }
+    ],
+    "title": "Personnel receive AI risk management training"
+   },
+   {
+    "framework": "NIST-AI-RMF",
+    "clause": "GOVERN 3.2",
+    "verdict": "PARTIAL",
+    "locked": false,
+    "auditor_verdict": null,
+    "rule_hash": "5d4475fd364b47eafd95ae57e67713f3bd9e5dd96a9eb4861484cc399a302a5d",
+    "gaps": [],
+    "checked": [
+     {
+      "attribute": "human_override_capability",
+      "expected": null,
+      "actual": true,
+      "met": true,
+      "operator": "present"
+     },
+     {
+      "attribute": "human_oversight_defined",
+      "expected": true,
+      "actual": true,
+      "met": true,
+      "operator": "=="
+     }
+    ],
+    "title": "Human oversight of AI systems is defined"
+   },
+   {
+    "framework": "NIST-AI-RMF",
+    "clause": "GOVERN 4.3",
+    "verdict": "PASS",
+    "locked": false,
+    "auditor_verdict": null,
+    "rule_hash": "88e724cf834422ce398c75fc4753f4922ab2c07bc04678966e13dfa5452cdb02",
+    "gaps": [],
+    "checked": [
+     {
+      "attribute": "ai_incident_reporting_channel",
+      "expected": null,
+      "actual": "ai-incidents@asteron.example",
+      "met": true,
+      "operator": "present"
+     },
+     {
+      "attribute": "ai_incident_process_defined",
+      "expected": true,
+      "actual": true,
+      "met": true,
+      "operator": "=="
+     }
+    ],
+    "title": "AI testing, incident identification and information sharing are enabled"
+   },
+   {
+    "framework": "NIST-AI-RMF",
+    "clause": "GOVERN 6.1",
+    "verdict": "PASS",
+    "locked": false,
+    "auditor_verdict": null,
+    "rule_hash": "d0b458a29e7d46b743b125886c52101991b71a2fa347d0a6e34d9e6612ea0655",
+    "gaps": [],
+    "checked": [
+     {
+      "attribute": "third_party_ai_ip_terms_reviewed",
+      "expected": null,
+      "actual": true,
+      "met": true,
+      "operator": "present"
+     },
+     {
+      "attribute": "third_party_ai_risk_policy_defined",
+      "expected": true,
+      "actual": true,
+      "met": true,
+      "operator": "=="
+     }
+    ],
+    "title": "Third-party AI risks are addressed by policy"
+   }
+  ]
+ },
+ "change_control": {
+  "facts": [
+   {
+    "name": "admins_can_bypass",
+    "value": true,
+    "quote": "github API: admins_can_bypass"
+   },
+   {
+    "name": "ai_assisted_merges",
+    "value": 25,
+    "quote": "github API: ai_assisted_merges"
+   },
+   {
+    "name": "ai_assisted_merges_without_independent_approval",
+    "value": 25,
+    "quote": "github API: ai_assisted_merges_without_independent_approval"
+   },
+   {
+    "name": "default_branch_protected",
+    "value": true,
+    "quote": "github API: default_branch_protected"
+   },
+   {
+    "name": "deployments_not_from_default_branch",
+    "value": 0,
+    "quote": "github API: deployments_not_from_default_branch"
+   },
+   {
+    "name": "deployments_of_unreviewed_changes",
+    "value": 9,
+    "quote": "github API: deployments_of_unreviewed_changes"
+   },
+   {
+    "name": "direct_pushes_to_default",
+    "value": 75,
+    "quote": "github API: direct_pushes_to_default"
+   },
+   {
+    "name": "force_push_allowed_on_default",
+    "value": false,
+    "quote": "github API: force_push_allowed_on_default"
+   },
+   {
+    "name": "gate_path_merges",
+    "value": 21,
+    "quote": "github API: gate_path_merges"
+   },
+   {
+    "name": "gate_path_merges_without_two_independent_approvals",
+    "value": 21,
+    "quote": "github API: gate_path_merges_without_two_independent_approvals"
+   },
+   {
+    "name": "merges_in_period",
+    "value": 25,
+    "quote": "github API: merges_in_period"
+   },
+   {
+    "name": "merges_with_failing_or_missing_checks",
+    "value": 2,
+    "quote": "github API: merges_with_failing_or_missing_checks"
+   },
+   {
+    "name": "merges_without_independent_approval",
+    "value": 25,
+    "quote": "github API: merges_without_independent_approval"
+   },
+   {
+    "name": "production_deployments",
+    "value": 9,
+    "quote": "github API: production_deployments"
+   },
+   {
+    "name": "repositories_in_scope",
+    "value": 1,
+    "quote": "github API: repositories_in_scope"
+   },
+   {
+    "name": "required_approving_reviews",
+    "value": 0,
+    "quote": "github API: required_approving_reviews"
+   },
+   {
+    "name": "stale_reviews_dismissed",
+    "value": false,
+    "quote": "github API: stale_reviews_dismissed"
+   }
+  ],
+  "verdicts": [
+   {
+    "framework": "ISO-27001",
+    "clause": "A.8.32",
+    "verdict": "PARTIAL",
+    "locked": false,
+    "auditor_verdict": null,
+    "rule_hash": "bd5b1d7d87b6b37035c722bbb57906441aa1bb8f93ea7394d66a1f20785b7483",
+    "gaps": [
+     "required_approving_reviews=0 fails required_approving_reviews >= 1",
+     "merges_without_independent_approval=25 fails merges_without_independent_approval == 0",
+     "merges_with_failing_or_missing_checks=2 fails merges_with_failing_or_missing_checks == 0",
+     "direct_pushes_to_default=75 fails direct_pushes_to_default == 0",
+     "ai_assisted_merges_without_independent_approval=25 fails ai_assisted_merges_without_independent_approval == 0",
+     "deployments_of_unreviewed_changes=9 fails deployments_of_unreviewed_changes == 0"
+    ],
+    "checked": [
+     {
+      "attribute": "repositories_in_scope",
+      "expected": null,
+      "actual": 1,
+      "met": true,
+      "operator": "present"
+     },
+     {
+      "attribute": "stale_reviews_dismissed",
+      "expected": null,
+      "actual": false,
+      "met": true,
+      "operator": "present"
+     },
+     {
+      "attribute": "admins_can_bypass",
+      "expected": null,
+      "actual": true,
+      "met": true,
+      "operator": "present"
+     },
+     {
+      "attribute": "merges_in_period",
+      "expected": null,
+      "actual": 25,
+      "met": true,
+      "operator": "present"
+     },
+     {
+      "attribute": "ai_assisted_merges",
+      "expected": null,
+      "actual": 25,
+      "met": true,
+      "operator": "present"
+     },
+     {
+      "attribute": "gate_path_merges",
+      "expected": null,
+      "actual": 21,
+      "met": true,
+      "operator": "present"
+     },
+     {
+      "attribute": "gate_path_merges_without_two_independent_approvals",
+      "expected": null,
+      "actual": 21,
+      "met": true,
+      "operator": "present"
+     },
+     {
+      "attribute": "production_deployments",
+      "expected": null,
+      "actual": 9,
+      "met": true,
+      "operator": "present"
+     },
+     {
+      "attribute": "default_branch_protected",
+      "expected": true,
+      "actual": true,
+      "met": true,
+      "operator": "=="
+     },
+     {
+      "attribute": "required_approving_reviews",
+      "expected": 1,
+      "actual": 0,
+      "met": false,
+      "operator": ">="
+     },
+     {
+      "attribute": "merges_without_independent_approval",
+      "expected": 0,
+      "actual": 25,
+      "met": false,
+      "operator": "=="
+     },
+     {
+      "attribute": "merges_with_failing_or_missing_checks",
+      "expected": 0,
+      "actual": 2,
+      "met": false,
+      "operator": "=="
+     },
+     {
+      "attribute": "direct_pushes_to_default",
+      "expected": 0,
+      "actual": 75,
+      "met": false,
+      "operator": "=="
+     },
+     {
+      "attribute": "ai_assisted_merges_without_independent_approval",
+      "expected": 0,
+      "actual": 25,
+      "met": false,
+      "operator": "=="
+     },
+     {
+      "attribute": "deployments_not_from_default_branch",
+      "expected": 0,
+      "actual": 0,
+      "met": true,
+      "operator": "=="
+     },
+     {
+      "attribute": "deployments_of_unreviewed_changes",
+      "expected": 0,
+      "actual": 9,
+      "met": false,
+      "operator": "=="
+     },
+     {
+      "attribute": "force_push_allowed_on_default",
+      "expected": false,
+      "actual": false,
+      "met": true,
+      "operator": "=="
+     }
+    ],
+    "title": "Change management"
+   },
+   {
+    "framework": "SOC-2",
+    "clause": "CC8.1",
+    "verdict": "PARTIAL",
+    "locked": false,
+    "auditor_verdict": null,
+    "rule_hash": "49b0e623b619360cd6068ab569272deaa74df0873683346573d932260763031d",
+    "gaps": [
+     "required_approving_reviews=0 fails required_approving_reviews >= 1",
+     "merges_without_independent_approval=25 fails merges_without_independent_approval == 0",
+     "merges_with_failing_or_missing_checks=2 fails merges_with_failing_or_missing_checks == 0",
+     "direct_pushes_to_default=75 fails direct_pushes_to_default == 0",
+     "ai_assisted_merges_without_independent_approval=25 fails ai_assisted_merges_without_independent_approval == 0",
+     "deployments_of_unreviewed_changes=9 fails deployments_of_unreviewed_changes == 0",
+     "admins_can_bypass=True fails admins_can_bypass == False",
+     "stale_reviews_dismissed=False fails stale_reviews_dismissed == True",
+     "gate_path_merges_without_two_independent_approvals=21 fails gate_path_merges_without_two_independent_approvals == 0"
+    ],
+    "checked": [
+     {
+      "attribute": "repositories_in_scope",
+      "expected": null,
+      "actual": 1,
+      "met": true,
+      "operator": "present"
+     },
+     {
+      "attribute": "merges_in_period",
+      "expected": null,
+      "actual": 25,
+      "met": true,
+      "operator": "present"
+     },
+     {
+      "attribute": "ai_assisted_merges",
+      "expected": null,
+      "actual": 25,
+      "met": true,
+      "operator": "present"
+     },
+     {
+      "attribute": "gate_path_merges",
+      "expected": null,
+      "actual": 21,
+      "met": true,
+      "operator": "present"
+     },
+     {
+      "attribute": "production_deployments",
+      "expected": null,
+      "actual": 9,
+      "met": true,
+      "operator": "present"
+     },
+     {
+      "attribute": "default_branch_protected",
+      "expected": true,
+      "actual": true,
+      "met": true,
+      "operator": "=="
+     },
+     {
+      "attribute": "required_approving_reviews",
+      "expected": 1,
+      "actual": 0,
+      "met": false,
+      "operator": ">="
+     },
+     {
+      "attribute": "merges_without_independent_approval",
+      "expected": 0,
+      "actual": 25,
+      "met": false,
+      "operator": "=="
+     },
+     {
+      "attribute": "merges_with_failing_or_missing_checks",
+      "expected": 0,
+      "actual": 2,
+      "met": false,
+      "operator": "=="
+     },
+     {
+      "attribute": "direct_pushes_to_default",
+      "expected": 0,
+      "actual": 75,
+      "met": false,
+      "operator": "=="
+     },
+     {
+      "attribute": "ai_assisted_merges_without_independent_approval",
+      "expected": 0,
+      "actual": 25,
+      "met": false,
+      "operator": "=="
+     },
+     {
+      "attribute": "deployments_not_from_default_branch",
+      "expected": 0,
+      "actual": 0,
+      "met": true,
+      "operator": "=="
+     },
+     {
+      "attribute": "deployments_of_unreviewed_changes",
+      "expected": 0,
+      "actual": 9,
+      "met": false,
+      "operator": "=="
+     },
+     {
+      "attribute": "force_push_allowed_on_default",
+      "expected": false,
+      "actual": false,
+      "met": true,
+      "operator": "=="
+     },
+     {
+      "attribute": "admins_can_bypass",
+      "expected": false,
+      "actual": true,
+      "met": false,
+      "operator": "=="
+     },
+     {
+      "attribute": "stale_reviews_dismissed",
+      "expected": true,
+      "actual": false,
+      "met": false,
+      "operator": "=="
+     },
+     {
+      "attribute": "gate_path_merges_without_two_independent_approvals",
+      "expected": 0,
+      "actual": 21,
+      "met": false,
+      "operator": "=="
+     }
+    ],
+    "title": "Change management"
+   }
+  ]
+ },
+ "replay": {
+  "framework": "NIST-AI-RMF",
+  "clause": "GOVERN 2.1",
+  "recorded": {
+   "verdict": "PASS",
+   "rule_hash": "93a0dc70b4aea883ffac7834b6f654c09990cdcb6b9947701c337b7c48a22327",
+   "engine_version": "1",
+   "build_id": "demo",
+   "as_of": "2026-10-21",
+   "evaluation_hash": "6dd2cf642eb855122f9792fde2e3a14566333164e875aa3e91c31156ffb90c89"
+  },
+  "current_engine_version": "1",
+  "rules_changed_since": false,
+  "under_current_rules": {
+   "verdict": "PASS",
+   "gaps": []
+  },
+  "status": "REPRODUCED",
+  "replayed": {
+   "verdict": "PASS",
+   "gaps": []
+  }
+ },
+ "chain": {
+  "ok": true,
+  "events": 12,
+  "head_seq": 12,
+  "head_hash": "b5e83395277ac4202447df77d75fefb5bee2e844f046372296c110f2e44aa120",
+  "legacy_events": 0,
+  "unchained_after_genesis": 0,
+  "broken_at": null,
+  "problems": []
+ },
+ "verify_output": "OK: 12 chained events verify and the checkpoint holds"
+}
