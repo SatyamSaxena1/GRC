@@ -271,6 +271,9 @@ export type AiModelsInfo = {
 };
 export const listAiModels = () => request<AiModelsInfo>("GET", "/evidence/ai-models");
 
+export type ModelHealth = { ready: boolean; checks: { model: string; model_name: string; model_degraded?: string } };
+export const getModelHealth = () => request<ModelHealth>("GET", "/health/ready");
+
 export const updateEvidenceMetadata = (
   evidenceId: string, body: { description?: string | null; valid_until?: string | null },
 ) => request<{ id: string; description: string | null; valid_until: string | null }>(
