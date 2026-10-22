@@ -67,6 +67,11 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .sidebar a:hover { background: #232849; text-decoration: none; color: #fff; }
 .sidebar a.active { background: var(--primary); color: #fff; }
 
+.sidebar .model-status { display: flex; align-items: center; gap: 8px; padding: 6px 12px; font-size: 12px; color: #c9cde3; }
+.model-status__dot { width: 9px; height: 9px; border-radius: 50%; background: #8a8fa8; flex: none; }
+.model-status__dot.is-up { background: #2ecc71; box-shadow: 0 0 6px #2ecc71; }
+.model-status__dot.is-down { background: var(--danger); }
+
 .sidebar .identity-box {
   margin-top: auto;
   padding: 10px;
