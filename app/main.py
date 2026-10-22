@@ -16,7 +16,7 @@ from app import auth, oidc
 from app.ai.provider import make_gateway
 from app.db import engine, init_db
 from app.routers import (
-    activity, admin, analytics, audit, breach, ciso, connectors, content, controls, evidence, exceptions, export, firm,
+    activity, admin, analytics, assistant, audit, breach, ciso, connectors, content, controls, evidence, exceptions, export, firm,
     glossary, notifications, review, rights_requests,
 )
 
@@ -135,6 +135,7 @@ app.include_router(connectors.router)
 app.include_router(breach.router)
 app.include_router(rights_requests.router)
 app.include_router(review.router)
+app.include_router(assistant.router)
 
 
 @app.get("/health/live")

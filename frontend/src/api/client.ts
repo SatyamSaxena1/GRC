@@ -271,7 +271,13 @@ export type AiModelsInfo = {
 };
 export const listAiModels = () => request<AiModelsInfo>("GET", "/evidence/ai-models");
 
-export type ModelHealth = { ready: boolean; checks: { model: string; model_name: string; model_degraded?: string } };
+export type AssistantTurn = { role: "user" | "assistant"; content: string };
+export type AssistantAnswer = { answer: string; tools: string[]; model: string };
+export const askAssistant = (question: string, page: string, history: AssistantTurn[]) =>
+  request<AssistantAnswer>("POST", "/assistant/ask", { json: { question, page, history } });
+export const getAssistantStatus = () => request<{ available: boolean; model: string }>("GET", "/assistant/status");
+
+export type ModelHealth ={ ready: boolean; checks: { model: string; model_name: string; model_degraded?: string } };
 export const getModelHealth = () => request<ModelHealth>("GET", "/health/ready");
 
 export const updateEvidenceMetadata = (

@@ -1,3 +1,4 @@
+import { AskAIButton } from "../components/Assistant";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -102,7 +103,7 @@ export function TasksListPage() {
     <div>
       <div className="page-header">
         <div>
-          <h2>{identity?.kind === "user" ? "My tasks" : "Remediation tasks"}</h2>
+          <h2>{identity?.kind === "user" ? "My tasks" : "Remediation tasks"}</h2> <AskAIButton question={"What should I work on first? Consider priority, due dates and how many requirements each task unblocks."} />
           <p>Find the exact gap, assign its owner and due date, then close it with corrected evidence.</p>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
