@@ -603,11 +603,11 @@ function MetadataEditor({
           {error && <div className="alert alert-error">{error}</div>}
           <div>
             <label>Description</label>
-            <input type="text" value={descDraft} onChange={(e) => setDescDraft(e.target.value)} />
+            <input aria-label="Description" type="text" value={descDraft} onChange={(e) => setDescDraft(e.target.value)} />
           </div>
           <div>
             <label>Valid until</label>
-            <input type="date" value={validDraft} onChange={(e) => setValidDraft(e.target.value)} />
+            <input aria-label="Valid until" type="date" value={validDraft} onChange={(e) => setValidDraft(e.target.value)} />
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button className="btn btn-primary" disabled={busy} onClick={save}>
