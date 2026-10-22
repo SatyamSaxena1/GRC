@@ -28,15 +28,23 @@ export function DataTable<T>({
         <thead>
           <tr>
             {columns.map((c) => (
-              <th key={c.key}>{c.header}</th>
+              <th key={c.key} scope="col">{c.header}</th>
             ))}
           </tr>
         </thead>
         <tbody>
           {rows.map((row, i) => (
             <tr key={i} onClick={onRowClick ? () => onRowClick(row) : undefined}>
-              {columns.map((c) => (
-                <td key={c.key}>{c.render(row)}</td>
+              {columns.map((c, j) => (
+                <td key={c.key}>
+                  {/* The whole row stays clickable for a mouse; the first cell is also a
+                      real button so keyboard and screen-reader users can open the row. */}
+                  {onRowClick && j === 0 ? (
+                    <button type="button" className="row-open" onClick={(e) => { e.stopPropagation(); onRowClick(row); }}>
+                      {c.render(row)}
+                    </button>
+                  ) : c.render(row)}
+                </td>
               ))}
             </tr>
           ))}

@@ -31,7 +31,7 @@ export function NotificationsPage() {
   const notifications = useApi(() => listNotifications(), []);
 
   const columns: Column<NotificationItem>[] = [
-    { key: "severity", header: "", render: (n) => <Badge value={n.severity.toUpperCase()} /> },
+    { key: "severity", header: "Severity", render: (n) => <Badge value={n.severity.toUpperCase()} /> },
     { key: "message", header: "Notification", render: (n) => n.message },
     { key: "at", header: "When", render: (n) => new Date(n.at).toLocaleString() },
   ];

@@ -207,32 +207,32 @@ function NewTaskForm({ onCreated, onCancel }: { onCreated: () => void; onCancel:
       <div className="form-grid">
         <div>
           <label>Title</label>
-          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Sign the updated access control policy" />
+          <input aria-label="Title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Sign the updated access control policy" />
         </div>
         <div>
           <label>Details (optional)</label>
-          <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Any extra context for the assignee" />
+          <input aria-label="Details (optional)" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Any extra context for the assignee" />
         </div>
         <div>
           <label>Assignee</label>
-          <select value={owner} onChange={(e) => setOwner(e.target.value)}>
+          <select aria-label="Assignee" value={owner} onChange={(e) => setOwner(e.target.value)}>
             <option value="">Unassigned</option>
             {owners.data?.map((item) => <option key={item.id} value={item.id}>{item.email}</option>)}
           </select>
         </div>
         <div>
           <label>Due date (optional)</label>
-          <input type="date" value={due} onChange={(e) => setDue(e.target.value)} />
+          <input aria-label="Due date (optional)" type="date" value={due} onChange={(e) => setDue(e.target.value)} />
         </div>
         <div>
           <label>Priority</label>
-          <select value={priority} onChange={(e) => setPriority(e.target.value as TaskRow["priority"])}>
+          <select aria-label="Priority" value={priority} onChange={(e) => setPriority(e.target.value as TaskRow["priority"])}>
             {PRIORITIES.slice(1).map((value) => <option key={value}>{value}</option>)}
           </select>
         </div>
         <div>
           <label>Related control (optional)</label>
-          <select value={controlId} onChange={(e) => setControlId(e.target.value)}>
+          <select aria-label="Related control (optional)" value={controlId} onChange={(e) => setControlId(e.target.value)}>
             <option value="">No specific control</option>
             {controls.data?.map((c: ControlSummary) => (
               <option key={c.id} value={c.id}>{c.framework} {c.clause}</option>

@@ -230,7 +230,7 @@ export function EvidenceListPage() {
           <div className="form-grid">
             <div>
               <label>Artefact type</label>
-              <select value={artefactType} onChange={(e) => { setArtefactType(e.target.value); typeTouched.current = true; }}>
+              <select aria-label="Artefact type" value={artefactType} onChange={(e) => { setArtefactType(e.target.value); typeTouched.current = true; }}>
                 {ARTEFACT_TYPES.map((t) => (
                   <option key={t} value={t}>
                     {ARTEFACT_LABELS[t] ?? t}
@@ -247,21 +247,21 @@ export function EvidenceListPage() {
             </div>
             <div>
               <label>File</label>
-              <input type="file" accept=".pdf,.docx,.xlsx,.png,.jpg,.jpeg,.txt,.csv" onChange={(e) => pickFile(e.target.files?.[0] ?? null)} />
+              <input aria-label="File" type="file" accept=".pdf,.docx,.xlsx,.png,.jpg,.jpeg,.txt,.csv" onChange={(e) => pickFile(e.target.files?.[0] ?? null)} />
               <p className="muted" style={{ fontSize: 12, margin: "4px 0 0" }}>
                 No file handy? <a href="/demo/Asteron-Access-Control-Policy.pdf" download>Download a sample policy</a>, then upload it here.{demoOn && <> Or <button type="button" className="link-btn" onClick={openDemoPanel}>browse the demo documents</button>.</>}
               </p>
             </div>
             <div>
               <label>Description (optional)</label>
-              <input
+              <input aria-label="Description (optional)"
                 type="text" placeholder="e.g. Q3 access review, signed"
                 value={description} onChange={(e) => setDescription(e.target.value)}
               />
             </div>
             <div>
               <label>Valid until (optional)</label>
-              <input type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} />
+              <input aria-label="Valid until (optional)" type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} />
             </div>
             <label style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 400 }}>
               <input type="checkbox" checked={isEncrypted} onChange={(e) => setIsEncrypted(e.target.checked)} />
@@ -271,14 +271,14 @@ export function EvidenceListPage() {
               <>
                 <div>
                   <label>Text model (optional)</label>
-                  <select value={aiModel} onChange={(e) => setAiModel(e.target.value)}>
+                  <select aria-label="Text model (optional)" value={aiModel} onChange={(e) => setAiModel(e.target.value)}>
                     <option value="">Server default ({aiModels.data.default_model || "unconfigured"})</option>
                     {aiModels.data.models.map((m) => <option key={m} value={m}>{m}</option>)}
                   </select>
                 </div>
                 <div>
                   <label>Vision model (optional, for scanned pages)</label>
-                  <select value={aiVisionModel} onChange={(e) => setAiVisionModel(e.target.value)}>
+                  <select aria-label="Vision model (optional, for scanned pages)" value={aiVisionModel} onChange={(e) => setAiVisionModel(e.target.value)}>
                     <option value="">Server default ({aiModels.data.default_vision_model || aiModels.data.default_model || "unconfigured"})</option>
                     {aiModels.data.models.map((m) => <option key={m} value={m}>{m}</option>)}
                   </select>
