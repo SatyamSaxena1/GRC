@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 import yaml
-from pydantic import BaseModel, ConfigDict, PrivateAttr
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 
 CONTENT_DIR = Path(__file__).parent
 
@@ -74,6 +74,13 @@ class EvidenceRequirement(_Model):
     evidence_validity: EvidenceValidity | None = None
 
 
+class SourceRef(_Model):
+    """The exact source paragraph a clause was drafted from (ADR-029): a provision id
+    from sources/<framework>/provisions.jsonl and the sha256 of that provision's text."""
+    provision: str
+    sha256: str
+
+
 class Requirement(_Model):
     clause: str
     title: str
@@ -85,6 +92,10 @@ class Requirement(_Model):
     # publishes actionable guidance (the AI RMF Playbook) have anything real to
     # put here, and an empty string is better than a restatement of the clause.
     guidance: str = ""
+    # Where the rule came from, not part of the rule: excluded from model_dump so
+    # app/exceptions.py::rule_hash (ADR-022) is unchanged for every existing clause,
+    # and attaching a source_ref later never flags verdicts "rules changed since".
+    source_ref: SourceRef | None = Field(default=None, exclude=True)
 
 
 class FrameworkRef(_Model):
