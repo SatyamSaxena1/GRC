@@ -190,7 +190,7 @@ _RANK = {"NO_EVIDENCE": 0, "FAIL": 1, "PARTIAL": 2, "PASS": 3}
 # takes the WORST current verdict; taking the best would let a clean GitHub snapshot hide a
 # failing GitLab one. Every other type is alternative evidence for the same requirement, where
 # satisfying it once is enough.
-WHOLE_ESTATE_TYPES = {"CHANGE_CONTROL_SNAPSHOT"}
+WHOLE_ESTATE_TYPES = {"CHANGE_CONTROL_SNAPSHOT", "KEY_HEALTH_SNAPSHOT"}
 
 
 def combine_verdicts(verdicts: list[tuple[str, str | None, bool]]) -> str:
