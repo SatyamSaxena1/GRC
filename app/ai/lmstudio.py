@@ -19,9 +19,21 @@ import requests
 
 logger = logging.getLogger("app.ai.lmstudio")
 
-BASE_URL = os.environ.get("LMSTUDIO_BASE_URL", "http://127.0.0.1:1234")
-MODEL = os.environ.get("LMSTUDIO_MODEL", "qwen/qwen3.8-27b")
+# Its own LMSTUDIO_* settings win; unset, it reuses the OpenAI-compatible extraction
+# connection (LLM_*, app/ai/openai_compat.py), so one tunnel URL + token serves both
+# reading documents and the tool-calling features on a deployment like Render.
+BASE_URL = (os.environ.get("LMSTUDIO_BASE_URL") or os.environ.get("LLM_BASE_URL")
+            or "http://127.0.0.1:1234").rstrip("/")
+MODEL = os.environ.get("LMSTUDIO_MODEL") or os.environ.get("LLM_MODEL") or "qwen/qwen3.8-27b"
+API_KEY = os.environ.get("LMSTUDIO_API_KEY") or os.environ.get("LLM_API_KEY") or ""
 TIMEOUT_S = float(os.environ.get("LMSTUDIO_TIMEOUT_S", "120"))
+# Gemma is a reasoning model: without this the answer can come back empty while it
+# "thinks" (measured in app/ai/openai_compat.py). "" sends nothing, for servers that reject it.
+REASONING_EFFORT = os.environ.get("LLM_REASONING_EFFORT", "none")
+
+
+def _headers() -> dict[str, str]:
+    return {"Authorization": f"Bearer {API_KEY}"} if API_KEY else {}
 MAX_RETRIES = 1
 
 
@@ -39,7 +51,7 @@ class LMStudioGateway:
 
     def available(self) -> bool:
         try:
-            resp = requests.get(f"{self.base_url}/v1/models", timeout=5)
+            resp = requests.get(f"{self.base_url}/v1/models", headers=_headers(), timeout=5)
             resp.raise_for_status()
             names = {m["id"] for m in resp.json().get("data", [])}
             return bool(self.model) and self.model in names
@@ -112,7 +124,11 @@ class LMStudioGateway:
         last_error: Exception | None = None
         for attempt in range(MAX_RETRIES + 1):
             try:
-                resp = requests.post(f"{self.base_url}/v1/chat/completions", json=payload, timeout=TIMEOUT_S)
+                body = {"temperature": 0, **payload}
+                if REASONING_EFFORT:
+                    body["reasoning_effort"] = REASONING_EFFORT
+                resp = requests.post(f"{self.base_url}/v1/chat/completions", json=body,
+                                     headers=_headers(), timeout=TIMEOUT_S)
                 resp.raise_for_status()
                 message = resp.json()["choices"][0]["message"]
                 self.last_latency_ms = int((time.monotonic() - start) * 1000)

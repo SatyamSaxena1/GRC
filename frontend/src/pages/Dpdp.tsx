@@ -1,3 +1,4 @@
+import { AskAIButton } from "../components/Assistant";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -54,7 +55,7 @@ export function DpdpPage() {
     <div>
       <div className="page-header">
         <div>
-          <h2>DPDP readiness assessment</h2>
+          <h2>DPDP readiness assessment</h2> <AskAIButton question={"How ready are we for India's DPDP Act, and what is missing?"} />
           <p>Evidence-backed preparation for the DPDP Act 2023 and Rules 2025.</p>
         </div>
         <button className="btn" onClick={() => window.print()}>Print score report</button>

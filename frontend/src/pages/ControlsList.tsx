@@ -1,3 +1,4 @@
+import { AskAIButton } from "../components/Assistant";
 import { useNavigate } from "react-router-dom";
 import { getControl, listControls, type ControlDetail } from "../api/client";
 import { useApi } from "../lib/useApi";
@@ -65,7 +66,7 @@ export function ControlsListPage() {
     <div>
       <div className="page-header">
         <div>
-          <h2>{identity?.kind === "auditor" ? "Auditor review" : identity?.kind === "user" ? "My controls" : "Controls"}</h2>
+          <h2>{identity?.kind === "auditor" ? "Auditor review" : identity?.kind === "user" ? "My controls" : "Controls"}</h2> <AskAIButton question={"Which controls still need evidence, and which are only partly met?"} />
           <p>
             {identity?.kind === "auditor"
               ? "Review evidence, record the human verdict, and lock the conclusion."

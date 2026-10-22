@@ -1,3 +1,4 @@
+import { AskAIButton } from "../components/Assistant";
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
@@ -144,7 +145,7 @@ export function ControlDetailPage() {
       <div className="record-header">
         <RecordIcon locked={data.locked} />
         <div className="record-title-block">
-          <h2>{data.title || `${data.framework} ${data.clause}`}</h2>
+          <h2>{data.title || `${data.framework} ${data.clause}`}</h2> <AskAIButton question={`Explain ${data.framework} ${data.clause} in plain words: what it requires, what evidence we have for it, and what is still missing.`} />
           {data.text && <p>{data.text}</p>}
         </div>
         <div className="record-actions">

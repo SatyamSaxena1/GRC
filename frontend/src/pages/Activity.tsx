@@ -1,3 +1,4 @@
+import { AskAIButton } from "../components/Assistant";
 import { getActivity } from "../api/client";
 import { useApi } from "../lib/useApi";
 import { PageTour } from "../components/PageTour";
@@ -24,7 +25,7 @@ export function ActivityPage() {
     <div>
       <div className="page-header">
         <div>
-          <h2>Activity</h2>
+          <h2>Activity</h2> <AskAIButton question={"Summarise what has changed in this workspace recently."} />
           <p>Everything that happened across your workspace, most recent first.</p>
         </div>
         <PageTour id="activity" steps={TOUR_STEPS} />
