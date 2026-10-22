@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 
 from app import audit_log
 from app.auth import Actor, current_actor, deny_read_only
-from app.collectors import github_change_control
+from app.collectors import github_change_control, weak_keys
 from app.content.load import load as load_content
 from app.db import get_session, session_scope, set_tenant
 from app.models import Evidence, Organization
@@ -48,6 +48,8 @@ SOURCES = {
                set(github_change_control.ATTRIBUTES)),
     "bitbucket": ("Bitbucket change control", "CHANGE_CONTROL_SNAPSHOT",
                   set(github_change_control.ATTRIBUTES)),
+    # Weak public keys in the client's certificates (app/collectors/weak_keys.py, ADR-029).
+    "keys": ("Certificate key health", "KEY_HEALTH_SNAPSHOT", set(weak_keys.ATTRIBUTES)),
 }
 
 
