@@ -31,3 +31,4 @@
 | [027](027-grc-reviews-code.md) | GRC reviews code: Review Standards, a rule engine, and what it may read and keep | Proposed |
 | [028](028-code-review-github-app.md) | The code-review GitHub App: tenant binding, durable jobs, check outcomes | Proposed |
 | [029](029-verdict-register.md) | Verdict register: a locked verdict is reopened and replaced, never edited | Proposed |
+| [030](030-connector-evidence-gaps.md) | Connector evidence gaps: "could not collect" is not "found nothing" | Proposed |

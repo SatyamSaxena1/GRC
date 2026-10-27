@@ -42,6 +42,7 @@ class GitLab:
 
     def __init__(self, session, url: str = DEFAULT_URL):
         self.session, self.api = session, url.rstrip("/") + "/api/v4"
+        self.errors: list[str] = []  # reported as collection.errors, so a hidden path is not a clean zero
 
     def get(self, path: str, **params) -> Any:
         response = self.session.get(self.api + path, params=params or None, timeout=30)
@@ -66,6 +67,7 @@ class GitLab:
                 # zero would let the deploy rules pass by omission.
                 print(f"warning: {path} is hidden from this token; deployments are not "
                       "reconciled (the token needs at least Reporter access)", file=sys.stderr)
+                self.errors.append(f"{path} is hidden from this token")
                 return
             response.raise_for_status()
             yield from response.json()
@@ -285,8 +287,8 @@ def main(argv: list[str] | None = None) -> int:
     repos = [dict(fetch(gl, p, since, args.environment or ["production"], args.deploy_job),
                   extra_gate_patterns=args.gate_path) for p in args.project]
     rows, left_out = exceptions(repos)
-    json.dump({"attributes": summarize(repos), "exceptions": rows,
-               "exceptions_left_out": left_out}, sys.stdout, indent=2)
+    json.dump({"attributes": summarize(repos), "exceptions": rows, "exceptions_left_out": left_out,
+               "collection": {"errors": gl.errors}}, sys.stdout, indent=2)
     print()
     return 0
 

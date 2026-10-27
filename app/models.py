@@ -454,6 +454,24 @@ class VerdictRecord(Base):
     audit_entry_hash: Mapped[str | None] = mapped_column(default=None)
 
 
+class CollectionRun(Base):
+    """What one connector run asked for, what came back, and whether that can be trusted
+    (ADR-030). "No evidence found" and "we could not collect evidence" are different states:
+    a PARTIAL or FAILED run is never read as a pass. Insert-only; every run, including a failed
+    one, has a row and a CONNECTOR_RUN audit event."""
+    __tablename__ = "collection_runs"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"))
+    source: Mapped[str]
+    started_at: Mapped[datetime] = mapped_column(default=_now)
+    status: Mapped[str]  # COMPLETE | PARTIAL | FAILED
+    expectation: Mapped[str]  # what completeness was judged against: REPORTED | HISTORY | NONE
+    requested: Mapped[dict] = mapped_column(JSON, default=dict)  # totals the collector said to expect
+    returned: Mapped[dict] = mapped_column(JSON, default=dict)  # what came back, and the next run's baseline
+    signals: Mapped[list] = mapped_column(JSON, default=list)  # why it is not COMPLETE, in words
+    evidence_id: Mapped[str | None] = mapped_column(ForeignKey("evidence.id"), default=None)
+
+
 class TaskRow(Base):
     """A unit of remediation work. Two ways one comes to exist: the evaluator
     opens one per gap (`gap_id` set, status is evidence-driven — only new
