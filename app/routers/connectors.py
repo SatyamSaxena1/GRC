@@ -16,12 +16,12 @@ import requests
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app import audit_log
+from app import audit_log, collection
 from app.auth import Actor, current_actor, deny_read_only
 from app.collectors import github_change_control
 from app.content.load import load as load_content
 from app.db import get_session, session_scope, set_tenant
-from app.models import Evidence, Organization
+from app.models import CollectionRun, Evidence, Organization
 from app.service import process_evidence
 from app.storage import get_storage, object_key
 
@@ -82,12 +82,41 @@ def connector_status(actor: Actor = Depends(current_actor), db: Session = Depend
             "last_synced_at": latest.created_at.isoformat() if latest else None,
             "status": latest.status if latest else "NEVER_SYNCED",
             "applicable": source not in na_sources,
+            # Whether the last run could be trusted (ADR-030); a failed run leaves older evidence in place.
+            "collection": _run_view(_last_run(db, actor.org_id, source)),
         }
         for source, (label, _, _) in SOURCES.items()
     ]
 
 
-def _pull(source: str) -> bytes:
+def _last_run(db: Session, org_id: str, source: str, status: str | None = None) -> CollectionRun | None:
+    query = db.query(CollectionRun).filter_by(org_id=org_id, source=source)
+    if status:
+        query = query.filter_by(status=status)
+    return query.order_by(CollectionRun.started_at.desc()).first()
+
+
+def _run_view(run: CollectionRun | None) -> dict | None:
+    return None if run is None else {
+        "status": run.status, "at": run.started_at.isoformat(), "expectation": run.expectation,
+        "signals": run.signals}
+
+
+def _record_run(db: Session, actor_label: str, request_id: str, org_id: str, source: str, assessment: dict,
+                evidence_id: str | None) -> CollectionRun:
+    """Every run leaves a row and an audit event, whatever it found."""
+    run = CollectionRun(org_id=org_id, source=source, evidence_id=evidence_id,
+                        started_at=datetime.now(timezone.utc).replace(tzinfo=None), **assessment)
+    db.add(run)
+    db.flush()
+    audit_log.record(db, actor=actor_label, request_id=request_id, action="CONNECTOR_RUN",
+                     entity_type="collection_run", entity=run.id, org_id=org_id,
+                     detail={"source": source, "status": run.status, "expectation": run.expectation,
+                             "signals": run.signals, "evidence_id": evidence_id})
+    return run
+
+
+def _pull(source: str) -> dict:
     url = os.environ.get(_env_key(source, "URL"))
     if not url:
         raise HTTPException(409, f"{source} collector is not configured")
@@ -113,10 +142,10 @@ def _pull(source: str) -> bytes:
         raise HTTPException(502, f"{source} collector failed: {exc}") from exc
 
     snapshot = {"source": source, "collected_at": datetime.now(timezone.utc).isoformat(),
-                "attributes": filtered}
+                "attributes": filtered, "declared": payload.get("collection")}
     if source in EXCEPTION_SOURCES:
         snapshot["exceptions"], snapshot["exceptions_left_out"] = _exception_rows(payload)
-    return json.dumps(snapshot, sort_keys=True, separators=(",", ":")).encode()
+    return snapshot
 
 
 # Sources whose collector also returns the per-item rows behind its counts. Stored inside
@@ -156,7 +185,28 @@ def sync_connector_for_org(db: Session, org_id: str, actor_label: str, request_i
     if source not in SOURCES:
         raise HTTPException(404, "unknown connector")
 
-    data = _pull(source)
+    try:
+        snapshot = _pull(source)
+    except HTTPException as exc:
+        # "Could not collect" is recorded, not swallowed: earlier evidence stays CURRENT but the
+        # connector reads as failed, so nothing here can look like a clean run (ADR-030).
+        _record_run(db, actor_label, request_id, org_id, source,
+                    {"status": "FAILED", "expectation": "NONE", "requested": {}, "returned": {},
+                     "signals": [str(exc.detail)]}, None)
+        db.commit()
+        raise
+    baseline = _last_run(db, org_id, source, "COMPLETE")
+    assessment = collection.assess(snapshot.pop("declared"), snapshot["attributes"],
+                                   baseline.returned if baseline else None)
+    note = ""
+    if assessment["status"] != "COMPLETE":
+        # Withheld, not zero: a partial count read as a count would let a truncated run pass.
+        snapshot["unverified_attributes"], snapshot["attributes"] = snapshot["attributes"], {}
+        note = (f" Collection {assessment['status']}: {'; '.join(assessment['signals'])}. "
+                "Values were withheld from evaluation; re-collect to get a verdict.")
+    snapshot["collection"] = {"status": assessment["status"], "expectation": assessment["expectation"],
+                              "signals": assessment["signals"]}
+    data = json.dumps(snapshot, sort_keys=True, separators=(",", ":")).encode()
     digest = hashlib.sha256(data).hexdigest()
     prior = _latest(db, org_id, source)
     # collected_at makes snapshots distinct by design; the source facts and
@@ -174,7 +224,7 @@ def sync_connector_for_org(db: Session, org_id: str, actor_label: str, request_i
         version=version,
         supersedes_id=prior.id if prior else None,
         status="STORED",
-        description=f"Automatically collected from {SOURCES[source][0]}",
+        description=f"Automatically collected from {SOURCES[source][0]}.{note}".replace(".. ", ". "),
     )
     db.add(evidence)
     db.flush()
@@ -185,8 +235,10 @@ def sync_connector_for_org(db: Session, org_id: str, actor_label: str, request_i
     audit_log.record(
         db, actor=actor_label, request_id=request_id, action="CONNECTOR_SYNCED",
         entity_type="evidence", entity=evidence.id, org_id=org_id,
-        detail={"source": source, "version": version, "attributes": list(json.loads(data)["attributes"])},
+        detail={"source": source, "version": version, "attributes": list(json.loads(data)["attributes"]),
+                "collection": assessment["status"]},
     )
+    _record_run(db, actor_label, request_id, org_id, source, assessment, evidence.id)
     db.commit()
     return evidence
 
