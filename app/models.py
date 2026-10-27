@@ -419,6 +419,41 @@ class GapException(Base):
     decision_note: Mapped[str] = mapped_column(Text, default="")
 
 
+class VerdictRecord(Base):
+    """One step in the history of a control's verdict (ADR-029). Immutable: a reopening or a
+    replacement is a new row whose supersedes_id points at the one before it, never an edit
+    of that row. The current state is the head of the chain, the row nothing supersedes.
+    The link's own verdict / locked columns are a cache of that head.
+
+    rule_hash / evaluation_hash / engine_verdict are copied from the link at decision time,
+    so each step can be replayed against the rules it saw (ADR-022). audit_chain_seq and
+    audit_entry_hash point at the audit event that recorded the step, and that event commits
+    to record_hash, which covers every other field here."""
+    __tablename__ = "verdict_records"
+    __table_args__ = (UniqueConstraint("link_id", "seq"), UniqueConstraint("supersedes_id"))
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"))
+    link_id: Mapped[str] = mapped_column(ForeignKey("evidence_control_links.id"))
+    seq: Mapped[int] = mapped_column(Integer)
+    supersedes_id: Mapped[str | None] = mapped_column(ForeignKey("verdict_records.id"), default=None)
+    kind: Mapped[str]  # DECISION | REOPENED
+    verdict: Mapped[str | None] = mapped_column(default=None)  # null on REOPENED
+    engine_verdict: Mapped[str | None] = mapped_column(default=None)
+    rule_hash: Mapped[str | None] = mapped_column(default=None)
+    evaluation_hash: Mapped[str | None] = mapped_column(default=None)
+    engine_version: Mapped[str | None] = mapped_column(default=None)
+    decided_by: Mapped[str]
+    decided_by_user_id: Mapped[str | None] = mapped_column(default=None)
+    engagement_id: Mapped[str | None] = mapped_column(default=None)
+    decided_at: Mapped[datetime] = mapped_column(default=_now)
+    reason_code: Mapped[str]
+    reasoning: Mapped[str] = mapped_column(Text, default="")
+    origin: Mapped[str] = mapped_column(String, default="LIVE")  # LIVE | MIGRATED
+    record_hash: Mapped[str] = mapped_column(String, default="")
+    audit_chain_seq: Mapped[int | None] = mapped_column(Integer, default=None)
+    audit_entry_hash: Mapped[str | None] = mapped_column(default=None)
+
+
 class TaskRow(Base):
     """A unit of remediation work. Two ways one comes to exist: the evaluator
     opens one per gap (`gap_id` set, status is evidence-driven — only new
