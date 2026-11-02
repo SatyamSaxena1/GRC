@@ -1,3 +1,4 @@
+import { AskAIButton } from "../components/Assistant";
 import { useState } from "react";
 import { listGlossary, type GlossaryTerm } from "../api/client";
 import { useApi } from "../lib/useApi";
@@ -35,7 +36,7 @@ export function GlossaryPage() {
     <div>
       <div className="page-header">
         <div>
-          <h2>Glossary</h2>
+          <h2>Glossary</h2> <AskAIButton question={"Explain the key GRC terms I need for an audit, in plain words."} />
           <p>What the words on screen mean, and which document says so.</p>
         </div>
         <PageTour id="glossary" steps={TOUR_STEPS} />

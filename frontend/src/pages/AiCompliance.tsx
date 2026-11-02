@@ -1,3 +1,4 @@
+import { AskAIButton } from "../components/Assistant";
 import { Link } from "react-router-dom";
 import {
   getControl,
@@ -156,7 +157,7 @@ export function AiCompliancePage() {
       <section className="ai-hero">
         <div>
           <span className="ai-kicker"><span /> AI governance workspace</span>
-          <h2>Build AI people can trust.</h2>
+          <h2>Build AI people can trust.</h2> <AskAIButton question={"How ready are we for the NIST AI RMF GOVERN function, and what are our biggest AI governance gaps?"} />
           <p>
             Turn the NIST AI Risk Management Framework into clear evidence, accountable owners,
             and a defensible record of how AI risk is governed.

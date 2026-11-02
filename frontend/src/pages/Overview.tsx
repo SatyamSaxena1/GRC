@@ -1,3 +1,4 @@
+import { AskAIButton } from "../components/Assistant";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { ApiError, downloadComplianceExport, downloadOscalExport, getDashboard } from "../api/client";
@@ -74,7 +75,7 @@ export function OverviewPage() {
     <div>
       <div className="page-header">
         <div>
-          <h2>Workspace overview</h2>
+          <h2>Workspace overview</h2> <AskAIButton question={"What needs my attention today, and why?"} />
           <p>Start with what needs attention, then drill into the exact evidence, gap, or control.</p>
         </div>
         <div style={{ display: "flex", gap: 8 }}>

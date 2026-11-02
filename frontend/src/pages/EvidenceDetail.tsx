@@ -1,3 +1,4 @@
+import { AskAIButton } from "../components/Assistant";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
@@ -274,7 +275,7 @@ export function EvidenceDetailPage() {
     <div>
       <div className="page-header">
         <div>
-          <h2>{filename ?? (evidence.mime_type ? evidence.mime_type.split("/").pop() : "Evidence")}</h2>
+          <h2>{filename ?? (evidence.mime_type ? evidence.mime_type.split("/").pop() : "Evidence")}</h2> <AskAIButton question={`Summarise evidence ${evidence.id} in plain words: what it is, its verdicts per framework, and which extracted facts a person should double-check.`} />
           <p>
             v{evidence.version}
             {evidence.description && <> · {evidence.description}</>}
@@ -669,6 +670,7 @@ function GapRow({ gap, extra }: { gap: ShownGap; extra: string }) {
   return (
     <div className="gap-row">
       <GapFinding gap={gap} />
+      <AskAIButton label="Explain this gap" question={`On this evidence, explain the gap "${gap.attribute}": why it is a gap, what the clause asks for, and what wording would fix it.`} />
       {extra && <div className="muted">{extra}</div>}
     </div>
   );

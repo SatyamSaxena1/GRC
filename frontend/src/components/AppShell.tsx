@@ -6,6 +6,7 @@ import { useSession } from "../lib/session";
 import { Hint } from "./Hint";
 import { GettingStartedTour } from "./GettingStartedTour";
 import { RoleSwitcher } from "./RoleSwitcher";
+import { AssistantPanel } from "./Assistant";
 import { navFor } from "../lib/nav";
 
 // Whether the backend can reach its model server right now (GET /health/ready asks
@@ -142,6 +143,7 @@ export function AppShell() {
       <main className="main" key={viewKey}>
         <Outlet />
       </main>
+      <AssistantPanel />
     </div>
   );
 }
