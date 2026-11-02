@@ -79,3 +79,14 @@ def test_connector_run_history_lists_runs_newest_first_and_is_org_scoped(client,
     assert "truncated" in runs[0]["signals"][0] and runs[0]["expectation"] == "REPORTED+HISTORY"
     assert client.get("/connectors/github/runs", headers={"authorization": f"org:{other_org}"}).json() == []
     assert client.get("/connectors/nope/runs", headers={"authorization": f"org:{org_id}"}).status_code == 404
+
+
+def test_the_register_view_names_who_decided(client, bootstrap, upload):
+    org_id, engagement_id = bootstrap(client)
+    evidence_id = upload(client, org_id).json()["evidence_id"]
+    with Session(db_module.engine) as s:
+        link_id = s.query(EvidenceControlLink).filter_by(evidence_id=evidence_id).first().id
+    headers = {"authorization": f"auditor:{engagement_id}"}
+    client.post(f"/audit/links/{link_id}/lock", headers=headers, json={"verdict": "COMPLIANT", "reason": REASON})
+    entry = client.get(f"/audit/links/{link_id}/register", headers=headers).json()["entries"][0]
+    assert entry["decided_by"] == f"auditor:{engagement_id}" and entry["decided_by_display"] == "Auditor · BigFour"

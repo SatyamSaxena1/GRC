@@ -19,6 +19,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import audit_log
+from app.actor_names import resolve_actors
 from app.models import EvidenceControlLink, VerdictRecord
 
 REASON_CODES = {
@@ -124,7 +125,9 @@ def _entry(r: VerdictRecord, previous: VerdictRecord | None) -> dict:
 def register(db: Session, link: EvidenceControlLink) -> dict:
     """The human-readable view: every step, oldest first, and what is in force now."""
     rows = history(db, link.id)
-    entries = [_entry(r, rows[i - 1] if i else None) for i, r in enumerate(rows)]
+    names = resolve_actors(db, (r.decided_by for r in rows))
+    entries = [_entry(r, rows[i - 1] if i else None) | {"decided_by_display": names.get(r.decided_by, r.decided_by)}
+               for i, r in enumerate(rows)]
     decisions = [r for r in rows if r.kind == "DECISION"]
     return {
         "link_id": link.id, "framework": link.framework, "clause": link.clause,

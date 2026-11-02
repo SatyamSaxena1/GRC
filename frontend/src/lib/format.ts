@@ -28,3 +28,9 @@ export function describeBound(operator: string, expected: unknown): string {
   if (operator === "one_of") return `be one of ${prettyValue(expected)}`;
   return `${BOUND[operator] ?? operator} ${prettyValue(expected)}`;
 }
+
+/** A backend timestamp as local time. The API sends UTC without a zone suffix, which the browser
+ *  would otherwise read as local time and show hours off. */
+export function localTime(iso: string): string {
+  return new Date(/[zZ]|[+-]\d\d:?\d\d$/.test(iso) ? iso : iso + "Z").toLocaleString();
+}

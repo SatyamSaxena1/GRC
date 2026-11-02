@@ -16,6 +16,8 @@ import { useApi } from "../lib/useApi";
 import { DataTable, type Column } from "../components/DataTable";
 import { Badge } from "../components/Badge";
 import { PageTour } from "../components/PageTour";
+import { EventLine } from "../components/EventLine";
+import { localTime } from "../lib/format";
 import { ProcessingNotice } from "../components/ProcessingNotice";
 import { useSession } from "../lib/session";
 
@@ -356,10 +358,10 @@ function TaskDrawer({
 
         <div className="section-title">Activity timeline</div>
         <ul className="timeline">
-          {history.map((event, index) => <li key={index}><div className="ts">{new Date(event.at).toLocaleString()}</div><strong>{event.action}</strong> by {event.actor}</li>)}
+          {history.map((event, index) => <li key={index}><div className="ts">{localTime(event.at)}</div><EventLine event={event} /></li>)}
           {history.length === 0 && (
             <li>
-              <div className="ts">{new Date(data.created_at).toLocaleString()}</div>
+              <div className="ts">{localTime(data.created_at)}</div>
               <strong>Task created</strong> {data.is_manual ? `by ${data.created_by || "an admin"}` : "from an evidence gap"}
             </li>
           )}
