@@ -1,3 +1,4 @@
+import { AskAIButton } from "../components/Assistant";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
@@ -274,7 +275,7 @@ export function EvidenceDetailPage() {
     <div>
       <div className="page-header">
         <div>
-          <h2>{filename ?? (evidence.mime_type ? evidence.mime_type.split("/").pop() : "Evidence")}</h2>
+          <h2>{filename ?? (evidence.mime_type ? evidence.mime_type.split("/").pop() : "Evidence")}</h2> <AskAIButton question={`Summarise evidence ${evidence.id} in plain words: what it is, its verdicts per framework, and which extracted facts a person should double-check.`} />
           <p>
             v{evidence.version}
             {evidence.description && <> · {evidence.description}</>}
@@ -320,7 +321,7 @@ export function EvidenceDetailPage() {
           <strong>The analysis model was unavailable when this file was processed.</strong>
           <span className="muted" style={{ display: "block", fontSize: 12, margin: "2px 0 8px" }}>
             Your file is stored and its text was readable. The verdicts below were computed
-            with no extracted facts, so they all read FAIL — re-run the analysis to get a real result.
+            with no extracted facts, so they all read FAIL. No gaps or tasks were raised from this run — re-run the analysis to get a real result.
           </span>
           <button className="btn" onClick={rerun} disabled={rerunning}>
             {rerunning ? "Re-running…" : "Re-run analysis"}
@@ -603,11 +604,11 @@ function MetadataEditor({
           {error && <div className="alert alert-error">{error}</div>}
           <div>
             <label>Description</label>
-            <input type="text" value={descDraft} onChange={(e) => setDescDraft(e.target.value)} />
+            <input aria-label="Description" type="text" value={descDraft} onChange={(e) => setDescDraft(e.target.value)} />
           </div>
           <div>
             <label>Valid until</label>
-            <input type="date" value={validDraft} onChange={(e) => setValidDraft(e.target.value)} />
+            <input aria-label="Valid until" type="date" value={validDraft} onChange={(e) => setValidDraft(e.target.value)} />
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button className="btn btn-primary" disabled={busy} onClick={save}>
@@ -669,6 +670,7 @@ function GapRow({ gap, extra }: { gap: ShownGap; extra: string }) {
   return (
     <div className="gap-row">
       <GapFinding gap={gap} />
+      <AskAIButton label="Explain this gap" question={`On this evidence, explain the gap "${gap.attribute}": why it is a gap, what the clause asks for, and what wording would fix it.`} />
       {extra && <div className="muted">{extra}</div>}
     </div>
   );

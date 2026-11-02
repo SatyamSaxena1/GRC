@@ -174,7 +174,8 @@ def assign_control(body: AssignmentIn, actor: Actor | None = Depends(admin_or_ac
     assignment = ControlAssignment(**body.model_dump())
     db.add(assignment)
     control = db.get(OrgControl, body.org_control_id)
-    audit_log.record(db, actor="admin", action="CONTROL_ASSIGNED", entity_type="org_control",
+    audit_log.record(db, actor=actor.label() if actor is not None else "admin", action="CONTROL_ASSIGNED",
+                     entity_type="org_control",
                      entity=body.org_control_id,
                      org_id=control.org_id if control else None,
                      detail={"user_id": body.user_id})

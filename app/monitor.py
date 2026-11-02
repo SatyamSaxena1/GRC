@@ -27,6 +27,8 @@ recovery from an outage, never a recomputation of a locked result.
 
 from __future__ import annotations
 
+import sys
+
 import os
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
@@ -345,6 +347,11 @@ def _main() -> int:
             print(f"\n{org.name} ({org.id})")
             # A broken audit chain is never a warning: silence is never green (ADR-019).
             problems += _report_chain(db, audit_log.chain_of(org.id))
+            if "--notify" in sys.argv:
+                from app import notify
+                from app.routers.notifications import _attention_items
+                sent = notify.digest(db, org.id, _attention_items(report.to_dict(), report.checked_at))
+                print(f"  webhook: {sent} notice(s) sent" if notify.enabled() else "  webhook: not configured")
             if report.total == 0:
                 print("  nothing needs attention")
                 continue

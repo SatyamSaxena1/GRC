@@ -1,4 +1,4 @@
-# ADR-029: Check the keys, not the paperwork: a weak-key collector
+# ADR-033: Check the keys, not the paperwork: a weak-key collector
 
 > **Status:** Proposed. A first slice is implemented: `app/collectors/weak_keys.py`, the `keys`
 > connector source, UCO-CRY-001 and ISO 27001 A.8.24 (`tests/test_weak_keys.py`).

@@ -23,6 +23,21 @@ def _no_live_ollama(request, monkeypatch):
     monkeypatch.setattr(OllamaGateway, "available", lambda self: False)
 
 
+@pytest.fixture(autouse=True)
+def _model_reads_nothing(request, monkeypatch):
+    """By default the model "read" the file and found none of the facts, a real outcome that
+    raises real "not stated" gaps and tasks. A run where the model was down raises none (ADR-004:
+    never a gap for something the platform did not read), so tests of that path opt in with
+    @pytest.mark.model_unavailable."""
+    if request.node.get_closest_marker("model_unavailable") or request.module.__name__.endswith("test_live_ollama"):
+        return
+    from app import service
+    from app.ai.schemas import ExtractedField, ExtractionRun
+    monkeypatch.setattr(service, "extract_attributes", lambda text, names, method="native_text", gateway=None: ExtractionRun(
+        fields={n: ExtractedField(value=None, confidence=None, extraction_method="none") for n in names},
+        model="stub", provider="stub", prompt_template_version="stub:v1"))
+
+
 @pytest.fixture()
 def client(tmp_path, monkeypatch):
     monkeypatch.setenv("EVIDENCE_STORAGE_DIR", str(tmp_path / "storage"))

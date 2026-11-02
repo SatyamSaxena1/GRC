@@ -1,3 +1,5 @@
+import { AskAIButton } from "../components/Assistant";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getControl, listControls, type ControlDetail } from "../api/client";
 import { useApi } from "../lib/useApi";
@@ -43,10 +45,30 @@ export function ControlsListPage() {
     return Promise.all(summaries.map((c) => getControl(c.id)));
   }, []);
 
+  const [query, setQuery] = useState("");
+  const [framework, setFramework] = useState("");
+  const [verdict, setVerdict] = useState("");
+  const [sort, setSort] = useState("framework");
+  const all = controls.data ?? [];
+  const frameworks = useMemo(() => [...new Set(all.map((c) => c.framework))].sort(), [all]);
+  const rows = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const matches = all.filter((c) =>
+      (!framework || c.framework === framework) && (!verdict || bestVerdict(c) === verdict)
+      && (!q || `${c.framework} ${c.clause} ${c.title} ${c.owner_emails.join(" ")}`.toLowerCase().includes(q)));
+    const rank = (c: ControlDetail) => ["FAIL", "NO_EVIDENCE", "PARTIAL", "PASS"].indexOf(bestVerdict(c));
+    return [...matches].sort((a, b) =>
+      sort === "verdict" ? rank(a) - rank(b) || a.framework.localeCompare(b.framework)
+      : sort === "owner" ? (a.owner_emails[0] ?? "~").localeCompare(b.owner_emails[0] ?? "~")
+      : sort === "evidence" ? b.links.length - a.links.length
+      : a.framework.localeCompare(b.framework) || a.clause.localeCompare(b.clause, undefined, { numeric: true }));
+  }, [all, query, framework, verdict, sort]);
+
   const columns: Column<ControlDetail>[] = [
     { key: "framework", header: "Framework", render: (c) => c.framework },
     { key: "clause", header: "Clause", render: (c) => c.clause },
     { key: "verdict", header: "Verdict", render: (c) => <Badge value={bestVerdict(c)} /> },
+    { key: "owner", header: "Owner", render: (c) => (c.owner_emails.length ? c.owner_emails.join(", ") : <span className="muted">Unassigned</span>) },
     { key: "evidence", header: "Evidence links", render: (c) => c.links.length },
     {
       key: "locked", header: "Status",
@@ -65,7 +87,7 @@ export function ControlsListPage() {
     <div>
       <div className="page-header">
         <div>
-          <h2>{identity?.kind === "auditor" ? "Auditor review" : identity?.kind === "user" ? "My controls" : "Controls"}</h2>
+          <h2>{identity?.kind === "auditor" ? "Auditor review" : identity?.kind === "user" ? "My controls" : "Controls"}</h2> <AskAIButton question={"Which controls still need evidence, and which are only partly met?"} />
           <p>
             {identity?.kind === "auditor"
               ? "Review evidence, record the human verdict, and lock the conclusion."
@@ -78,11 +100,30 @@ export function ControlsListPage() {
       </div>
       <ProcessingNotice onSettled={controls.reload} />
       {controls.error && <div className="alert alert-error">{controls.error}</div>}
+      <div className="queue-filters" aria-label="Control filters">
+        <input aria-label="Search controls" placeholder="Search framework, clause, title or owner…" value={query}
+               onChange={(e) => setQuery(e.target.value)} />
+        <select aria-label="Filter by framework" value={framework} onChange={(e) => setFramework(e.target.value)}>
+          <option value="">All frameworks</option>
+          {frameworks.map((f) => <option key={f}>{f}</option>)}
+        </select>
+        <select aria-label="Filter by verdict" value={verdict} onChange={(e) => setVerdict(e.target.value)}>
+          <option value="">All verdicts</option>
+          {["FAIL", "NO_EVIDENCE", "PARTIAL", "PASS"].map((v) => <option key={v} value={v}>{v.replace("_", " ")}</option>)}
+        </select>
+        <select aria-label="Sort controls" value={sort} onChange={(e) => setSort(e.target.value)}>
+          <option value="framework">Sort: framework and clause</option>
+          <option value="verdict">Sort: needs attention first</option>
+          <option value="owner">Sort: owner</option>
+          <option value="evidence">Sort: most evidence</option>
+        </select>
+      </div>
+      <p className="muted" role="status" style={{ fontSize: 13 }}>Showing {rows.length} of {all.length} controls.</p>
       <DataTable
         columns={columns}
-        rows={controls.data ?? []}
+        rows={rows}
         onRowClick={(c) => navigate(`/controls/${c.id}`)}
-        emptyLabel="No controls visible to this identity."
+        emptyLabel={all.length ? "No controls match these filters." : "No controls visible to this identity."}
       />
     </div>
   );

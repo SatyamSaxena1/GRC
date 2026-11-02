@@ -271,7 +271,13 @@ export type AiModelsInfo = {
 };
 export const listAiModels = () => request<AiModelsInfo>("GET", "/evidence/ai-models");
 
-export type ModelHealth = { ready: boolean; checks: { model: string; model_name: string; model_degraded?: string } };
+export type AssistantTurn = { role: "user" | "assistant"; content: string };
+export type AssistantAnswer = { answer: string; tools: string[]; model: string };
+export const askAssistant = (question: string, page: string, history: AssistantTurn[]) =>
+  request<AssistantAnswer>("POST", "/assistant/ask", { json: { question, page, history } });
+export const getAssistantStatus = () => request<{ available: boolean; model: string }>("GET", "/assistant/status");
+
+export type ModelHealth ={ ready: boolean; checks: { model: string; model_name: string; model_degraded?: string } };
 export const getModelHealth = () => request<ModelHealth>("GET", "/health/ready");
 
 export const updateEvidenceMetadata = (
@@ -376,6 +382,10 @@ export const getEvidenceEvaluations = (id: string) =>
 export type AuditEventOut = {
   action: string;
   actor: string;
+  /** The actor in words when the backend could resolve it (app/actor_names.py); else the raw label. */
+  actor_display?: string;
+  before?: Record<string, unknown> | null;
+  after?: Record<string, unknown> | null;
   entity_type?: string;
   entity?: string;
   detail: Record<string, unknown>;
@@ -510,13 +520,15 @@ export const getEvidence = (id: string) => request<EvidenceDetail>("GET", `/evid
 
 // ---------------------------------------------------------------- controls
 
-export type ControlSummary = { id: string; framework: string; clause: string };
+export type ControlSummary = { id: string; framework: string; clause: string; owner_ids: string[]; owner_emails: string[] };
 export const listControls = () => request<ControlSummary[]>("GET", "/controls");
 
 export type ControlLinkRow = {
   id: string;
   evidence_id: string;
   verdict: string;
+  /** What the rules said; `verdict` is the auditor's once the control is locked. */
+  engine_verdict: string | null;
   auditor_verdict: string | null;
   locked: boolean;
   // Auditor-only — see EvidenceLink.nutshell above.
@@ -526,8 +538,14 @@ export type ControlLinkRow = {
 };
 export type ControlDetail = {
   id: string; framework: string; clause: string; title: string; text: string;
-  owner_emails: string[]; locked: boolean; links: ControlLinkRow[];
+  owner_emails: string[]; owner_ids: string[]; locked: boolean; links: ControlLinkRow[];
 };
+// Org admins only: who owns a control (the grant that lets a control owner work it).
+export const addControlOwner = (controlId: string, userId: string, applyToTasks = false) =>
+  request<{ control_id: string; owner_ids: string[]; owner_emails: string[]; created: boolean; tasks_assigned: number }>(
+    "POST", `/controls/${controlId}/owners`, { json: { user_id: userId, apply_to_tasks: applyToTasks } });
+export const removeControlOwner = (controlId: string, userId: string) =>
+  request<{ control_id: string; owner_ids: string[]; owner_emails: string[] }>("DELETE", `/controls/${controlId}/owners/${userId}`);
 export const getControl = (id: string) => request<ControlDetail>("GET", `/controls/${id}`);
 
 export type ControlEvidenceRow = {
@@ -563,6 +581,10 @@ export type TaskRow = {
   status: "OPEN" | "DONE";
   is_manual: boolean;
   gap_id: string | null;
+  /** What the gap is about, so tasks sharing a fix can be grouped. Null on manual tasks. */
+  attribute: string | null;
+  kind: string | null;
+  org_control_id: string | null;
   framework: string | null;
   clause: string | null;
   required_action: string;
@@ -582,13 +604,16 @@ export const listTasks = (filters: TaskFilters = {}) => request<TaskRow[]>("GET"
 export type TaskOwner = { id: string; email: string };
 export const listTaskOwners = () => request<TaskOwner[]>("GET", "/tasks/owners");
 export type TaskDetail = TaskRow & {
-  history: { action: string; actor: string; before: Record<string, unknown> | null; after: Record<string, unknown> | null; at: string }[];
+  history: { action: string; actor: string; actor_display?: string; before: Record<string, unknown> | null; after: Record<string, unknown> | null; at: string }[];
 };
 export const getTask = (id: string) => request<TaskDetail>("GET", `/tasks/${id}`);
 export const updateTask = (
   id: string,
   update: Partial<{ owner_user_id: string | null; due_at: string | null; priority: string; status: "OPEN" | "DONE" }>
 ) => request<TaskRow>("PATCH", `/tasks/${id}`, { json: update });
+export type BulkTaskChange = { owner_user_id?: string | null; due_at?: string; priority?: string };
+export const bulkUpdateTasks = (taskIds: string[], change: BulkTaskChange) =>
+  request<{ requested: number; changed: number; tasks: TaskRow[] }>("POST", "/tasks/bulk", { json: { task_ids: taskIds, ...change } });
 export const createTask = (task: {
   title: string;
   description?: string;
@@ -634,9 +659,43 @@ export const recordVerdict = (linkId: string, verdict: string, reason: string) =
     { json: { verdict, reason } }
   );
 
-export const lockLink = (linkId: string, verdict: string) =>
+export const lockLink = (linkId: string, verdict: string, reason = "") =>
   request<{ id: string; verdict: string; locked: boolean }>("POST", `/audit/links/${linkId}/lock`, {
-    json: { verdict },
+    json: { verdict, reason },
+  });
+
+// Auditor findings on a control (ADR-032).
+export type Finding = {
+  id: string; org_control_id: string; framework: string; clause: string; title: string;
+  severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"; description: string; status: "OPEN" | "RESPONDED" | "CLOSED";
+  raised_by: string; raised_by_display: string; raised_at: string;
+  response: string; responded_by: string | null; responded_by_display: string | null; responded_at: string | null;
+  closed_by: string | null; closed_by_display: string | null; closed_at: string | null; close_note: string;
+};
+export const listControlFindings = (controlId: string) => request<Finding[]>("GET", `/controls/${controlId}/findings`);
+export const raiseFinding = (controlId: string, f: { title: string; severity: string; description: string }) =>
+  request<Finding>("POST", `/controls/${controlId}/findings`, { json: f });
+export const respondToFinding = (id: string, response: string) => request<Finding>("POST", `/findings/${id}/respond`, { json: { response } });
+export const closeFinding = (id: string, note: string) => request<Finding>("POST", `/findings/${id}/close`, { json: { note } });
+export const reopenFinding = (id: string, note: string) => request<Finding>("POST", `/findings/${id}/reopen`, { json: { note } });
+
+// The verdict register (ADR-029): every verdict step on one control, never edited, only added to.
+export type VerdictRegisterEntry = {
+  id: string; seq: number; supersedes_id: string | null; kind: "DECISION" | "REOPENED"; verdict: string | null;
+  engine_verdict: string | null; rule_hash: string | null; evaluation_hash: string | null; decided_by: string;
+  decided_by_display?: string; decided_at: string; reason_code: string; reasoning: string; origin: "LIVE" | "MIGRATED";
+  rules_changed_since_previous: boolean;
+};
+export type VerdictRegisterView = {
+  link_id: string; framework: string; clause: string;
+  current: { verdict: string | null; locked: boolean; record_id: string; state: string } | null;
+  original_verdict: string | null; entries: VerdictRegisterEntry[]; not_covered: string;
+};
+export const getVerdictRegister = (linkId: string) =>
+  request<VerdictRegisterView>("GET", `/audit/links/${linkId}/register`);
+export const supersedeVerdict = (linkId: string, verdict: string, reason_code: string, reasoning: string) =>
+  request<{ id: string; auditor_verdict: string; locked: boolean }>("POST", `/audit/links/${linkId}/supersede`, {
+    json: { verdict, reason_code, reasoning },
   });
 
 export const unlockLink = (linkId: string, reason: string) =>
@@ -680,7 +739,15 @@ export type ConnectorStatus = {
   last_synced_at: string | null;
   status: string;
   applicable: boolean;
+  /** Whether the last run could be trusted (ADR-030); null before any run. */
+  collection: { status: string; at: string; expectation: string; signals: string[] } | null;
 };
+export type ConnectorRun = {
+  id: string; status: string; at: string; expectation: string; signals: string[];
+  requested: Record<string, number>; returned: Record<string, unknown>; evidence_id: string | null;
+};
+export const listConnectorRuns = (source: string) =>
+  request<ConnectorRun[]>("GET", `/connectors/${encodeURIComponent(source)}/runs`);
 export const listConnectors = () => request<ConnectorStatus[]>("GET", "/connectors");
 export const syncConnector = (source: ConnectorStatus["source"]) =>
   request<{ source: string; evidence_id: string; status: string }>(
@@ -835,6 +902,9 @@ export const getGlossaryTerm = (name: string) =>
 export type ActivityEvent = {
   action: string;
   actor: string;
+  actor_display?: string;
+  before?: Record<string, unknown> | null;
+  after?: Record<string, unknown> | null;
   entity_type: string;
   entity: string;
   detail: Record<string, unknown>;

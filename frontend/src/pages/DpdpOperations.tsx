@@ -68,19 +68,19 @@ function BreachSection({ canDeclare, canAct }: { canDeclare: boolean; canAct: bo
           <div className="form-grid">
             <div>
               <label>What happened</label>
-              <input type="text" placeholder="e.g. Leaked customer export" value={title} onChange={(e) => setTitle(e.target.value)} />
+              <input aria-label="What happened" type="text" placeholder="e.g. Leaked customer export" value={title} onChange={(e) => setTitle(e.target.value)} />
             </div>
             <div>
               <label>Description</label>
-              <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} />
+              <input aria-label="Description" type="text" value={description} onChange={(e) => setDescription(e.target.value)} />
             </div>
             <div>
               <label>Personal data categories affected</label>
-              <input type="text" placeholder="e.g. name, email, phone" value={categories} onChange={(e) => setCategories(e.target.value)} />
+              <input aria-label="Personal data categories affected" type="text" placeholder="e.g. name, email, phone" value={categories} onChange={(e) => setCategories(e.target.value)} />
             </div>
             <div>
               <label>Detected at</label>
-              <input type="datetime-local" value={detectedAt} onChange={(e) => setDetectedAt(e.target.value)} />
+              <input aria-label="Detected at" type="datetime-local" value={detectedAt} onChange={(e) => setDetectedAt(e.target.value)} />
             </div>
             <button className="btn btn-primary" disabled={!title || busy} onClick={submit}>
               {busy ? "Logging…" : "Log breach"}
@@ -202,26 +202,26 @@ function RightsRequestSection({ canLog }: { canLog: boolean }) {
           <div className="form-grid">
             <div>
               <label>Type</label>
-              <select value={kind} onChange={(e) => { setKind(e.target.value as RightsRequest["kind"]); kindTouched.current = true; }}>
+              <select aria-label="Type" value={kind} onChange={(e) => { setKind(e.target.value as RightsRequest["kind"]); kindTouched.current = true; }}>
                 {REQUEST_KINDS.map((k) => <option key={k} value={k}>{k}</option>)}
               </select>
               {kindHint && <p className="muted" style={{ fontSize: 12, margin: "4px 0 0" }}>{kindHint}</p>}
             </div>
             <div>
               <label>Requester name</label>
-              <input type="text" value={name} onChange={(e) => setName(e.target.value)} />
+              <input aria-label="Requester name" type="text" value={name} onChange={(e) => setName(e.target.value)} />
             </div>
             <div>
               <label>Requester contact</label>
-              <input type="text" value={contact} onChange={(e) => setContact(e.target.value)} />
+              <input aria-label="Requester contact" type="text" value={contact} onChange={(e) => setContact(e.target.value)} />
             </div>
             <div>
               <label>Details</label>
-              <input type="text" value={details} onChange={(e) => setDetails(e.target.value)} onBlur={suggestKind} />
+              <input aria-label="Details" type="text" value={details} onChange={(e) => setDetails(e.target.value)} onBlur={suggestKind} />
             </div>
             <div>
               <label>Received at</label>
-              <input type="datetime-local" value={receivedAt} onChange={(e) => setReceivedAt(e.target.value)} />
+              <input aria-label="Received at" type="datetime-local" value={receivedAt} onChange={(e) => setReceivedAt(e.target.value)} />
             </div>
             <button className="btn btn-primary" disabled={busy} onClick={submit}>
               {busy ? "Logging…" : "Log request"}
