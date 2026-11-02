@@ -664,6 +664,21 @@ export const lockLink = (linkId: string, verdict: string, reason = "") =>
     json: { verdict, reason },
   });
 
+// Auditor findings on a control (ADR-032).
+export type Finding = {
+  id: string; org_control_id: string; framework: string; clause: string; title: string;
+  severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"; description: string; status: "OPEN" | "RESPONDED" | "CLOSED";
+  raised_by: string; raised_by_display: string; raised_at: string;
+  response: string; responded_by: string | null; responded_by_display: string | null; responded_at: string | null;
+  closed_by: string | null; closed_by_display: string | null; closed_at: string | null; close_note: string;
+};
+export const listControlFindings = (controlId: string) => request<Finding[]>("GET", `/controls/${controlId}/findings`);
+export const raiseFinding = (controlId: string, f: { title: string; severity: string; description: string }) =>
+  request<Finding>("POST", `/controls/${controlId}/findings`, { json: f });
+export const respondToFinding = (id: string, response: string) => request<Finding>("POST", `/findings/${id}/respond`, { json: { response } });
+export const closeFinding = (id: string, note: string) => request<Finding>("POST", `/findings/${id}/close`, { json: { note } });
+export const reopenFinding = (id: string, note: string) => request<Finding>("POST", `/findings/${id}/reopen`, { json: { note } });
+
 // The verdict register (ADR-029): every verdict step on one control, never edited, only added to.
 export type VerdictRegisterEntry = {
   id: string; seq: number; supersedes_id: string | null; kind: "DECISION" | "REOPENED"; verdict: string | null;

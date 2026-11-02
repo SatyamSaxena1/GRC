@@ -19,7 +19,7 @@ from app.db import get_session
 from app.ingest import draft_remediation
 from app.exceptions import active_exception
 from app.models import (
-    AuditEvent, ControlAssignment, ControlMessage, Evidence, EvidenceControlLink, GapRow,
+    AuditEvent, ControlAssignment, ControlMessage, Evidence, EvidenceControlLink, Finding, GapRow,
     OrgControl, TaskRow, User,
 )
 from app.service import link_commitment_stale
@@ -155,7 +155,9 @@ def control_history(control_id: str, actor: Actor = Depends(current_actor),
     # only link ids here silently dropped every submission from its own
     # control's history.
     link_ids = [l.id for l in _links_for(db, control)]
-    entity_ids = [control.id, *link_ids]
+    # A finding's events are recorded against the finding, but belong in its control's history too.
+    finding_ids = [f.id for f in db.query(Finding.id).filter_by(org_id=control.org_id, org_control_id=control.id)]
+    entity_ids = [control.id, *link_ids, *finding_ids]
     events = db.query(AuditEvent).filter(
         AuditEvent.entity.in_(entity_ids)
     ).order_by(AuditEvent.at).all()

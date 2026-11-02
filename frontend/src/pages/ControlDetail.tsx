@@ -7,6 +7,7 @@ import {
   getControl,
   getControlEvidence,
   getControlHistory,
+  listControlFindings,
   listControlMessages,
   lockLink,
   postControlMessage,
@@ -24,6 +25,7 @@ import { Badge } from "../components/Badge";
 import { CisoSyncBadge } from "../components/CisoSyncBadge";
 import { PageTour } from "../components/PageTour";
 import { OwnerEditor } from "../components/OwnerEditor";
+import { FindingsPanel } from "../components/FindingsPanel";
 import { isAuditorIdentity } from "../lib/nav";
 import { EventLine } from "../components/EventLine";
 import { localTime } from "../lib/format";
@@ -80,7 +82,7 @@ function RecordIcon({ locked }: { locked: boolean }) {
   );
 }
 
-type TabId = "overview" | "review" | "discussion" | "history";
+type TabId = "overview" | "review" | "findings" | "discussion" | "history";
 
 export function ControlDetailPage() {
   const { id = "" } = useParams();
@@ -88,6 +90,7 @@ export function ControlDetailPage() {
   const control = useApi(() => getControl(id), [id]);
   const evidenceRows = useApi(() => getControlEvidence(id), [id]);
   const history = useApi(() => getControlHistory(id), [id]);
+  const findings = useApi(() => listControlFindings(id!), [id]);
   const cisoSync = useApi(() => getCisoSyncStatus(), []);
   const messages = useApi(() => listControlMessages(id), [id]);
   const [error, setError] = useState<string | null>(null);
@@ -137,6 +140,7 @@ export function ControlDetailPage() {
   const tabs: { id: TabId; label: string; count?: number }[] = [
     { id: "overview", label: "Overview" },
     ...(isAuditor ? [{ id: "review" as TabId, label: "Auditor review", count: data.links.length }] : []),
+    { id: "findings", label: "Findings", count: findings.data?.filter((f) => f.status !== "CLOSED").length },
     { id: "discussion", label: "Discussion", count: messages.data?.length },
     { id: "history", label: "History", count: history.data?.length },
   ];
@@ -260,6 +264,11 @@ export function ControlDetailPage() {
             />
           ))}
         </>
+      )}
+
+      {tab === "findings" && (
+        <FindingsPanel controlId={data.id} findings={findings.data ?? []} isAuditor={isAuditor}
+                       canRespond={!isAuditor && identity?.role !== "COMPLIANCE_VIEWER"} onChanged={findings.reload} />
       )}
 
       {tab === "discussion" && (

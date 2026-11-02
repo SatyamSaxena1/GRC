@@ -33,3 +33,4 @@
 | [029](029-verdict-register.md) | Verdict register: a locked verdict is reopened and replaced, never edited | Proposed |
 | [030](030-connector-evidence-gaps.md) | Connector evidence gaps: "could not collect" is not "found nothing" | Proposed |
 | [031](031-outbound-webhook-notifications.md) | Outbound notifications through one optional webhook | Proposed |
+| [032](032-auditor-findings.md) | Auditor findings on a control: raise, respond, close, reopen, all audited | Proposed |

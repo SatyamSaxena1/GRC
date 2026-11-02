@@ -126,3 +126,12 @@ def test_raising_a_finding_notifies_without_leaking_its_text(world, monkeypatch)
     assert payload["kind"] == "FINDING_RAISED" and payload["severity"] == "high"
     assert payload["message"].startswith("A high finding was raised on ")
     assert "Privileged" not in payload["message"] and DESC not in str(payload)
+
+
+def test_a_controls_history_includes_its_findings_events(world):
+    client, org_id, admin, auditor, cid, other_cid, _, _ = world
+    fid = _raise(client, auditor, cid).json()["id"]
+    client.post(f"/findings/{fid}/respond", headers=admin, json={"response": ANSWER})
+    actions = [e["action"] for e in client.get(f"/controls/{cid}/history", headers=admin).json()]
+    assert actions.count("FINDING_RAISED") == 1 and actions.count("FINDING_RESPONDED") == 1
+    assert not any(a.startswith("FINDING_") for e in [client.get(f"/controls/{other_cid}/history", headers=admin).json()] for a in [x["action"] for x in e])
