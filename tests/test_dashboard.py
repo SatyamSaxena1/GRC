@@ -59,7 +59,7 @@ def test_dashboard_survives_a_locked_auditor_verdict(client, bootstrap, upload):
         link_id = s.query(EvidenceControlLink).filter_by(evidence_id=evidence_id).first().id
     locked = client.post(f"/audit/links/{link_id}/verdict",
                          headers={"authorization": f"auditor:{engagement_id}"},
-                         json={"verdict": "COMPLIANT", "reason": "reviewed"})
+                         json={"verdict": "COMPLIANT", "reason": "reviewed the policy against this control and accept it"})
     assert locked.status_code == 200 and locked.json()["locked"]
 
     body = client.get("/analytics/dashboard", headers={"authorization": f"org:{org_id}"})

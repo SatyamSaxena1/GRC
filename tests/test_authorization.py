@@ -95,7 +95,7 @@ def test_auditor_without_allocation_cannot_see_the_framework(client, bootstrap, 
         headers={"authorization": f"org:{org_id}"}).json() if l["framework"] == "PCI-DSS")
     denied = client.post(f"/audit/links/{pci_link['id']}/lock",
                          headers={"authorization": f"auditor:{narrow['id']}"},
-                         json={"verdict": "PASS"})
+                         json={"verdict": "PASS", "reason": "reviewed the policy against this control and accept it"})
     assert denied.status_code == 404
 
 
@@ -111,7 +111,7 @@ def test_closing_an_engagement_revokes_access_immediately(client, bootstrap, upl
     assert client.get(f"/evidence/{evidence_id}", headers=headers).status_code == 404
     link_id, _, _ = first_link(evidence_id)
     assert client.post(f"/audit/links/{link_id}/lock", headers=headers,
-                       json={"verdict": "PASS"}).status_code == 404
+                       json={"verdict": "PASS", "reason": "reviewed the policy against this control and accept it"}).status_code == 404
 
 
 def test_auditee_cannot_lock_a_control(client, bootstrap, upload):
@@ -120,7 +120,7 @@ def test_auditee_cannot_lock_a_control(client, bootstrap, upload):
     link_id, _, _ = first_link(evidence_id)
 
     resp = client.post(f"/audit/links/{link_id}/lock",
-                       headers={"authorization": f"org:{org_id}"}, json={"verdict": "PASS"})
+                       headers={"authorization": f"org:{org_id}"}, json={"verdict": "PASS", "reason": "reviewed the policy against this control and accept it"})
     assert resp.status_code == 403
 
 
@@ -154,13 +154,13 @@ def test_uploader_cannot_record_the_verdict_on_their_own_evidence(client, bootst
 
     headers = {"authorization": f"auditor:{engagement_id}"}
     blocked = client.post(f"/audit/links/{link_id}/verdict", headers=headers,
-                          json={"verdict": "COMPLIANT"})
+                          json={"verdict": "COMPLIANT", "reason": "reviewed the policy against this control and accept it"})
     assert blocked.status_code == 403
     assert "segregation of duties" in blocked.json()["detail"].lower()
 
     # Locking by the same route is refused too, not just the verdict endpoint.
     assert client.post(f"/audit/links/{link_id}/lock", headers=headers,
-                       json={"verdict": "COMPLIANT"}).status_code == 403
+                       json={"verdict": "COMPLIANT", "reason": "reviewed the policy against this control and accept it"}).status_code == 403
 
     with Session(db_module.engine) as s:
         assert s.query(AuditEvent).filter_by(action="SEGREGATION_OF_DUTIES_BLOCKED").count() >= 1
@@ -174,5 +174,5 @@ def test_a_different_auditor_may_still_record_the_verdict(client, bootstrap, upl
 
     ok = client.post(f"/audit/links/{link_id}/verdict",
                      headers={"authorization": f"auditor:{engagement_id}"},
-                     json={"verdict": "COMPLIANT"})
+                     json={"verdict": "COMPLIANT", "reason": "reviewed the policy against this control and accept it"})
     assert ok.status_code == 200  # uploaded by org:<id>, reviewed by auditor:<id>

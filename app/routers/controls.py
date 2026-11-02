@@ -95,6 +95,8 @@ def get_control(control_id: str, actor: Actor = Depends(current_actor),
 def _control_link_out(db: Session, link: EvidenceControlLink, actor: Actor) -> dict:
     evidence = db.get(Evidence, link.evidence_id)
     out = {"id": link.id, "evidence_id": link.evidence_id, "verdict": link.verdict,
+           # What the rules said; `verdict` becomes the auditor's once the control is locked.
+           "engine_verdict": link.engine_verdict or (None if link.locked else link.verdict),
            "auditor_verdict": link.auditor_verdict, "locked": link.locked,
            # For combining verdicts: whole-estate evidence counts only while current.
            "artefact_type": evidence.artefact_type if evidence else None,

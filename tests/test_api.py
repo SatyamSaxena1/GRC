@@ -9,6 +9,8 @@ so the all-FAIL result is not mistaken for a real one (see app/service.py).
 
 from __future__ import annotations
 
+import pytest
+
 from sqlalchemy.orm import Session
 
 from app import db as db_module
@@ -19,6 +21,7 @@ def session():
     return Session(db_module.engine)
 
 
+@pytest.mark.model_unavailable
 def test_upload_evaluates_against_both_frameworks(client, bootstrap, upload):
     org_id, _ = bootstrap(client)
     resp = upload(client, org_id)
@@ -62,7 +65,7 @@ def test_lock_then_reupload_leaves_locked_link_untouched(client, bootstrap, uplo
 
     locked = client.post(f"/audit/links/{link_id}/lock",
                          headers={"authorization": f"auditor:{engagement_id}"},
-                         json={"verdict": "PASS"})
+                         json={"verdict": "PASS", "reason": "reviewed the policy against this control and accept it"})
     assert locked.status_code == 200
 
     new_version = client.post(f"/evidence/{evidence_id}/versions",
@@ -369,7 +372,7 @@ def test_delete_is_refused_once_an_auditor_has_locked_a_verdict(client, bootstra
         link_id = s.query(EvidenceControlLink).filter_by(evidence_id=evidence_id).first().id
     locked = client.post(f"/audit/links/{link_id}/lock",
                          headers={"authorization": f"auditor:{engagement_id}"},
-                         json={"verdict": "PASS"})
+                         json={"verdict": "PASS", "reason": "reviewed the policy against this control and accept it"})
     assert locked.status_code == 200
 
     resp = client.delete(f"/evidence/{evidence_id}", headers=headers)

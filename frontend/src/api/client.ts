@@ -517,6 +517,8 @@ export type ControlLinkRow = {
   id: string;
   evidence_id: string;
   verdict: string;
+  /** What the rules said; `verdict` is the auditor's once the control is locked. */
+  engine_verdict: string | null;
   auditor_verdict: string | null;
   locked: boolean;
   // Auditor-only — see EvidenceLink.nutshell above.
@@ -634,9 +636,9 @@ export const recordVerdict = (linkId: string, verdict: string, reason: string) =
     { json: { verdict, reason } }
   );
 
-export const lockLink = (linkId: string, verdict: string) =>
+export const lockLink = (linkId: string, verdict: string, reason = "") =>
   request<{ id: string; verdict: string; locked: boolean }>("POST", `/audit/links/${linkId}/lock`, {
-    json: { verdict },
+    json: { verdict, reason },
   });
 
 export const unlockLink = (linkId: string, reason: string) =>
