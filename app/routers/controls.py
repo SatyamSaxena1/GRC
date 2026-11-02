@@ -51,6 +51,21 @@ def _owner_emails(db: Session, control_id: str) -> list[str]:
     ]
 
 
+def _owners_of(db: Session, control_ids: list[str]) -> dict[str, list[tuple[str, str]]]:
+    """control id -> [(user id, email)], one query for the whole list instead of one per control."""
+    if not control_ids:
+        return {}
+    found: dict[str, list[tuple[str, str]]] = {}
+    for control_id, user_id, email in (
+        db.query(ControlAssignment.org_control_id, User.id, User.email)
+        .join(User, User.id == ControlAssignment.user_id)
+        .filter(ControlAssignment.org_control_id.in_(control_ids))
+        .order_by(User.email)
+    ):
+        found.setdefault(control_id, []).append((user_id, email))
+    return found
+
+
 def _control(db: Session, actor: Actor, control_id: str) -> OrgControl:
     control = db.get(OrgControl, control_id)
     if control is None or control.org_id != actor.org_id:
@@ -75,7 +90,10 @@ def list_controls(actor: Actor = Depends(current_actor), db: Session = Depends(g
     controls = db.query(OrgControl).filter_by(org_id=actor.org_id).all()
     if allowed is not None:
         controls = [c for c in controls if (c.framework, c.clause) in allowed]
-    return [{"id": c.id, "framework": c.framework, "clause": c.clause} for c in controls]
+    owners = _owners_of(db, [c.id for c in controls])
+    return [{"id": c.id, "framework": c.framework, "clause": c.clause,
+             "owner_ids": [o[0] for o in owners.get(c.id, [])],
+             "owner_emails": [o[1] for o in owners.get(c.id, [])]} for c in controls]
 
 
 @router.get("/{control_id}")
@@ -88,6 +106,7 @@ def get_control(control_id: str, actor: Actor = Depends(current_actor),
         "id": control.id, "framework": control.framework, "clause": control.clause,
         "title": title, "text": text,
         "owner_emails": _owner_emails(db, control.id),
+        "owner_ids": [o[0] for o in _owners_of(db, [control.id]).get(control.id, [])],
         "locked": any(l.locked for l in links),
         "links": [_control_link_out(db, l, actor) for l in links],
     }
@@ -164,6 +183,67 @@ def submit_control(control_id: str, actor: Actor = Depends(current_actor),
                      detail={"framework": control.framework, "clause": control.clause})
     db.commit()
     return {"id": control.id, "submitted": True}
+
+
+class OwnerIn(BaseModel):
+    user_id: str
+    apply_to_tasks: bool = False  # also hand this control's open, unassigned tasks to the new owner
+
+
+def _admin_control(db: Session, actor: Actor, control_id: str) -> OrgControl:
+    control = _control(db, actor, control_id)  # 404 for another organisation's control
+    if actor.role != "ORG_ADMIN":
+        raise authorization.deny(db, actor, f"control:{control_id}", status=403,
+                                 detail="only an organisation admin may assign control owners",
+                                 reason="owner assignment requires organisation admin")
+    return control
+
+
+def _owner_out(db: Session, control_id: str) -> dict:
+    owners = _owners_of(db, [control_id]).get(control_id, [])
+    return {"control_id": control_id, "owner_ids": [o[0] for o in owners], "owner_emails": [o[1] for o in owners]}
+
+
+@router.post("/{control_id}/owners")
+def add_control_owner(control_id: str, body: OwnerIn, actor: Actor = Depends(current_actor),
+                      db: Session = Depends(get_session)):
+    """Make a user an owner of this control: the grant that lets a control owner see and work it.
+    Idempotent. Optionally hands the control's open, unassigned tasks to the same person."""
+    control = _admin_control(db, actor, control_id)
+    user = db.get(User, body.user_id)
+    if user is None or user.org_id != actor.org_id:
+        raise HTTPException(422, "owner must belong to this organisation")
+    created = db.query(ControlAssignment).filter_by(org_control_id=control.id, user_id=user.id).one_or_none() is None
+    if created:
+        db.add(ControlAssignment(org_control_id=control.id, user_id=user.id))
+        audit_log.record(db, actor=actor.label(), request_id=actor.request_id, action="CONTROL_ASSIGNED",
+                         entity_type="org_control", entity=control.id, org_id=actor.org_id,
+                         detail={"user_id": user.id, "framework": control.framework, "clause": control.clause})
+    handed = 0
+    if body.apply_to_tasks:
+        for task in db.query(TaskRow).filter_by(org_id=actor.org_id, org_control_id=control.id,
+                                               status="OPEN", owner_user_id=None):
+            before = _task_state(task)
+            task.owner_user_id = user.id
+            handed += _record_task_change(db, actor, task, before)
+    db.commit()
+    return {**_owner_out(db, control.id), "created": created, "tasks_assigned": handed}
+
+
+@router.delete("/{control_id}/owners/{user_id}")
+def remove_control_owner(control_id: str, user_id: str, actor: Actor = Depends(current_actor),
+                         db: Session = Depends(get_session)):
+    """Take a user off a control. Their access to it ends; tasks already assigned to them stay as they are."""
+    control = _admin_control(db, actor, control_id)
+    row = db.query(ControlAssignment).filter_by(org_control_id=control.id, user_id=user_id).one_or_none()
+    if row is None:
+        raise HTTPException(404, "that user is not an owner of this control")
+    db.delete(row)
+    audit_log.record(db, actor=actor.label(), request_id=actor.request_id, action="CONTROL_UNASSIGNED",
+                     entity_type="org_control", entity=control.id, org_id=actor.org_id,
+                     detail={"user_id": user_id, "framework": control.framework, "clause": control.clause})
+    db.commit()
+    return _owner_out(db, control.id)
 
 
 gaps_router = APIRouter(prefix="/gaps", tags=["gaps"])
@@ -285,6 +365,9 @@ def _task_out(db: Session, task: TaskRow) -> dict:
     return {
         "id": task.id, "title": task.title, "status": task.status, "gap_id": task.gap_id,
         "is_manual": task.gap_id is None,
+        # What the gap is about, so tasks that share a fix can be grouped (and acted on together).
+        "attribute": gap.attribute if gap else None, "kind": gap.kind if gap else None,
+        "org_control_id": task.org_control_id,
         "framework": control.framework if control else None,
         "clause": control.clause if control else None,
         "required_action": gap.required_action if gap else task.description,
@@ -424,9 +507,7 @@ def update_task(task_id: str, body: TaskUpdate, actor: Actor = Depends(current_a
                                  detail="only an organisation admin may assign or schedule tasks",
                                  reason="task update requires organisation admin")
 
-    before = {"owner_user_id": task.owner_user_id,
-              "due_at": task.due_at.isoformat() if task.due_at else None,
-              "priority": task.priority, "status": task.status}
+    before = _task_state(task)
 
     if "owner_user_id" in body.model_fields_set:
         if body.owner_user_id:
@@ -451,19 +532,73 @@ def update_task(task_id: str, body: TaskUpdate, actor: Actor = Depends(current_a
                                      reason="task status update requires admin or owner")
         task.status = body.status
 
-    after = {"owner_user_id": task.owner_user_id,
-             "due_at": task.due_at.isoformat() if task.due_at else None,
-             "priority": task.priority, "status": task.status}
-    if after != before:
-        control = _task_control(db, task)
-        audit_log.record(db, actor=actor.label(), request_id=actor.request_id,
-                         action="TASK_UPDATED", entity_type="task", entity=task.id,
-                         org_id=actor.org_id, before=before, after=after,
-                         detail={"framework": control.framework if control else None,
-                                 "clause": control.clause if control else None,
-                                 "gap_id": task.gap_id})
+    if _record_task_change(db, actor, task, before):
         db.commit()
     return _task_out(db, task)
+
+
+def _task_state(task: TaskRow) -> dict:
+    return {"owner_user_id": task.owner_user_id,
+            "due_at": task.due_at.isoformat() if task.due_at else None,
+            "priority": task.priority, "status": task.status}
+
+
+def _record_task_change(db: Session, actor: Actor, task: TaskRow, before: dict) -> bool:
+    """TASK_UPDATED with before and after, only when something actually moved. The one place a
+    task change is audited, shared by the single update, the bulk update and owner assignment."""
+    after = _task_state(task)
+    if after == before:
+        return False
+    control = _task_control(db, task)
+    audit_log.record(db, actor=actor.label(), request_id=actor.request_id,
+                     action="TASK_UPDATED", entity_type="task", entity=task.id,
+                     org_id=actor.org_id, before=before, after=after,
+                     detail={"framework": control.framework if control else None,
+                             "clause": control.clause if control else None,
+                             "gap_id": task.gap_id})
+    return True
+
+
+class BulkTaskUpdate(BaseModel):
+    """The same assignment fields as a single update, applied to many tasks at once."""
+    task_ids: list[str] = Field(min_length=1, max_length=200)
+    owner_user_id: str | None = None   # explicitly null unassigns
+    due_at: datetime | None = None
+    priority: Literal["LOW", "MEDIUM", "HIGH", "CRITICAL"] | None = None
+
+
+@tasks_router.post("/bulk")
+def bulk_update_tasks(body: BulkTaskUpdate, actor: Actor = Depends(current_actor),
+                      db: Session = Depends(get_session)):
+    """Assign, schedule or re-prioritise many tasks in one go (an organisation admin only). All or
+    nothing: every task is checked before any is changed, and each change is audited on its own."""
+    if actor.role != "ORG_ADMIN":
+        raise authorization.deny(db, actor, "tasks:bulk", status=403,
+                                 detail="only an organisation admin may assign or schedule tasks",
+                                 reason="bulk task update requires organisation admin")
+    fields = {"owner_user_id", "due_at", "priority"} & body.model_fields_set
+    if not fields:
+        raise HTTPException(422, "say what to change: owner_user_id, due_at or priority")
+    if "owner_user_id" in fields and body.owner_user_id:
+        owner = db.get(User, body.owner_user_id)
+        if owner is None or owner.org_id != actor.org_id:
+            raise HTTPException(422, "assignee must belong to this organisation")
+    if "priority" in fields and body.priority is None:
+        raise HTTPException(422, "priority cannot be null")
+
+    tasks = [_task_context(db, actor, task_id) for task_id in dict.fromkeys(body.task_ids)]
+    changed = 0
+    for task in tasks:
+        before = _task_state(task)
+        if "owner_user_id" in fields:
+            task.owner_user_id = body.owner_user_id
+        if "due_at" in fields:
+            task.due_at = body.due_at
+        if "priority" in fields:
+            task.priority = body.priority
+        changed += _record_task_change(db, actor, task, before)
+    db.commit()
+    return {"requested": len(tasks), "changed": changed, "tasks": [_task_out(db, t) for t in tasks]}
 
 
 # --------------------------------------------------------------------------- messages
