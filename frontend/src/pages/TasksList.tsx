@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ApiError,
+  bulkUpdateTasks,
   createTask,
   downloadTasksExport,
   getTask,
@@ -10,6 +11,7 @@ import {
   listTaskOwners,
   listTasks,
   updateTask,
+  type BulkTaskChange,
   type ControlSummary,
   type TaskRow,
 } from "../api/client";
@@ -17,6 +19,8 @@ import { useApi } from "../lib/useApi";
 import { DataTable, type Column } from "../components/DataTable";
 import { Badge } from "../components/Badge";
 import { PageTour } from "../components/PageTour";
+import { BulkTaskBar } from "../components/BulkTaskBar";
+import { groupTasksByFix } from "../lib/taskGroups";
 import { EventLine } from "../components/EventLine";
 import { localTime } from "../lib/format";
 import { ProcessingNotice } from "../components/ProcessingNotice";
@@ -34,6 +38,11 @@ export function TasksListPage() {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<TaskRow | null>(null);
   const [showNewTask, setShowNewTask] = useState(false);
+  const [grouped, setGrouped] = useState(false);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkError, setBulkError] = useState<string | null>(null);
+  const [bulkDone, setBulkDone] = useState("");
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const owners = useApi(() => listTaskOwners(), []);
@@ -42,6 +51,36 @@ export function TasksListPage() {
     () => listTasks({ status: status || undefined, priority: priority || undefined, owner_user_id: owner || undefined, q: query || undefined }),
     [status, priority, owner, query]
   );
+
+  const shown = tasks.data ?? [];
+  const toggle = (ids: string[], on: boolean) =>
+    setPicked((prev) => { const next = new Set(prev); ids.forEach((id) => (on ? next.add(id) : next.delete(id))); return next; });
+  const selectColumn = (rows: TaskRow[]): Column<TaskRow> => ({
+    key: "select",
+    header: (
+      <input type="checkbox" aria-label="Select all tasks shown"
+             checked={rows.length > 0 && rows.every((t) => picked.has(t.id))}
+             onChange={(e) => toggle(rows.map((t) => t.id), e.target.checked)} />
+    ),
+    render: (task) => (
+      <input type="checkbox" aria-label={`Select ${task.title}`} checked={picked.has(task.id)}
+             onClick={(e) => e.stopPropagation()} onChange={(e) => toggle([task.id], e.target.checked)} />
+    ),
+  });
+  const applyBulk = async (change: BulkTaskChange) => {
+    setBulkBusy(true);
+    setBulkError(null);
+    try {
+      const res = await bulkUpdateTasks([...picked], change);
+      setBulkDone(`Updated ${res.changed} of ${res.requested} selected task${res.requested === 1 ? "" : "s"}.`);
+      setPicked(new Set());
+      reload();
+    } catch (err) {
+      setBulkError(err instanceof ApiError ? String(err.detail) : (err as Error).message);
+    } finally {
+      setBulkBusy(false);
+    }
+  };
 
   const columns: Column<TaskRow>[] = [
     {
@@ -58,6 +97,7 @@ export function TasksListPage() {
     { key: "status", header: "Status", render: (task) => <Badge value={task.status} /> },
   ];
 
+  const tableColumns = (rows: TaskRow[]) => (isAdmin ? [...columns, selectColumn(rows)] : columns);
   const total = allTasks.data?.length ?? 0;
   const done = allTasks.data?.filter((task) => task.status === "DONE").length ?? 0;
   const reload = () => { tasks.reload(); allTasks.reload(); };
@@ -151,8 +191,35 @@ export function TasksListPage() {
         </select>
       </div>
 
+      {isAdmin && (
+        <label style={{ display: "inline-flex", gap: 6, margin: "8px 0" }}>
+          <input type="checkbox" checked={grouped} onChange={(e) => setGrouped(e.target.checked)} />
+          Group by the fix they share
+        </label>
+      )}
+      {bulkDone && <div className="alert alert-success" role="status">{bulkDone}</div>}
+      {isAdmin && picked.size > 0 && (
+        <BulkTaskBar count={picked.size} owners={owners.data ?? []} busy={bulkBusy} error={bulkError}
+                     onApply={applyBulk} onClear={() => setPicked(new Set())} />
+      )}
       {tasks.error && <div className="alert alert-error">{tasks.error}</div>}
-      <DataTable columns={columns} rows={tasks.data ?? []} onRowClick={setSelected} emptyLabel="No tasks match these filters." />
+      {isAdmin && grouped ? (
+        shown.length === 0
+          ? <div className="card empty-state">No tasks match these filters.</div>
+          : groupTasksByFix(shown).map((g) => (
+            <section key={g.key} aria-label={g.label} style={{ marginBottom: 16 }}>
+              <h3 style={{ margin: "12px 0 4px" }}>{g.label}</h3>
+              <p className="muted" style={{ margin: "0 0 6px", fontSize: 13 }}>
+                {g.tasks.length} task{g.tasks.length === 1 ? "" : "s"} across {g.controls} control{g.controls === 1 ? "" : "s"}
+                {g.frameworks.length > 0 && <> · {g.frameworks.join(", ")}</>}
+                {g.unassigned > 0 && <> · {g.unassigned} unassigned</>}
+              </p>
+              <DataTable columns={tableColumns(g.tasks)} rows={g.tasks} onRowClick={setSelected} />
+            </section>
+          ))
+      ) : (
+        <DataTable columns={tableColumns(shown)} rows={shown} onRowClick={setSelected} emptyLabel="No tasks match these filters." />
+      )}
       {selected && (
         <TaskDrawer
           task={selected}

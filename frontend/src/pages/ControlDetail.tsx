@@ -23,6 +23,8 @@ import { GapExceptions } from "../components/GapExceptions";
 import { Badge } from "../components/Badge";
 import { CisoSyncBadge } from "../components/CisoSyncBadge";
 import { PageTour } from "../components/PageTour";
+import { OwnerEditor } from "../components/OwnerEditor";
+import { isAuditorIdentity } from "../lib/nav";
 import { EventLine } from "../components/EventLine";
 import { localTime } from "../lib/format";
 import { ReplaceVerdict, VerdictRegister } from "../components/VerdictRegister";
@@ -91,7 +93,7 @@ export function ControlDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<TabId>("overview");
 
-  const isAuditor = identity?.kind === "auditor";
+  const isAuditor = isAuditorIdentity(identity);
 
   const submit = async () => {
     setError(null);
@@ -184,7 +186,8 @@ export function ControlDetailPage() {
         </div>
         <div className="meta-item">
           <span className="meta-label">Owner</span>
-          <span className="meta-value">{data.owner_emails.length ? data.owner_emails.join(", ") : "Unassigned"}</span>
+          <OwnerEditor controlId={data.id} ownerIds={data.owner_ids} ownerEmails={data.owner_emails}
+                       canEdit={identity?.kind === "org"} onChanged={control.reload} />
         </div>
         <div className="meta-item">
           <span className="meta-label"><Term>Evidence</Term></span>

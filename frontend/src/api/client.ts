@@ -520,7 +520,7 @@ export const getEvidence = (id: string) => request<EvidenceDetail>("GET", `/evid
 
 // ---------------------------------------------------------------- controls
 
-export type ControlSummary = { id: string; framework: string; clause: string };
+export type ControlSummary = { id: string; framework: string; clause: string; owner_ids: string[]; owner_emails: string[] };
 export const listControls = () => request<ControlSummary[]>("GET", "/controls");
 
 export type ControlLinkRow = {
@@ -538,8 +538,14 @@ export type ControlLinkRow = {
 };
 export type ControlDetail = {
   id: string; framework: string; clause: string; title: string; text: string;
-  owner_emails: string[]; locked: boolean; links: ControlLinkRow[];
+  owner_emails: string[]; owner_ids: string[]; locked: boolean; links: ControlLinkRow[];
 };
+// Org admins only: who owns a control (the grant that lets a control owner work it).
+export const addControlOwner = (controlId: string, userId: string, applyToTasks = false) =>
+  request<{ control_id: string; owner_ids: string[]; owner_emails: string[]; created: boolean; tasks_assigned: number }>(
+    "POST", `/controls/${controlId}/owners`, { json: { user_id: userId, apply_to_tasks: applyToTasks } });
+export const removeControlOwner = (controlId: string, userId: string) =>
+  request<{ control_id: string; owner_ids: string[]; owner_emails: string[] }>("DELETE", `/controls/${controlId}/owners/${userId}`);
 export const getControl = (id: string) => request<ControlDetail>("GET", `/controls/${id}`);
 
 export type ControlEvidenceRow = {
@@ -575,6 +581,10 @@ export type TaskRow = {
   status: "OPEN" | "DONE";
   is_manual: boolean;
   gap_id: string | null;
+  /** What the gap is about, so tasks sharing a fix can be grouped. Null on manual tasks. */
+  attribute: string | null;
+  kind: string | null;
+  org_control_id: string | null;
   framework: string | null;
   clause: string | null;
   required_action: string;
@@ -601,6 +611,9 @@ export const updateTask = (
   id: string,
   update: Partial<{ owner_user_id: string | null; due_at: string | null; priority: string; status: "OPEN" | "DONE" }>
 ) => request<TaskRow>("PATCH", `/tasks/${id}`, { json: update });
+export type BulkTaskChange = { owner_user_id?: string | null; due_at?: string; priority?: string };
+export const bulkUpdateTasks = (taskIds: string[], change: BulkTaskChange) =>
+  request<{ requested: number; changed: number; tasks: TaskRow[] }>("POST", "/tasks/bulk", { json: { task_ids: taskIds, ...change } });
 export const createTask = (task: {
   title: string;
   description?: string;

@@ -5,8 +5,11 @@ import {
   closeEngagement,
   createControl,
   createUser,
+  listControls,
+  listTaskOwners,
 } from "../api/client";
 import { useSession } from "../lib/session";
+import { useApi } from "../lib/useApi";
 
 function useFormAction<T>(action: () => Promise<T>) {
   const [busy, setBusy] = useState(false);
@@ -114,6 +117,8 @@ function RegisterControlCard({ orgId }: { orgId: string }) {
 function AssignControlCard() {
   const [controlId, setControlId] = useState("");
   const [userId, setUserId] = useState("");
+  const controls = useApi(() => listControls(), []);
+  const users = useApi(() => listTaskOwners(), []);
   const { run, busy, error, result } = useFormAction(() => assignControl(controlId, userId));
 
   return (
@@ -123,17 +128,27 @@ function AssignControlCard() {
       {error && <div className="alert alert-error">{error}</div>}
       <div className="form-grid">
         <div>
-          <label>Control id</label>
-          <input aria-label="Control id" value={controlId} onChange={(e) => setControlId(e.target.value)} />
+          <label htmlFor="assign-control-pick">Control</label>
+          <select id="assign-control-pick" value={controlId} onChange={(e) => setControlId(e.target.value)}>
+            <option value="">Choose a control…</option>
+            {controls.data?.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.framework} {c.clause}{c.owner_emails.length ? ` — ${c.owner_emails.join(", ")}` : " — unassigned"}
+              </option>
+            ))}
+          </select>
         </div>
         <div>
-          <label>User id</label>
-          <input aria-label="User id" value={userId} onChange={(e) => setUserId(e.target.value)} />
+          <label htmlFor="assign-user-pick">Owner</label>
+          <select id="assign-user-pick" value={userId} onChange={(e) => setUserId(e.target.value)}>
+            <option value="">Choose a person…</option>
+            {users.data?.map((u) => <option key={u.id} value={u.id}>{u.email}</option>)}
+          </select>
         </div>
         <button className="btn btn-primary" disabled={!controlId || !userId || busy} onClick={run}>
           {busy ? "Assigning…" : "Assign"}
         </button>
-        {result && <p className="mono">assignment id: {result.id}</p>}
+        {result && <p role="status">Assigned.</p>}
       </div>
     </div>
   );
