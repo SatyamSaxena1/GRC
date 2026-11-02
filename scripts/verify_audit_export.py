@@ -92,10 +92,42 @@ def verify_checkpoint(events: list[dict], checkpoint: dict, public_key_b64: str)
     return []
 
 
+REGISTER_FIELDS = ("id", "org_id", "link_id", "seq", "supersedes_id", "kind", "verdict", "engine_verdict",
+                   "rule_hash", "evaluation_hash", "engine_version", "decided_by", "decided_by_user_id",
+                   "engagement_id", "decided_at", "reason_code", "reasoning", "origin")
+
+
+def verify_register(events: list[dict], register: dict) -> list[str]:
+    """Each verdict record must hash to its recorded value, the history of each control must be
+    one unbroken chain of supersessions, and each LIVE record must be the one the audit chain
+    committed to (ADR-029). MIGRATED records predate the register and have no audit anchor."""
+    by_seq = {e["chain_seq"]: e for e in events if e["chain_seq"] is not None}
+    problems, last = [], {}
+    for r in sorted(register["records"], key=lambda r: (r["link_id"], r["seq"])):
+        who = f"record {r['seq']} of control {r['link_id']}"
+        body = {k: r[k] for k in REGISTER_FIELDS}
+        digest = hashlib.sha256(json.dumps(body, sort_keys=True, default=str).encode()).hexdigest()
+        prev = last.get(r["link_id"])
+        if digest != r["record_hash"]:
+            problems.append(f"{who} does not hash to its recorded value")
+        if (prev["id"] if prev else None) != r["supersedes_id"] or r["seq"] != (prev["seq"] + 1 if prev else 1):
+            problems.append(f"{who} breaks the supersession chain")
+        last[r["link_id"]] = r
+        if r["origin"] == "MIGRATED":
+            continue
+        event = by_seq.get(r["audit_chain_seq"])
+        if (event is None or event["entry_hash"] != r["audit_entry_hash"]
+                or event["detail"].get("record_id") != r["id"]
+                or event["detail"].get("record_hash") != r["record_hash"]):
+            problems.append(f"{who} is not the record the audit chain committed to")
+    return problems
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("events", help="audit-events.ndjson from GET /audit/events.ndjson")
     parser.add_argument("checkpoint", nargs="?", help="a checkpoint JSON file you kept")
+    parser.add_argument("--register", help="verdict-register.json from GET /audit/register.json")
     parser.add_argument("--public-key", help="base64 Ed25519 public key from GET /audit/checkpoint-keys")
     args = parser.parse_args(argv)
     with open(args.events, encoding="utf-8") as fh:
@@ -106,11 +138,15 @@ def main(argv: list[str] | None = None) -> int:
             parser.error("--public-key is required to verify a checkpoint")
         with open(args.checkpoint, encoding="utf-8") as fh:
             problems += verify_checkpoint(events, json.load(fh), args.public_key)
+    if args.register:
+        with open(args.register, encoding="utf-8") as fh:
+            problems += verify_register(events, json.load(fh))
     for p in problems:
         print(f"FAIL: {p}")
     if not problems:
         print(f"OK: {sum(1 for e in events if e['chain_seq'] is not None)} chained events verify"
-              + (" and the checkpoint holds" if args.checkpoint else ""))
+              + (" and the checkpoint holds" if args.checkpoint else "")
+              + (" and the verdict register matches the chain" if args.register else ""))
     return 1 if problems else 0
 
 
