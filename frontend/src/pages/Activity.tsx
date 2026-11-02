@@ -2,6 +2,8 @@ import { getActivity } from "../api/client";
 import { useApi } from "../lib/useApi";
 import { PageTour } from "../components/PageTour";
 import { AuditIntegrity } from "../components/AuditIntegrity";
+import { EventLine } from "../components/EventLine";
+import { localTime } from "../lib/format";
 import { useSession } from "../lib/session";
 
 const TOUR_STEPS = [
@@ -34,9 +36,8 @@ export function ActivityPage() {
       <ul className="timeline">
         {activity.data?.map((e, i) => (
           <li key={i}>
-            <div className="ts">{new Date(e.at).toLocaleString()}</div>
-            <strong>{e.action}</strong> by {e.actor}
-            {e.reason && <span className="muted"> — {e.reason}</span>}
+            <div className="ts">{localTime(e.at)}</div>
+            <EventLine event={e} />
           </li>
         ))}
         {activity.data?.length === 0 && <li className="muted">No activity yet.</li>}

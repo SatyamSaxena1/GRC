@@ -22,6 +22,9 @@ import { GapExceptions } from "../components/GapExceptions";
 import { Badge } from "../components/Badge";
 import { CisoSyncBadge } from "../components/CisoSyncBadge";
 import { PageTour } from "../components/PageTour";
+import { EventLine } from "../components/EventLine";
+import { localTime } from "../lib/format";
+import { ReplaceVerdict, VerdictRegister } from "../components/VerdictRegister";
 import { Term } from "../components/Term";
 
 const AUDITOR_VERDICTS = ["COMPLIANT", "PARTIALLY_COMPLIANT", "NON_COMPLIANT"];
@@ -269,9 +272,8 @@ export function ControlDetailPage() {
         <ul className="timeline">
           {history.data?.map((e, i) => (
             <li key={i}>
-              <div className="ts">{new Date(e.at).toLocaleString()}</div>
-              <strong>{e.action}</strong> by {e.actor}
-              {e.reason && <span className="muted"> — {e.reason}</span>}
+              <div className="ts">{localTime(e.at)}</div>
+              <EventLine event={e} />
             </li>
           ))}
           {history.data?.length === 0 && <li className="muted">No events yet.</li>}
@@ -340,6 +342,7 @@ function AuditorLinkPanel({
       {locked ? (
         <div style={{ marginTop: 10 }}>
           <div className="badge badge-locked">locked — {auditorVerdict}</div>
+          <ReplaceVerdict linkId={linkId} onChanged={onChanged} />
           <div className="form-row" style={{ marginTop: 10 }}>
             <input placeholder="reason for unlocking (required)" value={reason} onChange={(e) => setReason(e.target.value)} />
             <button className="btn btn-danger" disabled={busy || reason.trim().length < 3} onClick={() => act(() => unlockLink(linkId, reason))}>
@@ -371,6 +374,7 @@ function AuditorLinkPanel({
         be the one recording its verdict — the backend rejects that as a segregation-of-duties
         violation.
       </p>
+      <VerdictRegister linkId={linkId} />
     </div>
   );
 }
@@ -433,7 +437,7 @@ function DiscussionThread({
       <ul className="timeline">
         {messages.map((m) => (
           <li key={m.id}>
-            <div className="ts">{new Date(m.created_at).toLocaleString()}</div>
+            <div className="ts">{localTime(m.created_at)}</div>
             <strong>{KIND_LABEL[m.kind]}</strong> by {m.created_by}
             {m.kind !== "COMMENT" && <Badge value={m.status} />}
             <p style={{ margin: "4px 0" }}>{m.body}</p>

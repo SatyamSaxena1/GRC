@@ -376,6 +376,10 @@ export const getEvidenceEvaluations = (id: string) =>
 export type AuditEventOut = {
   action: string;
   actor: string;
+  /** The actor in words when the backend could resolve it (app/actor_names.py); else the raw label. */
+  actor_display?: string;
+  before?: Record<string, unknown> | null;
+  after?: Record<string, unknown> | null;
   entity_type?: string;
   entity?: string;
   detail: Record<string, unknown>;
@@ -584,7 +588,7 @@ export const listTasks = (filters: TaskFilters = {}) => request<TaskRow[]>("GET"
 export type TaskOwner = { id: string; email: string };
 export const listTaskOwners = () => request<TaskOwner[]>("GET", "/tasks/owners");
 export type TaskDetail = TaskRow & {
-  history: { action: string; actor: string; before: Record<string, unknown> | null; after: Record<string, unknown> | null; at: string }[];
+  history: { action: string; actor: string; actor_display?: string; before: Record<string, unknown> | null; after: Record<string, unknown> | null; at: string }[];
 };
 export const getTask = (id: string) => request<TaskDetail>("GET", `/tasks/${id}`);
 export const updateTask = (
@@ -641,6 +645,25 @@ export const lockLink = (linkId: string, verdict: string, reason = "") =>
     json: { verdict, reason },
   });
 
+// The verdict register (ADR-029): every verdict step on one control, never edited, only added to.
+export type VerdictRegisterEntry = {
+  id: string; seq: number; supersedes_id: string | null; kind: "DECISION" | "REOPENED"; verdict: string | null;
+  engine_verdict: string | null; rule_hash: string | null; evaluation_hash: string | null; decided_by: string;
+  decided_by_display?: string; decided_at: string; reason_code: string; reasoning: string; origin: "LIVE" | "MIGRATED";
+  rules_changed_since_previous: boolean;
+};
+export type VerdictRegisterView = {
+  link_id: string; framework: string; clause: string;
+  current: { verdict: string | null; locked: boolean; record_id: string; state: string } | null;
+  original_verdict: string | null; entries: VerdictRegisterEntry[]; not_covered: string;
+};
+export const getVerdictRegister = (linkId: string) =>
+  request<VerdictRegisterView>("GET", `/audit/links/${linkId}/register`);
+export const supersedeVerdict = (linkId: string, verdict: string, reason_code: string, reasoning: string) =>
+  request<{ id: string; auditor_verdict: string; locked: boolean }>("POST", `/audit/links/${linkId}/supersede`, {
+    json: { verdict, reason_code, reasoning },
+  });
+
 export const unlockLink = (linkId: string, reason: string) =>
   request<{ id: string; locked: boolean; unlock_reason: string }>(
     "POST",
@@ -682,7 +705,15 @@ export type ConnectorStatus = {
   last_synced_at: string | null;
   status: string;
   applicable: boolean;
+  /** Whether the last run could be trusted (ADR-030); null before any run. */
+  collection: { status: string; at: string; expectation: string; signals: string[] } | null;
 };
+export type ConnectorRun = {
+  id: string; status: string; at: string; expectation: string; signals: string[];
+  requested: Record<string, number>; returned: Record<string, unknown>; evidence_id: string | null;
+};
+export const listConnectorRuns = (source: string) =>
+  request<ConnectorRun[]>("GET", `/connectors/${encodeURIComponent(source)}/runs`);
 export const listConnectors = () => request<ConnectorStatus[]>("GET", "/connectors");
 export const syncConnector = (source: ConnectorStatus["source"]) =>
   request<{ source: string; evidence_id: string; status: string }>(
@@ -837,6 +868,9 @@ export const getGlossaryTerm = (name: string) =>
 export type ActivityEvent = {
   action: string;
   actor: string;
+  actor_display?: string;
+  before?: Record<string, unknown> | null;
+  after?: Record<string, unknown> | null;
   entity_type: string;
   entity: string;
   detail: Record<string, unknown>;

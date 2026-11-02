@@ -14,6 +14,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
+from app.actor_names import resolve_actors
 from app.auth import Actor, current_actor
 from app.db import get_session
 from app.models import AuditEvent
@@ -34,9 +35,10 @@ def list_activity(actor: Actor = Depends(current_actor), db: Session = Depends(g
         .limit(LIMIT)
         .all()
     )
+    names = resolve_actors(db, (e.actor for e in events))
     return [
-        {"action": e.action, "actor": e.actor, "entity_type": e.entity_type,
-         "entity": e.entity, "detail": e.detail, "reason": e.reason,
-         "at": e.at.isoformat()}
+        {"action": e.action, "actor": e.actor, "actor_display": names.get(e.actor, e.actor),
+         "entity_type": e.entity_type, "entity": e.entity, "detail": e.detail, "reason": e.reason,
+         "before": e.before, "after": e.after, "at": e.at.isoformat()}
         for e in events
     ]
