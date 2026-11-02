@@ -454,6 +454,28 @@ class VerdictRecord(Base):
     audit_entry_hash: Mapped[str | None] = mapped_column(default=None)
 
 
+class Finding(Base):
+    """An auditor's finding on one control (ADR-032). Raised by an auditor, answered by the auditee,
+    closed (or reopened) by an auditor. Every transition is an audit event with before and after;
+    the row holds the current state and the latest response and closing note."""
+    __tablename__ = "findings"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"))
+    org_control_id: Mapped[str] = mapped_column(ForeignKey("org_controls.id"))
+    title: Mapped[str]
+    severity: Mapped[str] = mapped_column(String, default="MEDIUM")  # LOW | MEDIUM | HIGH | CRITICAL
+    description: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(String, default="OPEN")  # OPEN | RESPONDED | CLOSED
+    raised_by: Mapped[str]
+    raised_at: Mapped[datetime] = mapped_column(default=_now)
+    response: Mapped[str] = mapped_column(Text, default="")
+    responded_by: Mapped[str | None] = mapped_column(default=None)
+    responded_at: Mapped[datetime | None] = mapped_column(default=None)
+    closed_by: Mapped[str | None] = mapped_column(default=None)
+    closed_at: Mapped[datetime | None] = mapped_column(default=None)
+    close_note: Mapped[str] = mapped_column(Text, default="")
+
+
 class NotificationLog(Base):
     """Which attention items the webhook digest has already sent (ADR-031), so a daily cron does
     not repeat itself. Not an audit record: a row's sent_at moves forward when it is re-sent."""
