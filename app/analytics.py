@@ -19,6 +19,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date
 
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.content.load import Content
@@ -67,6 +68,9 @@ def reuse_stats(
         .join(Evidence, Evidence.id == EvidenceControlLink.evidence_id)
         .filter(Evidence.org_id == org_id, Evidence.lifecycle_status == "CURRENT",
                 Evidence.deleted_at.is_(None))
+        # A run whose extraction failed read nothing, so it saved no work (service.py: no_facts).
+        .filter(or_(Evidence.status != "NEEDS_REVIEW", Evidence.status_detail.is_(None),
+                    Evidence.status_detail.not_like("extraction %")))
         .all()
     )
     total = len(rows)

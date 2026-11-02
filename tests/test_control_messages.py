@@ -51,7 +51,7 @@ def test_auditee_can_request_unlock_only_when_locked(client, bootstrap, upload):
 
     link_id = first_link(evidence_id)
     client.post(f"/audit/links/{link_id}/lock", headers={"authorization": f"auditor:{engagement_id}"},
-               json={"verdict": "PASS"})
+               json={"verdict": "PASS", "reason": "reviewed the policy against this control and accept it"})
 
     ok = client.post(f"/controls/{control_id}/messages",
                      headers={"authorization": f"org:{org_id}"},

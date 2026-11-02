@@ -8,6 +8,8 @@ covered "stored as PASS, still stored as PASS a year later, nobody told".
 
 from __future__ import annotations
 
+import pytest
+
 from datetime import date, datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session
@@ -176,6 +178,7 @@ def _retryable_ids(org_id: str, **kwargs) -> list[str]:
         return [e.id for e in monitor.retryable_extractions(s, **kwargs)]
 
 
+@pytest.mark.model_unavailable
 def test_extraction_that_ran_while_the_model_was_down_becomes_retryable(client, bootstrap, upload):
     """No model in the test env -> the upload's extraction is UNAVAILABLE and the
     row lands at NEEDS_REVIEW. Once it has sat there a while, the sweep picks it
@@ -202,7 +205,7 @@ def test_a_locked_verdict_keeps_a_row_out_of_the_retry_sweep(client, bootstrap, 
         link_id = s.query(EvidenceControlLink).filter_by(evidence_id=evidence_id).first().id
     client.post(f"/audit/links/{link_id}/lock",
                 headers={"authorization": f"auditor:{engagement_id}"},
-                json={"verdict": "PASS"})
+                json={"verdict": "PASS", "reason": "reviewed the policy against this control and accept it"})
 
     with Session(db_module.engine) as s:
         created = s.get(Evidence, evidence_id).created_at

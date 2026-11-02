@@ -75,7 +75,7 @@ def test_unlock_records_the_transition_and_the_reason(client, bootstrap, upload)
     with session() as s:
         link_id = s.query(EvidenceControlLink).filter_by(evidence_id=evidence_id).first().id
 
-    client.post(f"/audit/links/{link_id}/lock", headers=headers, json={"verdict": "COMPLIANT"})
+    client.post(f"/audit/links/{link_id}/lock", headers=headers, json={"verdict": "COMPLIANT", "reason": "reviewed the policy against this control and accept it"})
     client.post(f"/audit/links/{link_id}/unlock", headers=headers,
                 json={"reason": "auditee supplied corrected evidence"})
 
@@ -157,7 +157,7 @@ def test_hash_chain_still_verifies_with_before_after_populated(client, bootstrap
         link_id = s.query(EvidenceControlLink).filter_by(evidence_id=evidence_id).first().id
     client.post(f"/audit/links/{link_id}/verdict",
                 headers={"authorization": f"auditor:{engagement_id}"},
-                json={"verdict": "COMPLIANT"})
+                json={"verdict": "COMPLIANT", "reason": "reviewed the policy against this control and accept it"})
 
     with session() as s:
         assert verify_chain(s) is True

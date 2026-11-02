@@ -31,7 +31,7 @@ def test_unconfigured_client_is_skipped_not_failed(client, bootstrap, upload, mo
 
     resp = client.post(f"/audit/links/{link_id}/lock",
                        headers={"authorization": f"auditor:{engagement_id}"},
-                       json={"verdict": "COMPLIANT"})
+                       json={"verdict": "COMPLIANT", "reason": "reviewed the policy against this control and accept it"})
     assert resp.status_code == 200
 
     state = _state(link_id)
@@ -59,7 +59,7 @@ def test_successful_push_records_the_object_id(client, bootstrap, upload, monkey
 
     resp = client.post(f"/audit/links/{link_id}/lock",
                        headers={"authorization": f"auditor:{engagement_id}"},
-                       json={"verdict": "COMPLIANT"})
+                       json={"verdict": "COMPLIANT", "reason": "reviewed the policy against this control and accept it"})
     assert resp.status_code == 200
 
     state = _state(link_id)
@@ -84,7 +84,7 @@ def test_failed_push_does_not_block_the_lock_and_is_audited(client, bootstrap, u
 
     resp = client.post(f"/audit/links/{link_id}/lock",
                        headers={"authorization": f"auditor:{engagement_id}"},
-                       json={"verdict": "COMPLIANT"})
+                       json={"verdict": "COMPLIANT", "reason": "reviewed the policy against this control and accept it"})
     assert resp.status_code == 200  # the lock itself must still succeed
 
     state = _state(link_id)

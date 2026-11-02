@@ -33,7 +33,7 @@ def locked(client, bootstrap, upload):
         link_id = s.query(EvidenceControlLink).filter_by(evidence_id=evidence_id).first().id
     headers = {"authorization": f"auditor:{engagement_id}"}
     assert client.post(f"/audit/links/{link_id}/lock", headers=headers,
-                       json={"verdict": "COMPLIANT", "reason": "reviewed"}).status_code == 200
+                       json={"verdict": "COMPLIANT", "reason": GOOD}).status_code == 200
     return client, org_id, engagement_id, link_id, headers
 
 
@@ -101,7 +101,7 @@ def test_unlock_no_longer_overwrites_and_every_reopening_keeps_its_reason(locked
     for reason in reasons:
         assert client.post(f"/audit/links/{link_id}/unlock", headers=headers,
                            json={"reason": reason, "reason_code": "NEW_EVIDENCE"}).status_code == 200
-        client.post(f"/audit/links/{link_id}/lock", headers=headers, json={"verdict": "COMPLIANT"})
+        client.post(f"/audit/links/{link_id}/lock", headers=headers, json={"verdict": "COMPLIANT", "reason": GOOD})
     assert [r.reasoning for r in records(link_id) if r.kind == "REOPENED"] == reasons
     with Session(db_module.engine) as s:
         assert s.get(EvidenceControlLink, link_id).unlock_reason is None  # the old overwrite is gone
@@ -136,7 +136,7 @@ def test_the_uploader_still_cannot_supersede(client, bootstrap, upload):
     with Session(db_module.engine) as s:
         link_id = s.query(EvidenceControlLink).filter_by(evidence_id=evidence_id).first().id
     headers = {"authorization": f"auditor:{engagement_id}"}
-    client.post(f"/audit/links/{link_id}/lock", headers=headers, json={"verdict": "COMPLIANT"})
+    client.post(f"/audit/links/{link_id}/lock", headers=headers, json={"verdict": "COMPLIANT", "reason": GOOD})
     from app.models import Evidence
     with Session(db_module.engine) as s:
         s.get(Evidence, evidence_id).uploaded_by = f"auditor:{engagement_id}"

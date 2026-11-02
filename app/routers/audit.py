@@ -6,6 +6,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 import json
+import re
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
@@ -20,6 +21,12 @@ from app.models import Evidence, EvidenceControlLink, GapException
 router = APIRouter(prefix="/audit", tags=["audit"])
 
 CLOSING_VERDICTS = {"COMPLIANT", "PASS"}
+
+# What each auditor verdict says relative to the rules' own PASS / PARTIAL / FAIL. A verdict that
+# disagrees is an override: allowed, because the auditor decides, but never silent.
+AGREES_WITH = {"COMPLIANT": "PASS", "PASS": "PASS", "PARTIALLY_COMPLIANT": "PARTIAL",
+               "PARTIAL": "PARTIAL", "NON_COMPLIANT": "FAIL", "FAIL": "FAIL"}
+OVERRIDE_MIN_CHARS, OVERRIDE_MIN_WORDS = 15, 3
 
 
 class VerdictIn(BaseModel):
@@ -60,6 +67,24 @@ def _not_exception_requester(db: Session, actor: Actor, link: EvidenceControlLin
     db.commit()
     raise HTTPException(403, "segregation of duties: the requester of an exception on this "
                              "requirement cannot reopen or replace its verdict")
+
+
+def _overridden_engine_verdict(link: EvidenceControlLink, verdict: str) -> str | None:
+    """The rules' verdict if `verdict` contradicts it, else None. Read before a lock overwrites it."""
+    engine = link.engine_verdict or link.verdict
+    expected = AGREES_WITH.get((verdict or "").upper())
+    return engine if expected and engine in {"PASS", "PARTIAL", "FAIL"} and expected != engine else None
+
+
+def _require_override_reason(link: EvidenceControlLink, verdict: str, reason: str) -> None:
+    engine = _overridden_engine_verdict(link, verdict)
+    if engine is None:
+        return
+    text = (reason or "").strip()
+    if len(text) < OVERRIDE_MIN_CHARS or len(re.findall(r"\w+", text)) < OVERRIDE_MIN_WORDS:
+        raise HTTPException(
+            422, f"the rules' verdict is {engine}; recording {verdict} overrides it, so give the reason "
+                 f"(at least {OVERRIDE_MIN_WORDS} words) in the remarks")
 
 
 def _auditor_link(db: Session, actor: Actor, link_id: str) -> EvidenceControlLink:
@@ -153,19 +178,22 @@ def record_verdict(link_id: str, body: VerdictIn, actor: Actor = Depends(current
     link = _auditor_link(db, actor, link_id)
     if link.locked:
         raise HTTPException(409, "control is locked; unlock it first")
+    _require_override_reason(link, body.verdict, body.reason)
 
     before = _snapshot(link)
+    overrides = _overridden_engine_verdict(link, body.verdict)
     link.auditor_verdict = body.verdict
     verdict_register.append(db, actor, link, kind="DECISION", verdict=body.verdict,
                             reason_code=verdict_register.RECORDED, reasoning=body.reason,
                             org_id=actor.org_id)
     audit_log.record(db, actor=actor.label(), request_id=actor.request_id, action="AUDITOR_VERDICT",
                      entity_type="evidence_control_link", entity=link.id, org_id=actor.org_id,
-                     detail={"verdict": body.verdict}, reason=body.reason,
+                     detail={"verdict": body.verdict, "overrides_engine_verdict": overrides},
+                     reason=body.reason,
                      before=before, after=_snapshot(link))
 
     if body.verdict.upper() in CLOSING_VERDICTS:
-        _lock(db, actor, link, body.verdict)
+        _lock(db, actor, link, body.verdict, body.reason)
     db.commit()
     return {"id": link.id, "auditor_verdict": link.auditor_verdict, "locked": link.locked}
 
@@ -177,8 +205,9 @@ def _snapshot(link: EvidenceControlLink) -> dict:
             "locked": link.locked, "locked_by_engagement_id": link.locked_by_engagement_id}
 
 
-def _lock(db: Session, actor: Actor, link: EvidenceControlLink, verdict: str) -> None:
+def _lock(db: Session, actor: Actor, link: EvidenceControlLink, verdict: str, reason: str = "") -> None:
     before = _snapshot(link)
+    overrides = _overridden_engine_verdict(link, verdict)  # before the lock overwrites link.verdict
     link.verdict = verdict
     link.locked_by_engagement_id = actor.engagement_id
     link.locked_at = datetime.now(timezone.utc)
@@ -187,8 +216,9 @@ def _lock(db: Session, actor: Actor, link: EvidenceControlLink, verdict: str) ->
                      detail={"verdict": verdict, "evidence_id": link.evidence_id,
                              # what the rules decided, exactly (ADR-022)
                              "engine_verdict": link.engine_verdict, "rule_hash": link.rule_hash,
-                             "evaluation_hash": link.evaluation_hash},
-                     before=before, after=_snapshot(link))
+                             "evaluation_hash": link.evaluation_hash,
+                             "overrides_engine_verdict": overrides},
+                     reason=reason, before=before, after=_snapshot(link))
     ciso_sync.push_verdict(db, actor.label(), actor.request_id, link, actor.org_id)
 
 
@@ -198,11 +228,12 @@ def lock_link(link_id: str, body: VerdictIn, actor: Actor = Depends(current_acto
     link = _auditor_link(db, actor, link_id)
     if link.locked:
         raise HTTPException(409, "already locked")
+    _require_override_reason(link, body.verdict, body.reason)
     link.auditor_verdict = body.verdict
     verdict_register.append(db, actor, link, kind="DECISION", verdict=body.verdict,
                             reason_code=verdict_register.RECORDED, reasoning=body.reason,
                             org_id=actor.org_id)
-    _lock(db, actor, link, body.verdict)
+    _lock(db, actor, link, body.verdict, body.reason)
     db.commit()
     return {"id": link.id, "verdict": link.verdict, "locked": True}
 

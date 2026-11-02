@@ -25,6 +25,8 @@ import { PageTour } from "../components/PageTour";
 import { Term } from "../components/Term";
 
 const AUDITOR_VERDICTS = ["COMPLIANT", "PARTIALLY_COMPLIANT", "NON_COMPLIANT"];
+// What each auditor verdict says relative to the rules' PASS / PARTIAL / FAIL (mirrors the backend).
+const AGREES_WITH: Record<string, string> = { COMPLIANT: "PASS", PARTIALLY_COMPLIANT: "PARTIAL", NON_COMPLIANT: "FAIL" };
 const VERDICT_RANK: Record<string, number> = { PASS: 3, PARTIAL: 2, FAIL: 1 };
 
 function buildTourSteps(isAuditor: boolean) {
@@ -243,7 +245,7 @@ export function ControlDetailPage() {
         <>
           {data.links.map((link) => (
             <AuditorLinkPanel
-              key={link.id} linkId={link.id} verdict={link.verdict}
+              key={link.id} linkId={link.id} verdict={link.verdict} engineVerdict={link.engine_verdict}
               auditorVerdict={link.auditor_verdict} locked={link.locked}
               nutshell={link.nutshell}
               onChanged={() => { control.reload(); cisoSync.reload(); history.reload(); }}
@@ -282,6 +284,7 @@ export function ControlDetailPage() {
 function AuditorLinkPanel({
   linkId,
   verdict,
+  engineVerdict,
   auditorVerdict,
   locked,
   nutshell,
@@ -290,6 +293,7 @@ function AuditorLinkPanel({
 }: {
   linkId: string;
   verdict: string;
+  engineVerdict: string | null;
   auditorVerdict: string | null;
   locked: boolean;
   nutshell?: string;
@@ -300,6 +304,10 @@ function AuditorLinkPanel({
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Disagreeing with the rules is allowed, but the reason is then required (and kept in the audit trail).
+  const rules = engineVerdict ?? (locked ? null : verdict);
+  const overrides = !!rules && !!AGREES_WITH[choice] && AGREES_WITH[choice] !== rules;
+  const needsReason = overrides && reason.trim().split(/\s+/).filter(Boolean).length < 3;
 
   const act = async (fn: () => Promise<unknown>) => {
     setBusy(true);
@@ -317,9 +325,15 @@ function AuditorLinkPanel({
   return (
     <div className="card" style={{ marginBottom: 12 }}>
       <div style={{ display: "flex", justifyContent: "space-between" }}>
-        <span className="muted">Deterministic verdict:</span>
-        <Badge value={verdict} />
+        <span className="muted">Rules' verdict:</span>
+        {rules ? <Badge value={rules} /> : <span className="muted">not recorded</span>}
       </div>
+      {locked && auditorVerdict && (
+        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
+          <span className="muted">Auditor's verdict:</span>
+          <Badge value={auditorVerdict} />
+        </div>
+      )}
       {nutshell && <p className="muted" style={{ marginTop: 8 }}>{nutshell}</p>}
       {locked && <CisoSyncBadge status={syncStatus} />}
       {error && <div className="alert alert-error">{error}</div>}
@@ -342,11 +356,12 @@ function AuditorLinkPanel({
               </option>
             ))}
           </select>
-          <input placeholder="remarks (optional)" value={reason} onChange={(e) => setReason(e.target.value)} />
-          <button className="btn btn-primary" disabled={busy} onClick={() => act(() => recordVerdict(linkId, choice, reason))}>
+          <input placeholder={overrides ? `required: you are overriding the rules' ${rules} verdict` : "remarks (optional)"}
+                 value={reason} onChange={(e) => setReason(e.target.value)} />
+          <button className="btn btn-primary" disabled={busy || needsReason} onClick={() => act(() => recordVerdict(linkId, choice, reason))}>
             Record verdict
           </button>
-          <button className="btn" disabled={busy} onClick={() => act(() => lockLink(linkId, choice))}>
+          <button className="btn" disabled={busy || needsReason} onClick={() => act(() => lockLink(linkId, choice, reason))}>
             Lock
           </button>
         </div>
