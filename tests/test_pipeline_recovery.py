@@ -45,6 +45,7 @@ def test_a_failure_after_extraction_ends_at_failed_not_stuck(client, bootstrap, 
     assert "quality scoring blew up" in detail
 
 
+@pytest.mark.model_unavailable
 def test_reprocess_recovers_evidence_that_failed(client, bootstrap, upload, monkeypatch):
     monkeypatch.setattr(service, "score_evidence", boom)
     org_id, _ = bootstrap(client)
@@ -60,6 +61,7 @@ def test_reprocess_recovers_evidence_that_failed(client, bootstrap, upload, monk
     assert status_of(evidence_id)[0] == "NEEDS_REVIEW"
 
 
+@pytest.mark.model_unavailable
 def test_reprocess_of_a_settled_row_without_a_lock_is_allowed(client, bootstrap, upload):
     """A NEEDS_REVIEW row (here: extraction was unavailable) with nothing locked
     is exactly what reprocess exists to rescue — re-running is not a back door."""
@@ -82,7 +84,7 @@ def test_reprocess_is_refused_once_an_auditor_has_locked_a_verdict(client, boots
         link_id = s.query(EvidenceControlLink).filter_by(evidence_id=evidence_id).first().id
     locked = client.post(f"/audit/links/{link_id}/lock",
                          headers={"authorization": f"auditor:{engagement_id}"},
-                         json={"verdict": "PASS"})
+                         json={"verdict": "PASS", "reason": "reviewed the policy against this control and accept it"})
     assert locked.status_code == 200
 
     resp = client.post(f"/evidence/{evidence_id}/reprocess",

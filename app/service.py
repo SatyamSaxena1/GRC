@@ -638,6 +638,10 @@ def _run_pipeline(db: Session, content: Content, evidence: Evidence, actor_label
     as_of = _audit_as_of(db, evidence.org_id)
     org_commitments = _org_commitments(db, evidence.org_id)
     provenance_trail: list[dict] = []
+    # The model returned nothing usable, so these verdicts rest on no facts. They are still shown
+    # (flagged NEEDS_REVIEW, with a re-run offered), but no gap or remediation task is raised for
+    # something the platform never read: "not stated" would be false, and the work it creates real.
+    no_facts = method != "connector" and run.status in {"INVALID_OUTPUT", "ERROR", "UNAVAILABLE"}
     for link in evaluate(attributes, evidence.artefact_type, org.frameworks, content, as_of,
                          org_commitments):
         evaluated.add((link.framework, link.clause))
@@ -682,8 +686,9 @@ def _run_pipeline(db: Session, content: Content, evidence: Evidence, actor_label
             row.nutshell_prompt_version = NUTSHELL_PROMPT_VERSION
         db.flush()
 
-        _reconcile_gaps(db, row, link.gaps, evidence, actor_label, request_id,
-                        guidance=requirement.guidance if requirement else "")
+        if not no_facts:
+            _reconcile_gaps(db, row, link.gaps, evidence, actor_label, request_id,
+                            guidance=requirement.guidance if requirement else "")
 
         # Each framework's result as it lands, rather than all of them at the
         # end — the same rows the client will re-read from the API when the

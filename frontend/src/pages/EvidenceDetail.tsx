@@ -320,7 +320,7 @@ export function EvidenceDetailPage() {
           <strong>The analysis model was unavailable when this file was processed.</strong>
           <span className="muted" style={{ display: "block", fontSize: 12, margin: "2px 0 8px" }}>
             Your file is stored and its text was readable. The verdicts below were computed
-            with no extracted facts, so they all read FAIL — re-run the analysis to get a real result.
+            with no extracted facts, so they all read FAIL. No gaps or tasks were raised from this run — re-run the analysis to get a real result.
           </span>
           <button className="btn" onClick={rerun} disabled={rerunning}>
             {rerunning ? "Re-running…" : "Re-run analysis"}

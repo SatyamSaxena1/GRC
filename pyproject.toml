@@ -48,3 +48,4 @@ packages = ["app", "app.ai", "app.collectors", "app.content", "app.review", "app
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 filterwarnings = ["ignore::PendingDeprecationWarning"]
+markers = ["model_unavailable: the extraction model is down for this test (no default stub)"]
