@@ -13,7 +13,7 @@ from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app import audit_log, authorization, checkpoints, ciso_sync, verdict_register
+from app import audit_log, authorization, checkpoints, ciso_sync, notify, verdict_register
 from app.auth import Actor, current_actor
 from app.db import get_session
 from app.models import Evidence, EvidenceControlLink, GapException
@@ -195,6 +195,7 @@ def record_verdict(link_id: str, body: VerdictIn, actor: Actor = Depends(current
     if body.verdict.upper() in CLOSING_VERDICTS:
         _lock(db, actor, link, body.verdict, body.reason)
     db.commit()
+    _announce_lock(link, actor)
     return {"id": link.id, "auditor_verdict": link.auditor_verdict, "locked": link.locked}
 
 
@@ -235,7 +236,14 @@ def lock_link(link_id: str, body: VerdictIn, actor: Actor = Depends(current_acto
                             org_id=actor.org_id)
     _lock(db, actor, link, body.verdict, body.reason)
     db.commit()
+    _announce_lock(link, actor)
     return {"id": link.id, "verdict": link.verdict, "locked": True}
+
+
+def _announce_lock(link: EvidenceControlLink, actor: Actor) -> None:
+    if link.locked:
+        notify.event("CONTROL_LOCKED", "info", f"{link.framework} {link.clause} locked as {link.verdict}",
+                     "/controls", actor.org_id)
 
 
 def _reopen(db: Session, actor: Actor, link: EvidenceControlLink, reason_code: str, reasoning: str) -> None:

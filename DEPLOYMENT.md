@@ -198,6 +198,14 @@ them from cron or Task Scheduler rather than adding a scheduler dependency:
 0 7 * * * cd /opt/grc && .venv/bin/python -m app.monitor >> /var/log/grc-monitor.log 2>&1
 ```
 
+To also post that attention report to a webhook (Slack, Discord, Teams or your own endpoint), set
+`NOTIFY_WEBHOOK_URL` (see `.env.example`) and add `--notify` to the daily run. Items already sent are
+not repeated for `NOTIFY_RESEND_DAYS` days (default 7):
+
+```bash
+0 7 * * * cd /opt/grc && .venv/bin/python -m app.monitor --notify >> /var/log/grc-monitor.log 2>&1
+```
+
 Windows Task Scheduler equivalent:
 
 ```bash

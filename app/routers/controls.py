@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from app import audit_log, authorization
+from app import audit_log, authorization, notify
 from app.actor_names import resolve_actors
 from app.auth import Actor, current_actor, deny_read_only
 from app.content.load import load as load_content
@@ -19,7 +19,7 @@ from app.db import get_session
 from app.ingest import draft_remediation
 from app.exceptions import active_exception
 from app.models import (
-    AuditEvent, ControlAssignment, ControlMessage, Evidence, EvidenceControlLink, GapRow,
+    AuditEvent, ControlAssignment, ControlMessage, Evidence, EvidenceControlLink, Finding, GapRow,
     OrgControl, TaskRow, User,
 )
 from app.service import link_commitment_stale
@@ -155,7 +155,9 @@ def control_history(control_id: str, actor: Actor = Depends(current_actor),
     # only link ids here silently dropped every submission from its own
     # control's history.
     link_ids = [l.id for l in _links_for(db, control)]
-    entity_ids = [control.id, *link_ids]
+    # A finding's events are recorded against the finding, but belong in its control's history too.
+    finding_ids = [f.id for f in db.query(Finding.id).filter_by(org_id=control.org_id, org_control_id=control.id)]
+    entity_ids = [control.id, *link_ids, *finding_ids]
     events = db.query(AuditEvent).filter(
         AuditEvent.entity.in_(entity_ids)
     ).order_by(AuditEvent.at).all()
@@ -534,7 +536,17 @@ def update_task(task_id: str, body: TaskUpdate, actor: Actor = Depends(current_a
 
     if _record_task_change(db, actor, task, before):
         db.commit()
+        if task.owner_user_id and task.owner_user_id != before["owner_user_id"]:
+            _notify_assigned(db, actor, [task], task.owner_user_id)
     return _task_out(db, task)
+
+
+def _notify_assigned(db: Session, actor: Actor, tasks: list[TaskRow], owner_id: str) -> None:
+    """Tell the new owner's team a task landed on them (ADR-031). One line, no evidence content."""
+    owner = db.get(User, owner_id)
+    who = owner.email if owner else "someone"
+    what = tasks[0].title if len(tasks) == 1 else f"{len(tasks)} tasks"
+    notify.event("TASK_ASSIGNED", "info", f"{what} assigned to {who}", "/tasks", actor.org_id)
 
 
 def _task_state(task: TaskRow) -> dict:
@@ -588,6 +600,7 @@ def bulk_update_tasks(body: BulkTaskUpdate, actor: Actor = Depends(current_actor
 
     tasks = [_task_context(db, actor, task_id) for task_id in dict.fromkeys(body.task_ids)]
     changed = 0
+    newly_assigned: list[TaskRow] = []
     for task in tasks:
         before = _task_state(task)
         if "owner_user_id" in fields:
@@ -596,8 +609,13 @@ def bulk_update_tasks(body: BulkTaskUpdate, actor: Actor = Depends(current_actor
             task.due_at = body.due_at
         if "priority" in fields:
             task.priority = body.priority
-        changed += _record_task_change(db, actor, task, before)
+        if _record_task_change(db, actor, task, before):
+            changed += 1
+            if "owner_user_id" in fields and body.owner_user_id and before["owner_user_id"] != body.owner_user_id:
+                newly_assigned.append(task)
     db.commit()
+    if newly_assigned:
+        _notify_assigned(db, actor, newly_assigned, body.owner_user_id)
     return {"requested": len(tasks), "changed": changed, "tasks": [_task_out(db, t) for t in tasks]}
 
 
@@ -665,6 +683,10 @@ def create_control_message(control_id: str, body: MessageCreate, actor: Actor = 
                      org_id=actor.org_id,
                      detail={"kind": body.kind, "framework": control.framework, "clause": control.clause})
     db.commit()
+    if body.kind in ("EVIDENCE_REQUEST", "UNLOCK_REQUEST"):
+        notify.event(body.kind, "medium" if body.kind == "EVIDENCE_REQUEST" else "info",
+                     f"{'Evidence requested' if body.kind == 'EVIDENCE_REQUEST' else 'Unlock requested'} on "
+                     f"{control.framework} {control.clause}", f"/controls/{control.id}", actor.org_id)
     return _message_out(message)
 
 
