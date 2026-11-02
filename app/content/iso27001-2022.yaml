@@ -110,3 +110,28 @@ requirements:
         source: EXPERT
         delta_conditions:
           - {attribute: force_push_allowed_on_default, operator: "==", value: false}
+
+  # Evidenced by a certificate key-health snapshot (app/collectors/weak_keys.py). A.8.24 asks
+  # for far more than key strength, so this is SUPPORTING evidence: a guessable key opens a
+  # gap on the clause, but a clean snapshot alone never proves it (the verdict stays PARTIAL).
+  - clause: "A.8.24"
+    title: Use of cryptography
+    text: >
+      Rules for the effective use of cryptography, including cryptographic key management, are defined and implemented.
+    evidence_requirements:
+      - artefact_type: KEY_HEALTH_SNAPSHOT
+        required_attributes: [certificates_in_scope, weak_ec_keys, weak_rsa_keys, short_rsa_keys, duplicate_public_keys,
+                              full_corpus_checked]
+    mappings:
+      - uco: UCO-CRY-001
+        coverage: SUPPORTING
+        confidence: 0.6
+        source: EXPERT
+        delta_conditions:
+          - {attribute: certificates_in_scope, operator: ">=", value: 1}
+          - {attribute: weak_ec_keys, operator: "==", value: 0}
+          - {attribute: weak_rsa_keys, operator: "==", value: 0}
+          - {attribute: short_rsa_keys, operator: "==", value: 0}
+          - {attribute: duplicate_public_keys, operator: "==", value: 0}
+          # The cheap built-in checks are not the full weak-key corpus: say so when it did not run.
+          - {attribute: full_corpus_checked, operator: "==", value: true}
