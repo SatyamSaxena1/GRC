@@ -313,4 +313,5 @@ def from_env() -> ChatModel:
         model=os.environ.get("RB_CONFIG_MODEL") or os.environ.get("REVIEW_MODEL") or "qwen/qwen3.8-27b",
         api_key=os.environ.get("REVIEW_MODEL_API_KEY") or os.environ.get("OPENAI_API_KEY", ""),
         reasoning_effort=os.environ.get("RB_CONFIG_EFFORT", ""),
+        timeout_s=float(os.environ.get("RB_CONFIG_TIMEOUT_S") or 600),  # per model call; slow hosts need more
     )
