@@ -79,13 +79,13 @@ export function GapExceptions({ framework, clause, isAuditor, canRequest }: {
                 }));
               }}>
                 <label>Why accept this gap for now? (at least 20 characters)</label>
-                <textarea required minLength={20} rows={2} value={form.justification}
+                <textarea aria-label="Why accept this gap for now? (at least 20 characters)" required minLength={20} rows={2} value={form.justification}
                           onChange={(e) => setForm({ ...form, justification: e.target.value })} />
                 <label>Compensating control (optional)</label>
-                <input value={form.compensating_control}
+                <input aria-label="Compensating control (optional)" value={form.compensating_control}
                        onChange={(e) => setForm({ ...form, compensating_control: e.target.value })} />
                 <label>Expires on (at most 180 days)</label>
-                <input type="date" required min={inDays(1)} max={inDays(180)} value={form.expires}
+                <input aria-label="Expires on (at most 180 days)" type="date" required min={inDays(1)} max={inDays(180)} value={form.expires}
                        onChange={(e) => setForm({ ...form, expires: e.target.value })} />
                 <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
                   <button type="submit" className="btn btn-primary btn-sm">Send to auditor</button>

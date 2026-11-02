@@ -99,6 +99,7 @@ export function AppShell() {
 
   return (
     <div className="app-shell">
+      <a className="skip-link" href="#main-content">Skip to main content</a>
       <div className="topbar">
         <button aria-label="Open menu" aria-expanded={open} aria-controls="primary-nav" onClick={() => setOpen(true)}>☰</button>
         GRC Workspace
@@ -140,7 +141,7 @@ export function AppShell() {
           </div>
         )}
       </nav>
-      <main className="main" key={viewKey}>
+      <main className="main" id="main-content" tabIndex={-1} key={viewKey}>
         <Outlet />
       </main>
       <AssistantPanel />

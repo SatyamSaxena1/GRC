@@ -96,11 +96,11 @@ function RegisterControlCard({ orgId }: { orgId: string }) {
       <div className="form-grid">
         <div>
           <label>Framework</label>
-          <input value={framework} onChange={(e) => setFramework(e.target.value)} />
+          <input aria-label="Framework" value={framework} onChange={(e) => setFramework(e.target.value)} />
         </div>
         <div>
           <label>Clause</label>
-          <input value={clause} onChange={(e) => setClause(e.target.value)} />
+          <input aria-label="Clause" value={clause} onChange={(e) => setClause(e.target.value)} />
         </div>
         <button className="btn btn-primary" disabled={!orgId || busy} onClick={run}>
           {busy ? "Creating…" : "Register control"}
@@ -124,11 +124,11 @@ function AssignControlCard() {
       <div className="form-grid">
         <div>
           <label>Control id</label>
-          <input value={controlId} onChange={(e) => setControlId(e.target.value)} />
+          <input aria-label="Control id" value={controlId} onChange={(e) => setControlId(e.target.value)} />
         </div>
         <div>
           <label>User id</label>
-          <input value={userId} onChange={(e) => setUserId(e.target.value)} />
+          <input aria-label="User id" value={userId} onChange={(e) => setUserId(e.target.value)} />
         </div>
         <button className="btn btn-primary" disabled={!controlId || !userId || busy} onClick={run}>
           {busy ? "Assigning…" : "Assign"}
@@ -151,7 +151,7 @@ function CloseEngagementCard() {
       <div className="form-grid">
         <div>
           <label>Engagement id</label>
-          <input value={engagementId} onChange={(e) => setEngagementId(e.target.value)} />
+          <input aria-label="Engagement id" value={engagementId} onChange={(e) => setEngagementId(e.target.value)} />
         </div>
         <button className="btn btn-danger" disabled={!engagementId || busy} onClick={run}>
           {busy ? "Closing…" : "Close engagement"}
