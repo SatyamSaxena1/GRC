@@ -12,6 +12,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app import audit_log, authorization
+from app.actor_names import resolve_actors
 from app.auth import Actor, current_actor, deny_read_only
 from app.content.load import load as load_content
 from app.db import get_session
@@ -139,8 +140,10 @@ def control_history(control_id: str, actor: Actor = Depends(current_actor),
     events = db.query(AuditEvent).filter(
         AuditEvent.entity.in_(entity_ids)
     ).order_by(AuditEvent.at).all()
-    return [{"action": e.action, "actor": e.actor, "detail": e.detail,
-             "reason": e.reason, "at": e.at.isoformat()} for e in events]
+    names = resolve_actors(db, (e.actor for e in events))
+    return [{"action": e.action, "actor": e.actor, "actor_display": names.get(e.actor, e.actor),
+             "detail": e.detail, "reason": e.reason, "before": e.before, "after": e.after,
+             "at": e.at.isoformat()} for e in events]
 
 
 @router.post("/{control_id}/submit")
@@ -394,9 +397,10 @@ def get_task(task_id: str, actor: Actor = Depends(current_actor),
     task = _task_context(db, actor, task_id)
     result = _task_out(db, task)
     events = db.query(AuditEvent).filter_by(entity_type="task", entity=task.id).order_by(AuditEvent.at).all()
+    names = resolve_actors(db, (event.actor for event in events))
     result["history"] = [
-        {"action": event.action, "actor": event.actor, "before": event.before,
-         "after": event.after, "at": event.at.isoformat()}
+        {"action": event.action, "actor": event.actor, "actor_display": names.get(event.actor, event.actor),
+         "before": event.before, "after": event.after, "at": event.at.isoformat()}
         for event in events
     ]
     return result

@@ -89,6 +89,19 @@ def connector_status(actor: Actor = Depends(current_actor), db: Session = Depend
     ]
 
 
+@router.get("/{source}/runs")
+def connector_runs(source: str, actor: Actor = Depends(current_actor), db: Session = Depends(get_session)):
+    """The last ten runs of one connector, newest first: what each asked for, what came back, and
+    why a run was not COMPLETE (ADR-030)."""
+    if source not in SOURCES:
+        raise HTTPException(404, "unknown connector")
+    rows = (db.query(CollectionRun).filter_by(org_id=actor.org_id, source=source)
+            .order_by(CollectionRun.started_at.desc()).limit(10).all())
+    return [{"id": r.id, "status": r.status, "at": r.started_at.isoformat(), "expectation": r.expectation,
+             "signals": r.signals, "requested": r.requested, "returned": r.returned,
+             "evidence_id": r.evidence_id} for r in rows]
+
+
 def _last_run(db: Session, org_id: str, source: str, status: str | None = None) -> CollectionRun | None:
     query = db.query(CollectionRun).filter_by(org_id=org_id, source=source)
     if status:
