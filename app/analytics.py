@@ -24,7 +24,7 @@ from sqlalchemy.orm import Session
 
 from app.content.load import Content
 from app.evaluate import evaluate
-from app.models import Evidence, EvidenceControlLink, Organization
+from app.models import Evidence, EvidenceControlLink, OrgCommitment, Organization
 
 # Hours of effort a single evidence artefact costs to locate, prepare and upload.
 # Deliberately conservative; the spec makes this organisation-configurable, so it
@@ -111,6 +111,12 @@ class FrameworkReadiness:
         }
 
 
+# An auditor's verdict, in the rules' PASS / PARTIAL / FAIL vocabulary. Locking overwrites the
+# stored link.verdict with the auditor's word (COMPLIANT...), so every count that reads stored
+# verdicts folds it through this map; an unknown value passes through rather than 500ing.
+AUDITOR_VERDICT = {"COMPLIANT": "PASS", "PARTIALLY_COMPLIANT": "PARTIAL", "NON_COMPLIANT": "FAIL"}
+
+
 def framework_readiness(
     db: Session,
     org_id: str,
@@ -154,14 +160,34 @@ def framework_readiness(
         .all()
     )
 
+    # The org's own thresholds, as the pipeline evaluates with (service._org_commitments).
+    org_commitments = {c.attribute: c.value for c in db.query(OrgCommitment).filter_by(org_id=org_id)}
+
     per_clause: dict[str, list[tuple[str, str, bool]]] = {}
     for evidence in evidence_pool:
         attributes = evidence.attribute_values()
-        for link in evaluate(attributes, evidence.artefact_type, [framework], content, as_of):
+        for link in evaluate(attributes, evidence.artefact_type, [framework], content, as_of,
+                             org_commitments):
             if link.clause in na_clauses:
                 continue
             per_clause.setdefault(link.clause, []).append((link.verdict, evidence.artefact_type, True))
     best = {clause: combine_verdicts(v) for clause, v in per_clause.items()}
+
+    # An auditor's lock is the verdict of record: it overrides what the rules computed, exactly as
+    # the controls rollup (routers/analytics.best_verdict) counts it. Without this a locked
+    # COMPLIANT over a FAIL control read PASS there and 0% here.
+    locked: dict[str, list[tuple[str, str, bool]]] = {}
+    for link, artefact_type in (
+        db.query(EvidenceControlLink, Evidence.artefact_type)
+        .join(Evidence, Evidence.id == EvidenceControlLink.evidence_id)
+        .filter(Evidence.org_id == org_id, Evidence.lifecycle_status == "CURRENT",
+                Evidence.deleted_at.is_(None), EvidenceControlLink.framework == framework,
+                EvidenceControlLink.locked_by_engagement_id.is_not(None))
+    ):
+        if link.clause not in na_clauses:
+            locked.setdefault(link.clause, []).append(
+                (AUDITOR_VERDICT.get(link.verdict, link.verdict), artefact_type, True))
+    best.update({clause: combine_verdicts(v) for clause, v in locked.items()})
 
     satisfied = sum(1 for v in best.values() if v == SATISFIED)
     partial = sum(1 for v in best.values() if v == "PARTIAL")
