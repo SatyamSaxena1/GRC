@@ -454,6 +454,17 @@ class VerdictRecord(Base):
     audit_entry_hash: Mapped[str | None] = mapped_column(default=None)
 
 
+class NotificationLog(Base):
+    """Which attention items the webhook digest has already sent (ADR-031), so a daily cron does
+    not repeat itself. Not an audit record: a row's sent_at moves forward when it is re-sent."""
+    __tablename__ = "notification_log"
+    __table_args__ = (UniqueConstraint("org_id", "item_key"),)
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"))
+    item_key: Mapped[str]
+    sent_at: Mapped[datetime] = mapped_column(default=_now)
+
+
 class CollectionRun(Base):
     """What one connector run asked for, what came back, and whether that can be trusted
     (ADR-030). "No evidence found" and "we could not collect evidence" are different states:
