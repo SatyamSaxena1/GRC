@@ -180,6 +180,13 @@ def submit_control(control_id: str, actor: Actor = Depends(current_actor),
     if any(l.locked for l in links):
         raise HTTPException(423, "control is locked by an auditor verdict and cannot be modified")
 
+    # A repeat click must not write a second event: if nothing has happened to this control
+    # or its links since the last submission, the submission already stands.
+    latest = db.query(AuditEvent).filter(AuditEvent.entity.in_([control.id, *(l.id for l in links)])
+                                         ).order_by(AuditEvent.at.desc()).first()
+    if latest is not None and latest.action == "CONTROL_SUBMITTED":
+        return {"id": control.id, "submitted": True, "already": True}
+
     audit_log.record(db, actor=actor.label(), request_id=actor.request_id, action="CONTROL_SUBMITTED",
                      entity_type="org_control", entity=control.id, org_id=actor.org_id,
                      detail={"framework": control.framework, "clause": control.clause})
