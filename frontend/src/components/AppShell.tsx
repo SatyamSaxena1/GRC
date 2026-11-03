@@ -8,6 +8,7 @@ import { GettingStartedTour } from "./GettingStartedTour";
 import { RoleSwitcher } from "./RoleSwitcher";
 import { AssistantPanel } from "./Assistant";
 import { navFor } from "../lib/nav";
+import { markSignedOut } from "../lib/pkce";
 
 // Whether the backend can reach its model server right now (GET /health/ready asks
 // the configured gateway, e.g. LM Studio on the operator's PC). Polled every 30s
@@ -73,6 +74,7 @@ export function AppShell() {
   const viewKey = identity ? `${identity.kind}:${"id" in identity ? identity.id : "sso"}:${identity.engagementId ?? ""}` : "none";
 
   const switchIdentity = () => {
+    if (identity?.kind === "oidc") markSignedOut();
     setIdentity(null);
     navigate("/login");
   };
