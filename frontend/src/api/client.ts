@@ -130,6 +130,23 @@ export const createEngagement = (audit_firm_id: string, org_id: string, framewor
 export const closeEngagement = (engagementId: string) =>
   request<{ id: string; status: string }>("POST", `/admin/engagements/${engagementId}/close`);
 
+/** The public trust page (ADR-039): counts only, shared by an unguessable link. */
+export type TrustSummary = {
+  organisation: string;
+  controls: {
+    total: number; reviewed_and_locked_by_an_auditor: number; meeting_requirements: number;
+    partly_meeting: number; not_meeting: number; awaiting_evidence: number;
+  };
+  frameworks: { framework: string; requirements_met: number; requirements: number; readiness_percent: number }[];
+  evidence_last_collected: string | null;
+  practices: string[];
+};
+export type TrustState = { published: boolean; token: string | null; preview: TrustSummary };
+export const getTrustState = () => request<TrustState>("GET", "/trust-settings");
+export const publishTrust = () => request<TrustState>("POST", "/trust-settings/publish");
+export const unpublishTrust = () => request<TrustState>("POST", "/trust-settings/unpublish");
+export const getPublicTrust = (token: string) => anon<TrustSummary>("GET", `/public/trust/${encodeURIComponent(token)}`);
+
 // An empty org_id means "my own organisation" — the backend fills it in for a signed-in org admin.
 export const createUser = (email: string, org_id: string, role: string) =>
   request<{ id: string; role: string }>("POST", "/admin/users", { json: { email, org_id: org_id || null, role } });

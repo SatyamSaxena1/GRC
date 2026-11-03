@@ -37,6 +37,9 @@ class Organization(Base):
     # org has declared out of scope — an unused source otherwise always reads
     # as NO_EVIDENCE against DPDP readiness (app/analytics.py::framework_readiness).
     dpdp_na_sources: Mapped[list[str]] = mapped_column(JSON, default=list)
+    # Set = the organisation has published its trust page (ADR-039): the unguessable path segment
+    # of /public/trust/{token}. Clearing it takes the page down at once.
+    trust_token: Mapped[str | None] = mapped_column(String, unique=True, default=None)
 
 
 class AuditFirm(Base):
