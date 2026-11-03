@@ -61,6 +61,9 @@ class User(Base):
     same visibility with every write path closed (Actor.can_write) — for a
     second-line reviewer, an external prep consultant, or a dashboard-only
     exec. See docs/adr/017-compliance-officer-persona.md."""
+    active: Mapped[bool] = mapped_column(default=True)
+    """False = deactivated (ADR-036): sign-in is refused at both identity lookups. The row stays,
+    so everything this person ever did still resolves to a name in the audit trail."""
 
 
 class Engagement(Base):

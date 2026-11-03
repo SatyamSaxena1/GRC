@@ -155,7 +155,7 @@ def _resolve(authorization: str, db: Session, engagement_header: str | None = No
     if authorization.startswith("user:"):
         with identity_lookup(db):
             user = db.get(User, authorization.removeprefix("user:"))
-        if user is None:
+        if user is None or not user.active:
             raise HTTPException(401)
         if user.audit_firm_id:
             return _firm_user_actor(db, user, engagement_header)
@@ -190,6 +190,8 @@ def _resolve_oidc(token: str, db: Session, engagement_header: str | None) -> Act
         user = db.query(User).filter_by(email=email).one_or_none()
     if user is None:
         raise HTTPException(401, "no user provisioned for this identity")
+    if not user.active:
+        raise HTTPException(401, "this account has been deactivated")
 
     if user.audit_firm_id:
         # An auditor with no engagement selected is just the firm console actor

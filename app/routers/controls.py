@@ -440,7 +440,7 @@ def list_task_owners(actor: Actor = Depends(current_actor), db: Session = Depend
     if actor.role == "CONTROL_OWNER":
         users = [db.get(User, actor.user_id)] if actor.user_id else []
     else:
-        users = db.query(User).filter_by(org_id=actor.org_id).order_by(User.email).all()
+        users = db.query(User).filter_by(org_id=actor.org_id, active=True).order_by(User.email).all()
     return [{"id": user.id, "email": user.email} for user in users if user is not None]
 
 

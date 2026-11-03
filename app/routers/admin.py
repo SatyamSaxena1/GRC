@@ -7,11 +7,12 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app import audit_log
 from app.auth import Actor, admin_or_actor, require_admin
-from app.db import get_session, set_firm, set_tenant
+from app.db import get_session, identity_lookup, set_firm, set_tenant
 from app.models import (
     AuditFirm, ControlAssignment, Engagement, EngagementAllocation, OrgControl,
     Organization, User,
@@ -59,12 +60,20 @@ def create_user(body: UserIn, actor: Actor | None = Depends(admin_or_actor),
     that's how a brand-new org/firm gets its first admin. A signed-in caller
     may only invite into their own org (as its ORG_ADMIN) or their own firm
     (as its FIRM_ADMIN); everything else is someone else's tenant."""
+    if actor is not None and actor.role == "ORG_ADMIN" and not body.org_id and not body.audit_firm_id:
+        body.org_id = actor.org_id  # "invite into my own organisation"; the SPA does not hold the org id
     if actor is not None:
         into_own_org = body.org_id and actor.org_id == body.org_id and actor.role == "ORG_ADMIN"
         into_own_firm = (body.audit_firm_id and actor.audit_firm_id == body.audit_firm_id
                          and actor.role == "FIRM_ADMIN")
         if not (into_own_org or into_own_firm):
             raise HTTPException(403, "you may only invite users into your own organisation or firm")
+    # Sign-in matches by exact email, so two rows for one address would lock both people out.
+    # users is under RLS: the check has to read across tenants, which identity_lookup allows.
+    with identity_lookup(db):
+        taken = db.query(User).filter(func.lower(User.email) == body.email.strip().lower()).first()
+    if taken is not None:
+        raise HTTPException(409, "a user with this email already exists")
     # The operator key binds no tenant, and users is under RLS: write the row inside the
     # org or firm it belongs to (a signed-in caller is already bound to that same one).
     set_tenant(db, body.org_id)
@@ -73,6 +82,74 @@ def create_user(body: UserIn, actor: Actor | None = Depends(admin_or_actor),
     db.add(user)
     db.commit()
     return {"id": user.id, "role": user.role}
+
+
+ORG_ROLES = ("ORG_ADMIN", "CONTROL_OWNER", "COMPLIANCE_VIEWER")
+FIRM_ROLES = ("FIRM_ADMIN", "AUDITOR")
+
+
+def _team_admin(actor: Actor | None) -> Actor:
+    """Only an org admin (own org) or a firm admin (own firm), signed in as themselves."""
+    if actor is None or actor.engagement_id or actor.role not in ("ORG_ADMIN", "FIRM_ADMIN"):
+        raise HTTPException(403, "only an organisation admin or a firm admin can manage users")
+    return actor
+
+
+def _team_view(u: User) -> dict:
+    return {"id": u.id, "email": u.email, "role": u.role, "active": u.active}
+
+
+@router.get("/users")
+def list_users(actor: Actor | None = Depends(admin_or_actor), db: Session = Depends(get_session)):
+    """The caller's own organisation's users, or their own firm's. RLS already limits the rows;
+    the filter says which side."""
+    actor = _team_admin(actor)
+    q = db.query(User)
+    q = q.filter_by(org_id=actor.org_id) if actor.role == "ORG_ADMIN" else q.filter_by(audit_firm_id=actor.audit_firm_id)
+    return [_team_view(u) for u in q.order_by(User.email)]
+
+
+class UserPatch(BaseModel):
+    role: str | None = None
+    active: bool | None = None
+
+
+@router.patch("/users/{user_id}")
+def update_user(user_id: str, body: UserPatch, actor: Actor | None = Depends(admin_or_actor),
+                db: Session = Depends(get_session)):
+    """Change a teammate's role, or deactivate or reactivate them (ADR-036). Deactivation ends
+    their access at the next request, keeps their history, and is audited with before and after."""
+    actor = _team_admin(actor)
+    user = db.get(User, user_id)  # RLS: another tenant's user is simply not there
+    own_side = (user is not None and (user.org_id == actor.org_id if actor.role == "ORG_ADMIN"
+                                      else user.audit_firm_id == actor.audit_firm_id))
+    if not own_side:
+        raise HTTPException(404)
+
+    side_roles, admin_role = (ORG_ROLES, "ORG_ADMIN") if actor.role == "ORG_ADMIN" else (FIRM_ROLES, "FIRM_ADMIN")
+    if body.role is not None and body.role not in side_roles:
+        raise HTTPException(422, f"role must be one of {', '.join(side_roles)}")
+    new_role = body.role if body.role is not None else user.role
+    new_active = body.active if body.active is not None else user.active
+    if user.id == actor.user_id and not new_active:
+        raise HTTPException(409, "you cannot deactivate your own account")
+
+    stays_admin = new_active and new_role == admin_role
+    if user.role == admin_role and user.active and not stays_admin:
+        others = db.query(User).filter(User.id != user.id, User.role == admin_role, User.active.is_(True))
+        others = others.filter_by(org_id=user.org_id) if user.org_id else others.filter_by(audit_firm_id=user.audit_firm_id)
+        if others.count() == 0:
+            raise HTTPException(409, "this is the last active admin; make someone else an admin first")
+
+    before = {"role": user.role, "active": user.active}
+    user.role, user.active = new_role, new_active
+    after = {"role": user.role, "active": user.active}
+    if before != after:
+        audit_log.record(db, actor=actor.label(), request_id=actor.request_id, action="USER_UPDATED",
+                         entity_type="user", entity=user.id, org_id=user.org_id,
+                         detail={"email": user.email}, before=before, after=after)
+    db.commit()
+    return _team_view(user)
 
 
 class EngagementIn(BaseModel):
