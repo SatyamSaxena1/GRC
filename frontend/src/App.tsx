@@ -4,6 +4,7 @@ import { useSession } from "./lib/session";
 import { LoginPage } from "./pages/Login";
 import { OidcCallbackPage } from "./pages/OidcCallback";
 import { PitchPage } from "./pages/Pitch";
+import { PublicTrustPage } from "./pages/PublicTrust";
 import { JeffDemoPage } from "./pages/jeff/JeffDemo";
 import { OverviewPage } from "./pages/Overview";
 import { EvidenceListPage } from "./pages/EvidenceList";
@@ -49,6 +50,7 @@ export function App() {
     <>
     <DemoGate />
     <Routes>
+      <Route path="/trust/:token" element={<PublicTrustPage />} />
       <Route path="/pitch" element={<PitchPage />} />
       <Route path="/jeff" element={<JeffDemoPage />} />
       <Route path="/login" element={<LoginPage />} />

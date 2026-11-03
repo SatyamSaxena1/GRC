@@ -7,11 +7,15 @@ import {
   createUser,
   listControls,
   listTaskOwners,
+  getTrustState,
   listTeam,
+  publishTrust,
+  unpublishTrust,
   updateTeamUser,
 } from "../api/client";
 import { useSession } from "../lib/session";
 import { useApi } from "../lib/useApi";
+import { TrustView } from "./PublicTrust";
 
 function useFormAction<T>(action: () => Promise<T>) {
   const [busy, setBusy] = useState(false);
@@ -48,6 +52,8 @@ export function AdminPage() {
       </div>
 
       <TeamCard key={teamVersion} />
+
+      <TrustCard />
 
       <div className="card-grid">
         <InviteUserCard orgId={orgId} onCreated={() => setTeamVersion((v) => v + 1)} />
@@ -112,6 +118,50 @@ function TeamCard() {
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+
+/** Publish a content-free public summary behind an unguessable link, and take it down again (ADR-039).
+ *  The preview is exactly what the public sees: counts only, no files, gaps, tasks or names of people. */
+function TrustCard() {
+  const trust = useApi(() => getTrustState(), []);
+  const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const change = async (fn: () => Promise<unknown>) => {
+    setError(null);
+    try { await fn(); trust.reload(); } catch (err) {
+      setError(err instanceof ApiError ? String(err.detail) : (err as Error).message);
+    }
+  };
+  if (trust.error || !trust.data) return null; // only an organisation admin manages this
+  const { published, token, preview } = trust.data;
+  const link = token ? `${window.location.origin}/trust/${token}` : "";
+
+  return (
+    <div className="card" id="trust" style={{ marginBottom: 16 }}>
+      <strong>Trust page</strong>
+      <p className="stat-sub">
+        A public page for customers and prospects. It shows counts and percentages only, never evidence, gaps,
+        tasks or names. Off until you publish; unpublish and the link stops working at once.
+      </p>
+      {error && <div className="alert alert-error">{error}</div>}
+      {published ? (
+        <>
+          <p><strong>Published.</strong> Share this link:</p>
+          <p className="mono" style={{ wordBreak: "break-all" }}>{link}</p>
+          <button className="btn btn-sm" onClick={async () => { await navigator.clipboard.writeText(link); setCopied(true); }}>
+            {copied ? "Copied" : "Copy link"}
+          </button>{" "}
+          <button className="btn btn-sm btn-danger" onClick={() => change(unpublishTrust)}>Unpublish</button>
+        </>
+      ) : (
+        <button className="btn btn-primary" onClick={() => change(publishTrust)}>Publish trust page</button>
+      )}
+      <p className="muted" style={{ fontSize: 12, marginTop: 12 }}>What the public sees:</p>
+      <TrustView s={preview} />
     </div>
   );
 }
