@@ -130,8 +130,14 @@ export const createEngagement = (audit_firm_id: string, org_id: string, framewor
 export const closeEngagement = (engagementId: string) =>
   request<{ id: string; status: string }>("POST", `/admin/engagements/${engagementId}/close`);
 
+// An empty org_id means "my own organisation" — the backend fills it in for a signed-in org admin.
 export const createUser = (email: string, org_id: string, role: string) =>
-  request<{ id: string; role: string }>("POST", "/admin/users", { json: { email, org_id, role } });
+  request<{ id: string; role: string }>("POST", "/admin/users", { json: { email, org_id: org_id || null, role } });
+
+export type TeamUser = { id: string; email: string; role: string; active: boolean };
+export const listTeam = () => request<TeamUser[]>("GET", "/admin/users");
+export const updateTeamUser = (id: string, patch: { role?: string; active?: boolean }) =>
+  request<TeamUser>("PATCH", `/admin/users/${id}`, { json: patch });
 
 export const createControl = (org_id: string, framework: string, clause: string) =>
   request<{ id: string }>("POST", "/admin/controls", { json: { org_id, framework, clause } });

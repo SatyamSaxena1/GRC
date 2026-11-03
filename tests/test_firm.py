@@ -12,7 +12,7 @@ from __future__ import annotations
 def firm_with_admin(client, name="Gemba Assurance"):
     firm = client.post("/admin/audit-firms", json={"name": name}).json()
     admin = client.post("/admin/users", json={
-        "email": "admin@gemba.test", "audit_firm_id": firm["id"], "role": "FIRM_ADMIN",
+        "email": f"admin@{name.split()[0].lower()}.test", "audit_firm_id": firm["id"], "role": "FIRM_ADMIN",
     }).json()
     return firm["id"], admin["id"]
 

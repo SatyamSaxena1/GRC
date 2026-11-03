@@ -334,5 +334,5 @@ def unstaff_auditor(engagement_id: str, user_id: str,
 @router.get("/auditors")
 def list_firm_auditors(actor: Actor = Depends(firm_actor), db: Session = Depends(get_session)):
     """The firm's own staff — who there is to assign."""
-    users = db.query(User).filter_by(audit_firm_id=actor.audit_firm_id).all()
+    users = db.query(User).filter_by(audit_firm_id=actor.audit_firm_id, active=True).all()
     return {"auditors": [{"id": u.id, "email": u.email, "role": u.role} for u in users]}

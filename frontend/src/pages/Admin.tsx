@@ -7,6 +7,8 @@ import {
   createUser,
   listControls,
   listTaskOwners,
+  listTeam,
+  updateTeamUser,
 } from "../api/client";
 import { useSession } from "../lib/session";
 import { useApi } from "../lib/useApi";
@@ -44,12 +46,71 @@ export function AdminPage() {
         </div>
       </div>
 
+      <TeamCard />
+
       <div className="card-grid">
         <InviteUserCard orgId={orgId} />
         <RegisterControlCard orgId={orgId} />
         <AssignControlCard />
         <CloseEngagementCard />
       </div>
+    </div>
+  );
+}
+
+const ROLE_LABEL: Record<string, string> = {
+  ORG_ADMIN: "Org admin", CONTROL_OWNER: "Control owner", COMPLIANCE_VIEWER: "Compliance viewer (read-only)",
+  FIRM_ADMIN: "Firm admin", AUDITOR: "Auditor",
+};
+
+/** Who has access: change a role, or switch someone off without losing what they did (ADR-036).
+ *  The server enforces who may do this and keeps the last admin in place; this only shows its answer. */
+function TeamCard() {
+  const team = useApi(() => listTeam(), []);
+  const [error, setError] = useState<string | null>(null);
+  const roles = (team.data ?? []).some((u) => u.role === "FIRM_ADMIN" || u.role === "AUDITOR")
+    ? ["FIRM_ADMIN", "AUDITOR"] : ["ORG_ADMIN", "CONTROL_OWNER", "COMPLIANCE_VIEWER"];
+
+  const change = async (id: string, patch: { role?: string; active?: boolean }) => {
+    setError(null);
+    try {
+      await updateTeamUser(id, patch);
+      team.reload();
+    } catch (err) {
+      setError(err instanceof ApiError ? String(err.detail) : (err as Error).message);
+    }
+  };
+
+  if (team.error) return null; // not an admin of an organisation or firm: nothing to manage here
+  return (
+    <div className="card" id="team" style={{ marginBottom: 16 }}>
+      <strong>Team</strong>
+      <p className="stat-sub">
+        Deactivating someone ends their access at once and keeps their history. Their past actions stay
+        attributed to them in the audit log.
+      </p>
+      {error && <div className="alert alert-error">{error}</div>}
+      <table>
+        <thead><tr><th>Email</th><th>Role</th><th>Status</th><th /></tr></thead>
+        <tbody>
+          {(team.data ?? []).map((u) => (
+            <tr key={u.id} style={u.active ? undefined : { opacity: 0.6 }}>
+              <td>{u.email}</td>
+              <td>
+                <select aria-label={`Role for ${u.email}`} value={u.role} onChange={(e) => change(u.id, { role: e.target.value })}>
+                  {roles.map((r) => <option key={r} value={r}>{ROLE_LABEL[r] ?? r}</option>)}
+                </select>
+              </td>
+              <td>{u.active ? "Active" : "Deactivated"}</td>
+              <td>
+                <button className="btn btn-sm" onClick={() => change(u.id, { active: !u.active })}>
+                  {u.active ? "Deactivate" : "Reactivate"}
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -73,13 +134,13 @@ function InviteUserCard({ orgId }: { orgId: string }) {
           <label htmlFor="invite-role">Role</label>
           <select id="invite-role" value={role} onChange={(e) => setRole(e.target.value)}>
             <option value="CONTROL_OWNER">Control owner</option>
+            <option value="COMPLIANCE_VIEWER">Compliance viewer (read-only)</option>
             <option value="ORG_ADMIN">Org admin</option>
           </select>
         </div>
-        <button className="btn btn-primary" disabled={!orgId || !email || busy} onClick={run}>
+        <button className="btn btn-primary" disabled={!email || busy} onClick={run}>
           {busy ? "Creating…" : "Create user"}
         </button>
-        {!orgId && <p className="muted">Sign in as an organisation to invite users.</p>}
         {result && <p className="mono">user id: {result.id}</p>}
       </div>
     </div>
