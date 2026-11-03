@@ -17,6 +17,7 @@ on:
   schedule:
     - cron: "0 */6 * * *"   # sync connectors, every 6 hours (UTC)
     - cron: "30 1 * * *"    # daily attention report, 07:00 IST
+    - cron: "45 1 * * 1"    # weekly compliance report to the webhook, Mondays 07:15 IST (ADR-041)
   workflow_dispatch:        # manual "Run workflow" button for testing
 
 jobs:
@@ -126,3 +127,26 @@ jobs:
       - run: python -m app.monitor
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+  weekly-report:
+    # Posts one content-free summary per organisation to NOTIFY_WEBHOOK_URL (app/reports.py). Sends
+    # nothing, and does not fail, when no webhook secret is set. Re-running in the same week is a no-op.
+    if: github.event.schedule == '45 1 * * 1' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require DATABASE_URL
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          [ -n "$DATABASE_URL" ] || { echo "::error::DATABASE_URL secret is not set"; exit 1; }
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+      - run: pip install -e .
+      - run: python -m app.monitor --weekly-report
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NOTIFY_WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
+          NOTIFY_WEBHOOK_SECRET: ${{ secrets.NOTIFY_WEBHOOK_SECRET }}
+          NOTIFY_LINK_BASE_URL: ${{ vars.NOTIFY_LINK_BASE_URL }}

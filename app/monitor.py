@@ -556,9 +556,30 @@ def _sync_connectors(org_ids: set[str] | None = None, sources: set[str] | None =
     return 1 if problems else 0
 
 
+def _weekly_report() -> int:
+    """Post each organisation's weekly summary to the webhook, once per organisation per week (ADR-041).
+    Re-running within the week sends nothing new: the message carries its dates, so notify.digest's
+    de-duplication recognises it."""
+    from app import notify, reports
+    from app.db import session_scope, set_tenant
+
+    sent = 0
+    with session_scope() as db:
+        for org in db.query(Organization).order_by(Organization.name).all():
+            set_tenant(db, org.id)
+            message = reports.text(reports.build(db, org))
+            print(f"{org.name}: {message}")
+            sent += notify.digest(db, org.id, [{"kind": "weekly_report", "severity": "info",
+                                                "message": message, "link": "/overview"}])
+    print(f"webhook: {sent} report(s) sent" if notify.enabled() else "webhook: not configured, nothing sent")
+    return 0
+
+
 if __name__ == "__main__":
     import sys
 
+    if "--weekly-report" in sys.argv:
+        raise SystemExit(_weekly_report())
     if "--retry-extractions" in sys.argv:
         raise SystemExit(_retry_extractions())
     if "--sync-connectors" in sys.argv:

@@ -7,7 +7,9 @@ import {
   createUser,
   listControls,
   listTaskOwners,
+  downloadWeeklyReport,
   getTrustState,
+  getWeeklyReport,
   listTeam,
   publishTrust,
   unpublishTrust,
@@ -54,6 +56,8 @@ export function AdminPage() {
       <TeamCard key={teamVersion} />
 
       <TrustCard />
+
+      <WeeklyReportCard />
 
       <div className="card-grid">
         <InviteUserCard orgId={orgId} onCreated={() => setTeamVersion((v) => v + 1)} />
@@ -162,6 +166,26 @@ function TrustCard() {
       )}
       <p className="muted" style={{ fontSize: 12, marginTop: 12 }}>What the public sees:</p>
       <TrustView s={preview} />
+    </div>
+  );
+}
+
+/** This week's compliance summary: counts only (ADR-041). The same text is posted to the team's chat
+ *  webhook every Monday when one is configured; here it can be read and downloaded at any time. */
+function WeeklyReportCard() {
+  const report = useApi(() => getWeeklyReport(), []);
+  if (report.error || !report.data) return null; // only an organisation admin or viewer sees this
+  const r = report.data;
+  return (
+    <div className="card" id="weekly-report" style={{ marginBottom: 16 }}>
+      <strong>Weekly report</strong>
+      <p className="stat-sub">
+        Counts only, never evidence or names. {r.delivery.webhook_configured
+          ? `Posted to your team's chat webhook: ${r.delivery.schedule}.`
+          : "Not posted anywhere yet: set NOTIFY_WEBHOOK_URL to send it to Slack or Discord every Monday."}
+      </p>
+      <p>{r.text}</p>
+      <button className="btn btn-sm" onClick={() => downloadWeeklyReport()}>Download (Markdown)</button>
     </div>
   );
 }
