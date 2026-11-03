@@ -64,6 +64,10 @@ export const ORG_NAV: NavItem[] = [
     to: "/code-review", label: "Code review",
     hint: "Your organisation's review standard: versioned, hashed rules every pull request is checked against. Rules decide; a model only advises.",
   },
+  {
+    to: "/questionnaire", label: "Questionnaires",
+    hint: "Paste a customer's security questions and get draft answers from your own controls. The Yes, Partly or No comes from your verdicts; a model only words it.",
+  },
 ];
 
 // Org-wide read, no setup surface — see docs/adr/017-compliance-officer-persona.md.
@@ -126,7 +130,7 @@ export function navFor(identity: Identity | null): NavItem[] {
 // rendered separately (AppShell's NotificationsLink), so it is listed here too.
 const STAGE: Record<string, string> = {
   "/evidence": "Collect", "/map": "Collect",
-  "/overview": "Assess", "/controls": "Assess", "/gaps": "Assess", "/code-review": "Assess",
+  "/overview": "Assess", "/questionnaire": "Assure", "/controls": "Assess", "/gaps": "Assess", "/code-review": "Assess",
   "/tasks": "Act", "/notifications": "Act", "/dpdp/operations": "Act", "/admin": "Act",
   "/firm": "Assure", "/activity": "Assure", "/ciso-sync": "Assure",
   "/ai-compliance": "Regulate", "/dpdp": "Regulate", "/glossary": "Regulate",

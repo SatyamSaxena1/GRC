@@ -130,6 +130,14 @@ export const createEngagement = (audit_firm_id: string, org_id: string, framewor
 export const closeEngagement = (engagementId: string) =>
   request<{ id: string; status: string }>("POST", `/admin/engagements/${engagementId}/close`);
 
+/** One questionnaire answer (ADR-040): the status is decided from verdicts; the wording may come from a model. */
+export type QuestionnaireAnswer = {
+  question: string; status: "YES" | "PARTIAL" | "NO" | "NOT_EVIDENCED"; answer: string; wording: "model" | "rules";
+  controls: { control_id: string; framework: string; clause: string; title: string; verdict: string; reviewed_by_auditor: boolean }[];
+};
+export const answerQuestion = (question: string) =>
+  request<QuestionnaireAnswer>("POST", "/questionnaire/answer", { json: { question } });
+
 /** The public trust page (ADR-039): counts only, shared by an unguessable link. */
 export type TrustSummary = {
   organisation: string;
