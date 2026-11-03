@@ -130,6 +130,17 @@ export const createEngagement = (audit_firm_id: string, org_id: string, framewor
 export const closeEngagement = (engagementId: string) =>
   request<{ id: string; status: string }>("POST", `/admin/engagements/${engagementId}/close`);
 
+/** The weekly compliance report (ADR-041): the same figures the cron posts to the webhook. */
+export type WeeklyReport = {
+  organisation: string; text: string;
+  period: { from: string; to: string };
+  this_week: { new_gaps: number; gaps_resolved: number; evidence_collected_or_uploaded: number; controls_locked: number };
+  open_now: { gaps: number; tasks_overdue: number };
+  delivery: { webhook_configured: boolean; schedule: string };
+};
+export const getWeeklyReport = () => request<WeeklyReport>("GET", "/reports/weekly");
+export const downloadWeeklyReport = () => downloadFile("/reports/weekly.md", "weekly-compliance-report.md");
+
 /** One questionnaire answer (ADR-040): the status is decided from verdicts; the wording may come from a model. */
 export type QuestionnaireAnswer = {
   question: string; status: "YES" | "PARTIAL" | "NO" | "NOT_EVIDENCED"; answer: string; wording: "model" | "rules";
