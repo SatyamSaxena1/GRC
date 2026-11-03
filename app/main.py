@@ -17,7 +17,7 @@ from app.ai.provider import make_gateway
 from app.db import engine, init_db
 from app.routers import (
     activity, admin, analytics, assistant, audit, breach, ciso, findings, connectors, content, controls, evidence, exceptions, export, firm,
-    glossary, notifications, review, questionnaire, reports, rights_requests, templates, trust,
+    glossary, notifications, review, questionnaire, reports, rights_requests, templates, trust, vendors,
 )
 
 logging.basicConfig(
@@ -117,6 +117,7 @@ async def unhandled_exception(request: Request, exc: Exception):
 app.include_router(admin.router)
 app.include_router(templates.router)
 app.include_router(reports.router)
+app.include_router(vendors.router)
 app.include_router(questionnaire.router)
 app.include_router(trust.router)
 app.include_router(trust.public_router)
