@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { openDemoPanel, useDemoEnabled } from "../demo/enabled";
 import { useNavigate } from "react-router-dom";
 import {
-  ApiError, listAiModels, listEvidence, reprocessEvidence, suggestArtefactType, uploadEvidence,
-  type EvidenceSummary,
+  ApiError, downloadPolicyTemplate, listAiModels, listEvidence, listPolicyTemplates, reprocessEvidence,
+  suggestArtefactType, uploadEvidence, type EvidenceSummary,
 } from "../api/client";
 import { useSession } from "../lib/session";
 import { useApi } from "../lib/useApi";
@@ -70,6 +70,7 @@ export function EvidenceListPage() {
   const [aiModel, setAiModel] = useState("");
   const [aiVisionModel, setAiVisionModel] = useState("");
   const aiModels = useApi(() => listAiModels(), []);
+  const templates = useApi(() => listPolicyTemplates(), []);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState<string | null>(null);
@@ -251,6 +252,17 @@ export function EvidenceListPage() {
               <p className="muted" style={{ fontSize: 12, margin: "4px 0 0" }}>
                 No file handy? <a href="/demo/Asteron-Access-Control-Policy.pdf" download>Download a sample policy</a>, then upload it here.{demoOn && <> Or <button type="button" className="link-btn" onClick={openDemoPanel}>browse the demo documents</button>.</>}
               </p>
+              {(templates.data ?? []).length > 0 && (
+                <p className="muted" style={{ fontSize: 12, margin: "4px 0 0" }}>
+                  Or start from a template (its figures meet every framework's rules; fill in the dates, then upload):{" "}
+                  {(templates.data ?? []).map((t, i) => (
+                    <span key={t.id}>
+                      {i > 0 && " · "}
+                      <button type="button" className="link-btn" onClick={() => downloadPolicyTemplate(t)}>{t.title}</button>
+                    </span>
+                  ))}
+                </p>
+              )}
             </div>
             <div>
               <label>Description (optional)</label>
