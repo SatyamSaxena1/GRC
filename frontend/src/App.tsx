@@ -5,6 +5,7 @@ import { LoginPage } from "./pages/Login";
 import { OidcCallbackPage } from "./pages/OidcCallback";
 import { PitchPage } from "./pages/Pitch";
 import { PublicTrustPage } from "./pages/PublicTrust";
+import { QuestionnairePage } from "./pages/Questionnaire";
 import { JeffDemoPage } from "./pages/jeff/JeffDemo";
 import { OverviewPage } from "./pages/Overview";
 import { EvidenceListPage } from "./pages/EvidenceList";
@@ -75,6 +76,7 @@ export function App() {
         <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/activity" element={<ActivityPage />} />
         <Route path="/glossary" element={<GlossaryPage />} />
+        <Route path="/questionnaire" element={<QuestionnairePage />} />
         <Route path="/ai-compliance" element={<AiCompliancePage />} />
         <Route path="/dpdp" element={<DpdpPage />} />
         <Route path="/dpdp/operations" element={<DpdpOperationsPage />} />
