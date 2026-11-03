@@ -4,3 +4,7 @@
 docker/*        text eol=lf
 Dockerfile      text eol=lf
 entrypoint.sh   text eol=lf
+
+# Source texts are hashed (sources/*/SOURCE.md, ADR-029): store and check out the
+# exact bytes, or a CRLF conversion silently breaks every recorded sha256.
+sources/**      -text

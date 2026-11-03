@@ -35,3 +35,4 @@
 | [031](031-outbound-webhook-notifications.md) | Outbound notifications through one optional webhook | Proposed |
 | [032](032-auditor-findings.md) | Auditor findings on a control: raise, respond, close, reopen, all audited | Proposed |
 | [033](033-weak-key-check.md) | Check the keys, not the paperwork: a weak-key collector | Proposed |
+| [034](034-iso42001-eu-ai-act-packs.md) | ISO/IEC 42001 and EU AI Act packs, with source-text ingestion | Proposed |
