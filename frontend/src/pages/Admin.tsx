@@ -36,6 +36,7 @@ function useFormAction<T>(action: () => Promise<T>) {
 export function AdminPage() {
   const { identity } = useSession();
   const orgId = identity?.kind === "org" ? identity.id : "";
+  const [teamVersion, setTeamVersion] = useState(0); // bump to re-read the team after an invite
 
   return (
     <div>
@@ -46,10 +47,10 @@ export function AdminPage() {
         </div>
       </div>
 
-      <TeamCard />
+      <TeamCard key={teamVersion} />
 
       <div className="card-grid">
-        <InviteUserCard orgId={orgId} />
+        <InviteUserCard orgId={orgId} onCreated={() => setTeamVersion((v) => v + 1)} />
         <RegisterControlCard orgId={orgId} />
         <AssignControlCard />
         <CloseEngagementCard />
@@ -115,10 +116,14 @@ function TeamCard() {
   );
 }
 
-function InviteUserCard({ orgId }: { orgId: string }) {
+function InviteUserCard({ orgId, onCreated }: { orgId: string; onCreated: () => void }) {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("CONTROL_OWNER");
-  const { run, busy, error, result } = useFormAction(() => createUser(email, orgId, role));
+  const { run, busy, error, result } = useFormAction(async () => {
+    const created = await createUser(email, orgId, role);
+    onCreated();
+    return created;
+  });
 
   return (
     <div className="card" id="invite-user">

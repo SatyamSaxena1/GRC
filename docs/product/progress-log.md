@@ -40,6 +40,10 @@ step is in a tamper-evident log; the DPDP Act pack for India.
 - **Also true:** the last admin can't be removed, nobody can switch themselves off, and every change is in
   the activity log with the before and after.
 - **Proof:** 9 new tests; live database checked after release, all 5 users still active.
+- **Tried on the live site as the org admin:** invited a spare account (no organisation id needed), changed
+  its role, deactivated it (the button turned to Reactivate), and tried to deactivate the admin's own
+  account, which was refused with "you cannot deactivate your own account". After an invite the list now
+  updates by itself.
 
 ### 3 Nov 2026: A firm can open a client (PR 51)
 - **Say:** "A firm admin opens any client they audit from one console, with the live numbers beside it."
