@@ -16,13 +16,28 @@ on screen, and where the proof is. Add to the top. Say only what the live site d
 | In-app connector setup | Open (needs a design for stored secrets first) |
 | Fuller framework catalogue | Open |
 | Policy templates | **Started** (PR 58, ADR-038): three templates whose figures come from the rules |
-| Vendor risk, trust centre, questionnaire answers | Open |
+| Trust page | **Done** (PR 60/61, ADR-039): opt-in, counts only, revocable |
+| Vendor risk, questionnaire answers | Open |
 | AI help on the live site | **Working for demos** (model on a personal machine, reached through a tunnel; not for real use) |
 
 Where we lead: the verdict comes from fixed rules, never from a model; a named human signs and locks; every
 step is in a tamper-evident log; the DPDP Act pack for India.
 
 ## Entries
+
+### 3 Nov 2026: A trust page you control (PR 60, 61)
+- **Say:** "Customers ask how you handle security. Publish one link that shows the facts, and take it down
+  whenever you like. It shows numbers only: no files, no gaps, no names."
+- **Show:** Admin page, Trust page card: the exact preview first, then Publish. Open the link in a private
+  window with no sign-in: controls tracked, how many meet requirements, how many an auditor has locked,
+  each framework's progress. Press Unpublish and reload the link: it no longer works.
+- **Honest detail:** it is off until someone publishes it, and the link is a long random address, so only
+  people you send it to can open it. The page is marked so search engines skip it.
+- **Proof:** tests check that a planted file name, its text, the words "gap" and "task", and the link
+  itself never appear in what the public receives.
+- **A mistake worth knowing about:** the first release failed to start because a database change reused an
+  old reference number. The old version kept running and no data was touched. A new check now stops that
+  before release.
 
 ### 3 Nov 2026: Policy templates that meet the rules (PR 58)
 - **Say:** "No policy yet? Start from a template. The numbers in it are not guesses: each one is the
