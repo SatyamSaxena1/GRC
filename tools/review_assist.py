@@ -38,6 +38,11 @@ Use ONLY the text you are given. If the given text does not settle a point, say 
 rather than guessing or recalling the law from memory. Cite provisions by their ref (for example
 "Art. 26(6)").
 
+The RELATED PROVISIONS are context only. Each provision is drafted on its own, so NEVER fault the
+draft for not covering what a related provision says. Use them only to see whether they limit,
+extend or make an exception to THE PROVISION being drafted. Every concern must be about what THE
+PROVISION itself says. If the draft is faithful, say "yes" and leave the lists empty.
+
 Look for: a "must" the text does not contain; an exception, scope limit or cross-reference that the
 draft ignores; a condition or number the text does not state; an attribute no document could state;
 a requirement drafted as documentable when whether it is met depends on what actually happened.
@@ -135,8 +140,20 @@ def _unfence(raw: str) -> str:
     return re.sub(r"^```(?:json)?\s*|\s*```$", "", s) if s.startswith("```") else s
 
 
+_FILLER = {"", "none", "n/a", "cannot tell", "nothing", "no concerns", "no further concerns"}
+
+
+def _flat(value) -> list:
+    """Models sometimes nest a list inside the list, or send a bare string."""
+    if isinstance(value, (list, tuple)):
+        return [y for x in value for y in _flat(x)]
+    return [value]
+
+
 def _items(value) -> list[str]:
-    return [str(x).strip()[:400] for x in (value if isinstance(value, list) else []) if str(x).strip()][:5]
+    """At most five real items: nested lists flattened, filler such as "cannot tell" dropped."""
+    out = [str(x).strip()[:400] for x in _flat(value) if x is not None]
+    return [x for x in out if x.lower().rstrip(".") not in _FILLER][:5]
 
 
 def parse_critique(raw: str) -> dict:
@@ -158,13 +175,30 @@ def _draft_text(entry: dict) -> str:
     return yaml.safe_dump(entry.get("requirement"), sort_keys=False, allow_unicode=True, width=100)
 
 
+NEIGHBOUR_TAG = "(about a neighbouring provision, not this one) "
+
+
+def tag_neighbour_concerns(parsed: dict, ref: str, rel: list[dict]) -> dict:
+    """A small model often faults a draft for what the provision NEXT to it says, despite being told
+    not to. Whatever the model says, a concern that cites a related provision and never the one being
+    reviewed is tagged, so the reviewer sees at a glance that it is not about this provision."""
+    if "error" in parsed:
+        return parsed
+    others = [r["ref"] for r in rel if r["ref"] != ref]
+
+    def tag(text: str) -> str:
+        return NEIGHBOUR_TAG + text if ref not in text and any(o in text for o in others) else text
+
+    return {**parsed, **{k: [tag(t) for t in parsed[k]] for k in ("concerns", "missing_context", "suggested_changes")}}
+
+
 def critique(gateway, entry: dict, provision: dict, rel: list[dict], title: str) -> dict:
     user = (f"PROVISION {provision['ref']} of {title}:\n{provision['text']}\n\n"
             + ("RELATED PROVISIONS (fetched by id):\n"
                + "\n".join(f"- {r['ref']} ({r['why']}): {r['text']}" for r in rel) + "\n\n" if rel else "")
             + f"DRAFT:\n{_draft_text(entry)}")
     try:
-        return parse_critique(gateway.complete_json(CRITIC, user))
+        return tag_neighbour_concerns(parse_critique(gateway.complete_json(CRITIC, user)), provision["ref"], rel)
     except Exception as exc:  # noqa: BLE001 - advice is optional; the review goes on without it
         return {"error": f"the model could not be reached: {type(exc).__name__}"}
 
