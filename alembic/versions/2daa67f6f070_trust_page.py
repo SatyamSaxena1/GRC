@@ -3,7 +3,7 @@
 Additive and nullable: null means not published. organizations is not a tenant-owned table (it has no
 row level security), so the public route can find an organisation by token and then bind the tenant.
 
-Revision ID: b8c9d0e1f2a3
+Revision ID: 2daa67f6f070
 Revises: f7a8b9c0d1e2
 """
 
@@ -12,7 +12,7 @@ from __future__ import annotations
 import sqlalchemy as sa
 from alembic import op
 
-revision = "b8c9d0e1f2a3"
+revision = "2daa67f6f070"
 down_revision = "f7a8b9c0d1e2"
 branch_labels = None
 depends_on = None
