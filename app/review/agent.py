@@ -135,7 +135,7 @@ class RepoTools:
                     continue
                 for n, line in enumerate(target.read_text(encoding="utf-8", errors="ignore").splitlines(), 1):
                     if compiled.search(line[:1000]):
-                        hits.append(f"{target.relative_to(self.root)}:{n}: {line.strip()[:200]}")
+                        hits.append(f"{target.relative_to(self.root).as_posix()}:{n}: {line.strip()[:200]}")  # posix: same answer on every OS
                         if len(hits) >= SEARCH_MAX_HITS:
                             break
             except (OSError, ValueError):

@@ -8,3 +8,6 @@ entrypoint.sh   text eol=lf
 # Source texts are hashed (sources/*/SOURCE.md, ADR-029): store and check out the
 # exact bytes, or a CRLF conversion silently breaks every recorded sha256.
 sources/**      -text
+
+# The vendored NIST OSCAL schema is pinned by sha256 (tests/test_oscal_export.py): exact bytes on every OS.
+tests/fixtures/oscal/**  -text
