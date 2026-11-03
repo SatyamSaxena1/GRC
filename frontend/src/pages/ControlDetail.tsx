@@ -98,14 +98,18 @@ export function ControlDetailPage() {
 
   const isAuditor = isAuditorIdentity(identity);
 
+  const [submitting, setSubmitting] = useState(false);
   const submit = async () => {
     setError(null);
+    setSubmitting(true);
     try {
       await submitControl(id);
       control.reload();
       history.reload(); // the stepper's "submitted" step reads history, not control
     } catch (err) {
       setError(err instanceof ApiError ? String(err.detail) : (err as Error).message);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -161,7 +165,7 @@ export function ControlDetailPage() {
         </div>
         <div className="record-actions">
           {!isAuditor && !data.locked && (
-            <button className="btn btn-primary" onClick={submit}>Submit for auditor review</button>
+            <button className="btn btn-primary" onClick={submit} disabled={submitting}>Submit for auditor review</button>
           )}
           <PageTour id="control-detail" steps={buildTourSteps(isAuditor)} />
         </div>
@@ -249,7 +253,7 @@ export function ControlDetailPage() {
 
       {tab === "overview" && (
         <GapExceptions framework={data.framework} clause={data.clause} isAuditor={isAuditor}
-                       canRequest={!isAuditor && identity?.role !== "COMPLIANCE_VIEWER"} />
+                       canRequest={!isAuditor && !data.locked && identity?.role !== "COMPLIANCE_VIEWER"} />
       )}
 
       {tab === "review" && isAuditor && (
@@ -375,7 +379,7 @@ function AuditorLinkPanel({
           <input placeholder={overrides ? `required: you are overriding the rules' ${rules} verdict` : "remarks (optional)"}
                  value={reason} onChange={(e) => setReason(e.target.value)} />
           <button className="btn btn-primary" disabled={busy || needsReason} onClick={() => act(() => recordVerdict(linkId, choice, reason))}>
-            Record verdict
+            {choice === "COMPLIANT" ? "Record verdict and lock" : "Record verdict"}
           </button>
           <button className="btn" disabled={busy || needsReason} onClick={() => act(() => lockLink(linkId, choice, reason))}>
             Lock

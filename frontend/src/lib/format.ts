@@ -1,7 +1,7 @@
 // Turns the backend's raw field values into wording a person can act on. Shared by
 // the evidence page and the gaps queue so the same gap never reads two ways.
 
-const ACRONYMS = new Set(["mfa", "ip"]); // the only ones content-pack attribute names use today
+const ACRONYMS = new Set(["mfa", "ip", "ai"]); // the only ones content-pack attribute names use today
 
 export const humanize = (name: string) => {
   const t = name.split("_").map((w) => (ACRONYMS.has(w) ? w.toUpperCase() : w)).join(" ");
@@ -13,6 +13,7 @@ export const prettyValue = (v: unknown): string => {
   if (v === null || v === undefined || v === "") return "—";
   if (Array.isArray(v)) return v.map(String).join(", ");
   const t = String(v);
+  if (t === "True" || t === "False") return t === "True" ? "Yes" : "No"; // Python bool reprs
   return /^\[.*\]$/.test(t) ? t.slice(1, -1).replace(/['"]/g, "").replace(/,\s*/g, ", ") : t;
 };
 

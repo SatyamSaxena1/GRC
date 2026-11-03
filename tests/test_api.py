@@ -170,6 +170,20 @@ def test_submitting_a_control_appears_in_its_own_history(client, bootstrap, uplo
     assert any(e["action"] == "CONTROL_SUBMITTED" for e in history)
 
 
+def test_submitting_twice_records_one_event(client, bootstrap, upload):
+    """A repeat click (or retry) must not stack duplicate submissions in the audit trail."""
+    org_id, _ = bootstrap(client)
+    upload(client, org_id)
+    headers = {"authorization": f"org:{org_id}"}
+    control_id = next(c["id"] for c in client.get("/controls", headers=headers).json())
+
+    for _ in range(3):
+        assert client.post(f"/controls/{control_id}/submit", headers=headers).status_code == 200
+
+    history = client.get(f"/controls/{control_id}/history", headers=headers).json()
+    assert sum(e["action"] == "CONTROL_SUBMITTED" for e in history) == 1
+
+
 def test_tasks_are_created_per_gap(client, bootstrap, upload):
     org_id, _ = bootstrap(client)
     upload(client, org_id)
