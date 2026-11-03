@@ -226,7 +226,7 @@ function ClientCard({
   // Working a client means carrying its engagement id on every request; the
   // ordinary auditee-shaped screens then scope themselves to it server-side.
   const openClient = () => {
-    if (!identity || identity.kind === "oidc") return;
+    if (!identity) return;
     setIdentity({ ...identity, engagementId: engagement.id, label: `${engagement.org_name} (auditor)` });
     navigate("/controls");
   };
