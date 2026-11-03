@@ -14,7 +14,8 @@ on screen, and where the proof is. Add to the top. Say only what the live site d
 | Users page: see team, change roles, switch someone off | **Done** (PR 52, ADR-036) |
 | Controls page fed by every source, not only GitHub | **Done** (PR 56, ADR-037): 3 controls became 11 |
 | In-app connector setup | Open (needs a design for stored secrets first) |
-| Fuller framework catalogue, policy templates | Open |
+| Fuller framework catalogue | Open |
+| Policy templates | **Started** (PR 58, ADR-038): three templates whose figures come from the rules |
 | Vendor risk, trust centre, questionnaire answers | Open |
 | AI help on the live site | **Working for demos** (model on a personal machine, reached through a tunnel; not for real use) |
 
@@ -22,6 +23,16 @@ Where we lead: the verdict comes from fixed rules, never from a model; a named h
 step is in a tamper-evident log; the DPDP Act pack for India.
 
 ## Entries
+
+### 3 Nov 2026: Policy templates that meet the rules (PR 58)
+- **Say:** "No policy yet? Start from a template. The numbers in it are not guesses: each one is the
+  strictest figure any framework asks for, so a policy written from it passes."
+- **Show:** Evidence page, under the file picker: three template buttons. Download the password policy and
+  point at "at least 14 characters" and multi-factor for administrative and remote access. Fill in the
+  blank dates, upload it, and watch the controls pick it up.
+- **Honest detail:** the figure is 14, not the 12 most people expect, because one framework asks for 14.
+  If a framework changes its rule, the template changes with it.
+- **Proof:** every figure is checked by the same checker the platform uses on real documents.
 
 ### 3 Nov 2026: One piece of evidence, many controls (PR 56)
 - **Say:** "The same AWS, Microsoft 365 and HR evidence now counts toward ISO 27001, SOC 2 and PCI DSS as well
