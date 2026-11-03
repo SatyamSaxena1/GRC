@@ -152,7 +152,7 @@ def test_the_view_is_labelled_advisory_and_says_when_the_reviewer_is_the_drafter
     text = ra.render(ra.assist(_entry(), _provision(), PROVISIONS, CFG, set(), StubGateway(CRITIQUE)), drafter="critic-model")
     assert "advisory: nothing here accepts or changes the draft" in text
     assert "faithful to the text? partly" in text and "same model as the drafter" in text
-    assert "concern: Art. 26(6) says" in text and "missing context: Art. 26(5)" in text
+    assert "concern: Art. 26(6) says" in text and f"missing context: {ra.NEIGHBOUR_TAG}Art. 26(5) on monitoring" in text
 
 
 # ------------------------------------------------------------------ the critique has no power
@@ -207,3 +207,30 @@ def test_review_without_assist_behaves_exactly_as_before(tmp_path):
     counts = rev.review("eu-ai-act", ask=lambda _: "a", drafts=drafts, content_dir=content_dir)
     (entry,) = yaml.safe_load((drafts / "eu-ai-act.yaml").read_text(encoding="utf-8"))["drafts"]
     assert counts == {"accepted": 1} and "assist" not in entry
+
+
+def test_nested_lists_and_filler_items_are_cleaned_up():
+    parsed = ra.parse_critique(json.dumps({
+        "faithful": "yes", "concerns": [["the notice rule is not captured"]], "missing_context": ["cannot tell", "None."],
+        "suggested_changes": "add the notice rule"}))
+    assert parsed["concerns"] == ["the notice rule is not captured"]  # not '["..."]'
+    assert parsed["missing_context"] == [] and parsed["suggested_changes"] == ["add the notice rule"]
+
+
+def test_the_model_is_told_not_to_fault_a_draft_for_what_a_neighbouring_provision_says():
+    prompt = " ".join(ra.CRITIC.split())
+    assert "context only" in prompt and "NEVER fault the draft" in prompt and "THE PROVISION itself" in prompt
+
+
+def test_a_concern_that_only_cites_a_neighbouring_provision_is_tagged_so_the_reviewer_can_see_it():
+    answer = {"faithful": "no",
+              "concerns": ["The draft omits the prior authorisation in Art. 26(5).",       # about the neighbour
+                           "Art. 26(6) says 'at least six months' but the draft does not.",  # about this provision
+                           "Compare Art. 26(5) with Art. 26(6): the exception is missing."],  # cites both: stays untagged
+              "missing_context": ["Art. 26(7)"], "suggested_changes": ["Add what Art. 26(5) requires."]}
+    result = ra.assist(_entry(), _provision(), PROVISIONS, CFG, set(), StubGateway(answer))["critique"]
+    tag = ra.NEIGHBOUR_TAG
+    assert result["concerns"][0].startswith(tag) and not result["concerns"][1].startswith(tag)
+    assert not result["concerns"][2].startswith(tag)
+    assert result["missing_context"][0].startswith(tag) and result["suggested_changes"][0].startswith(tag)
+    assert result["faithful"] == "no"  # the model's own verdict is passed through, not rewritten
