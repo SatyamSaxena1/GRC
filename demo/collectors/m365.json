@@ -1,0 +1,6 @@
+{
+  "attributes": {
+    "privileged_access_mfa": true,
+    "access_logging_enabled": true
+  }
+}
