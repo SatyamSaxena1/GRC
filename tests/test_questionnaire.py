@@ -70,7 +70,7 @@ def synced(client, bootstrap, monkeypatch):
 
 
 def test_a_passing_control_answers_yes_with_the_rules_sentence_when_no_model(client, synced, monkeypatch):
-    monkeypatch.setattr(ingest, "_tool_gateway", lambda: Gateway(available=False))
+    monkeypatch.setattr(ingest, "_gateway", lambda: Gateway(available=False))
     body = _ask(client, synced, "Do you require multi-factor authentication for remote access?").json()
     assert body["status"] == "YES" and body["wording"] == "rules"
     assert {(c["framework"], c["clause"]) for c in body["controls"]} >= {("PCI-DSS", "8.4.3")}
@@ -78,7 +78,7 @@ def test_a_passing_control_answers_yes_with_the_rules_sentence_when_no_model(cli
 
 
 def test_an_unrelated_question_is_not_evidenced_and_cites_nothing(client, synced, monkeypatch):
-    monkeypatch.setattr(ingest, "_tool_gateway", lambda: Gateway(json.dumps({"answer": "Yes, absolutely."})))
+    monkeypatch.setattr(ingest, "_gateway", lambda: Gateway(json.dumps({"answer": "Yes, absolutely."})))
     body = _ask(client, synced, "Do you allow pets in the office?").json()
     assert body["status"] == "NOT_EVIDENCED" and body["controls"] == [] and body["wording"] == "rules"
     assert not body["answer"].lower().startswith("yes")  # the model was never asked, so it could not overclaim
@@ -86,14 +86,14 @@ def test_an_unrelated_question_is_not_evidenced_and_cites_nothing(client, synced
 
 def test_the_model_may_word_a_supported_answer(client, synced, monkeypatch):
     reply = json.dumps({"answer": "Yes. Multi-factor authentication is required for remote access."})
-    monkeypatch.setattr(ingest, "_tool_gateway", lambda: Gateway(reply))
+    monkeypatch.setattr(ingest, "_gateway", lambda: Gateway(reply))
     body = _ask(client, synced, "Do you require multi-factor authentication for remote access?").json()
     assert body["wording"] == "model" and body["answer"].startswith("Yes. Multi-factor")
 
 
 @pytest.mark.parametrize("reply", ["not json at all", json.dumps({"answer": ""}), RuntimeError("model down")])
 def test_a_broken_model_falls_back_to_the_rules_sentence(client, synced, monkeypatch, reply):
-    monkeypatch.setattr(ingest, "_tool_gateway", lambda: Gateway(reply))
+    monkeypatch.setattr(ingest, "_gateway", lambda: Gateway(reply))
     body = _ask(client, synced, "Do you require multi-factor authentication for remote access?").json()
     assert body["wording"] == "rules" and body["status"] == "YES"
 
@@ -102,7 +102,7 @@ def test_a_model_that_contradicts_the_status_is_discarded(client, bootstrap, mon
     _sync(client, bootstrap, monkeypatch, "aws")  # access logging is a gap: PARTIAL, never YES
     org = _first_org(client)
     reply = json.dumps({"answer": "Yes, we log everything perfectly."})
-    monkeypatch.setattr(ingest, "_tool_gateway", lambda: Gateway(reply))
+    monkeypatch.setattr(ingest, "_gateway", lambda: Gateway(reply))
     body = _ask(client, org, "Do you keep audit logs?").json()
     assert body["status"] == "PARTIAL" and body["wording"] == "rules" and not body["answer"].lower().startswith("yes")
 
@@ -110,8 +110,25 @@ def test_a_model_that_contradicts_the_status_is_discarded(client, bootstrap, mon
 def test_it_needs_a_signed_in_caller_and_audits_only_counts(client, synced, monkeypatch, db):
     from app.models import AuditEvent
 
-    monkeypatch.setattr(ingest, "_tool_gateway", lambda: Gateway(available=False))
+    monkeypatch.setattr(ingest, "_gateway", lambda: Gateway(available=False))
     assert client.post("/questionnaire/answer", json={"question": "Do you use MFA?"}).status_code in (401, 422)
     _ask(client, synced, "Do you require multi-factor authentication for our confidential customer Initech?")
     event = db.query(AuditEvent).filter_by(action="QUESTIONNAIRE_ANSWERED").one()
     assert "Initech" not in json.dumps(event.detail) and event.detail["status"] == "YES"
+
+
+def test_generic_words_do_not_pull_in_unrelated_controls():
+    controls = [
+        {"framework": "PCI-DSS", "clause": "8.2.5", "title": "Terminated users' access is revoked", "text": "Access for terminated users is immediately revoked."},
+        {"framework": "ISO-27001", "clause": "A.8.2", "title": "Privileged access rights", "text": "The allocation and use of privileged access rights is restricted and managed."},
+        {"framework": "PCI-DSS", "clause": "6.5.1", "title": "Change management", "text": "Changes to system components in the production environment follow a process, and system activity is recorded."},
+        {"framework": "ISO-27001", "clause": "A.8.15", "title": "Logging", "text": "Logs that record activities, exceptions and faults are produced and stored."},
+    ]
+    assert [c["clause"] for c in q.match("Do you revoke access promptly when employees leave?", controls)] == ["8.2.5"]
+    assert [c["clause"] for c in q.match("Do you keep audit logs of system activity?", controls)] == ["A.8.15"]
+
+
+def test_a_barely_related_control_cannot_change_the_status():
+    strong = {"framework": "PCI-DSS", "clause": "8.4.3", "title": "MFA for remote network access", "text": "Multi-factor authentication is implemented for remote access."}
+    weak = {"framework": "PCI-DSS", "clause": "8.4.1", "title": "Administrative console controls", "text": "Multi-factor authentication is implemented for administrative access."}
+    assert [c["clause"] for c in q.match("Do you require multi-factor authentication for remote access?", [strong, weak])] == ["8.4.3"]

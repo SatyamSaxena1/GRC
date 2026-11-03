@@ -45,16 +45,24 @@ SYNONYMS = {
     "password": ["password", "authentication"], "passwords": ["password", "authentication"],
     "incident": ["breach", "incident"], "breach": ["breach", "incident"],
     "patch": ["vulnerability"], "pentest": ["vulnerability"], "vulnerabilities": ["vulnerability"],
+    "leave": ["terminated", "revoked"], "leaves": ["terminated", "revoked"], "leavers": ["terminated", "revoked"],
     "backup": ["backup"], "backups": ["backup"], "privileged": ["privileged", "administrative"],
     "admin": ["privileged", "administrative"], "retention": ["retained", "retention"],
 }
 
 
+# Words that appear in nearly every control: matching on them pulls in unrelated controls and lowers a
+# status for the wrong reason ("access" alone once dragged an access-revocation answer to PARTIAL).
+GENERIC = {"access", "system", "information", "security", "activity", "control", "organisation", "user",
+           "service", "process", "requirement", "implemented", "ensure"}
+
+
 def _stem(word: str) -> str:
     for suffix in ("ing", "ed", "es", "s"):
         if len(word) > len(suffix) + 3 and word.endswith(suffix):
-            return word[: -len(suffix)]
-    return word
+            word = word[: -len(suffix)]
+            break
+    return word[:-1] if len(word) > 4 and word.endswith("e") else word  # revoke / revoked meet at "revok"
 
 
 def tokens(text: str) -> set[str]:
@@ -64,7 +72,7 @@ def tokens(text: str) -> set[str]:
 def expand(question: str) -> set[str]:
     base = tokens(question)
     extra = {t for w in re.findall(r"[a-z0-9]+", question.lower()) for t in SYNONYMS.get(w, [])}
-    return base | {_stem(t) for t in extra}
+    return (base | {_stem(t) for t in extra}) - {_stem(g) for g in GENERIC}
 
 
 def match(question: str, controls: list[dict], limit: int = 3) -> list[dict]:
@@ -78,7 +86,10 @@ def match(question: str, controls: list[dict], limit: int = 3) -> list[dict]:
         if len(in_title) >= 1 or len(in_title | in_body) >= 2:
             scored.append((score, c))
     scored.sort(key=lambda s: (-s[0], s[1]["framework"], s[1]["clause"]))
-    return [c for _, c in scored[:limit]]
+    if not scored:
+        return []
+    cutoff = scored[0][0] * 0.6  # a control far less relevant than the best one must not change the status
+    return [c for score, c in scored if score >= cutoff][:limit]
 
 
 def status_of(verdicts: list[str]) -> str:
@@ -133,7 +144,7 @@ class QuestionIn(BaseModel):
 def answer(body: QuestionIn, actor: Actor = Depends(current_actor), db: Session = Depends(get_session)):
     if not actor.org_id:
         raise HTTPException(400, "no organisation selected")
-    from app.ingest import _tool_gateway
+    from app.ingest import _gateway
 
     controls = analytics_router.control_details(actor, db)
     matched = match(body.question, controls)
@@ -142,7 +153,9 @@ def answer(body: QuestionIn, actor: Actor = Depends(current_actor), db: Session 
              for c in matched]
     status = status_of([c["verdict"] for c in cites])
 
-    gateway, wording = _tool_gateway(), None
+    # The extraction gateway, not the tool-calling one: this is a plain text-in, JSON-out job, and LM Studio
+    # rejects the tool gateway's json_object mode (a 400 that the fallback hid until a live check).
+    gateway, wording = _gateway(), None
     if cites and gateway.available():
         wording = model_wording(gateway, body.question, status, cites)
     audit_log.record(db, actor=actor.label(), request_id=actor.request_id, action="QUESTIONNAIRE_ANSWERED",
