@@ -16,12 +16,21 @@ on screen, and where the proof is. Add to the top. Say only what the live site d
 | In-app connector setup | Open (needs a design for stored secrets first) |
 | Fuller framework catalogue, policy templates | Open |
 | Vendor risk, trust centre, questionnaire answers | Open |
-| AI help on the live site | Open (the model runs on a personal machine; needs a stable address) |
+| AI help on the live site | **Working for demos** (model on a personal machine, reached through a tunnel; not for real use) |
 
 Where we lead: the verdict comes from fixed rules, never from a model; a named human signs and locks; every
 step is in a tamper-evident log; the DPDP Act pack for India.
 
 ## Entries
+
+### 3 Nov 2026: AI help works on the live site
+- **Say:** "Ask a question about any gap and the assistant explains it in plain words, using only what is
+  already in the workspace. The decision still comes from fixed rules, never from the assistant."
+- **Show:** Gaps page. The sidebar light reads "Model connected". Press Explain on a gap. After a short
+  wait the answer says what is missing, why it matters, and what the policy should state.
+- **Be honest on screen:** the first answer takes around 20 seconds. The model runs on a separate machine
+  for the demo. If it is switched off the buttons say so and nothing else breaks.
+- **Proof:** the live health check reports the model as available.
 
 ### 3 Nov 2026: Switch someone off without losing their history (PR 52)
 - **Say:** "An admin can now see everyone who has access, change a role, or switch a person off. They lose
