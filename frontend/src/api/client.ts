@@ -130,6 +130,21 @@ export const createEngagement = (audit_firm_id: string, org_id: string, framewor
 export const closeEngagement = (engagementId: string) =>
   request<{ id: string; status: string }>("POST", `/admin/engagements/${engagementId}/close`);
 
+/** The vendor register (ADR-042): tier and review status come from fixed rules on the server. */
+export type Vendor = {
+  id: string; name: string; service: string; data_access: string; criticality: string; has_attestation: boolean;
+  owner_user_id: string | null; owner_email: string | null; status: "ACTIVE" | "OFFBOARDED"; notes: string;
+  last_reviewed_at: string | null; tier: "LOW" | "MEDIUM" | "HIGH"; points: number; review_every_days: number;
+  review: { state: "NEVER_REVIEWED" | "OVERDUE" | "DUE_SOON" | "CURRENT" | "OFFBOARDED"; due: string | null };
+};
+export type VendorIn = { name: string; service: string; data_access: string; criticality: string; has_attestation: boolean };
+export const listVendors = () => request<Vendor[]>("GET", "/vendors");
+export const addVendor = (v: VendorIn) => request<Vendor>("POST", "/vendors", { json: v });
+export const updateVendor = (id: string, patch: Partial<VendorIn> & { status?: string }) =>
+  request<Vendor>("PATCH", `/vendors/${id}`, { json: patch });
+export const reviewVendor = (id: string, note: string) =>
+  request<Vendor>("POST", `/vendors/${id}/review`, { json: { note } });
+
 /** The weekly compliance report (ADR-041): the same figures the cron posts to the webhook. */
 export type WeeklyReport = {
   organisation: string; text: string;

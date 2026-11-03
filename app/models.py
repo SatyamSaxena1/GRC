@@ -42,6 +42,25 @@ class Organization(Base):
     trust_token: Mapped[str | None] = mapped_column(String, unique=True, default=None)
 
 
+class Vendor(Base):
+    """A third party the organisation depends on (ADR-042). Tier and review status are derived from these
+    columns by fixed rules at read time (app/vendors.py), never stored."""
+    __tablename__ = "vendors"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"))
+    name: Mapped[str]
+    service: Mapped[str] = mapped_column(String, default="")
+    data_access: Mapped[str] = mapped_column(String, default="NONE")  # NONE | INTERNAL | PERSONAL | SENSITIVE
+    criticality: Mapped[str] = mapped_column(String, default="LOW")  # LOW | MEDIUM | HIGH
+    has_attestation: Mapped[bool] = mapped_column(default=False)  # a current SOC 2 / ISO 27001 report on file
+    owner_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"), default=None)
+    status: Mapped[str] = mapped_column(String, default="ACTIVE")  # ACTIVE | OFFBOARDED
+    last_reviewed_at: Mapped[datetime | None] = mapped_column(default=None)
+    notes: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(default=_now)
+    created_by: Mapped[str] = mapped_column(String, default="")
+
+
 class AuditFirm(Base):
     __tablename__ = "audit_firms"
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
