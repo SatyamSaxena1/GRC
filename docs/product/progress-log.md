@@ -12,7 +12,7 @@ on screen, and where the proof is. Add to the top. Say only what the live site d
 | Switching role silently returned the old user | **Fixed** (PR 49) |
 | Firm admin could not open a client | **Fixed** (PR 51) |
 | Users page: see team, change roles, switch someone off | **Done** (PR 52, ADR-036) |
-| Controls page fed by every source, not only GitHub | Open |
+| Controls page fed by every source, not only GitHub | **Done** (PR 56, ADR-037): 3 controls became 11 |
 | In-app connector setup | Open (needs a design for stored secrets first) |
 | Fuller framework catalogue, policy templates | Open |
 | Vendor risk, trust centre, questionnaire answers | Open |
@@ -22,6 +22,16 @@ Where we lead: the verdict comes from fixed rules, never from a model; a named h
 step is in a tamper-evident log; the DPDP Act pack for India.
 
 ## Entries
+
+### 3 Nov 2026: One piece of evidence, many controls (PR 56)
+- **Say:** "The same AWS, Microsoft 365 and HR evidence now counts toward ISO 27001, SOC 2 and PCI DSS as well
+  as the Indian DPDP Act. Collect once, see every framework move."
+- **Show:** Controls page before and after pressing Collect evidence on the three sources: 3 controls become
+  11, with a mix of Pass and Partial. Open one: its evidence is the same file seen on the DPDP page.
+- **Honest detail:** a check that shows only one side of a clause is marked Partial and can never read as a
+  full pass. A clause no snapshot covers is simply left out.
+- **Side effect to know:** a workspace that has not collected from any source now shows lower PCI readiness,
+  because four connector-based clauses count as not yet evidenced.
 
 ### 3 Nov 2026: AI help works on the live site
 - **Say:** "Ask a question about any gap and the assistant explains it in plain words, using only what is
