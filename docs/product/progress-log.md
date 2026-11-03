@@ -18,6 +18,7 @@ on screen, and where the proof is. Add to the top. Say only what the live site d
 | Policy templates | **Started** (PR 58, ADR-038): three templates whose figures come from the rules |
 | Trust page | **Done** (PR 60/61, ADR-039): opt-in, counts only, revocable |
 | Questionnaire answers | **Done** (PR 63, 64, ADR-040): status from verdicts, model only words it |
+| Weekly report | **Done** (PR 66, ADR-041): counts only, readable in the app, to a chat webhook on Mondays |
 | Vendor risk | Open |
 | AI help on the live site | **Working for demos** (model on a personal machine, reached through a tunnel; not for real use) |
 
@@ -25,6 +26,18 @@ Where we lead: the verdict comes from fixed rules, never from a model; a named h
 step is in a tamper-evident log; the DPDP Act pack for India.
 
 ## Entries
+
+### 3 Nov 2026: A weekly report that writes itself (PR 66)
+- **Say:** "Every Monday, one short message tells your team where compliance stands and what changed:
+  how many controls are met, how many gaps were raised and closed, what was collected, what an auditor
+  locked. It contains numbers only, so it is safe in a shared chat."
+- **Show:** Admin page, Weekly report card: the sentence, then Download. Point at "this week: new gaps,
+  resolved, evidence collected, controls locked".
+- **Honest detail:** posting to Slack or Discord needs one setting, a webhook address. Until it is set the
+  report is read and downloaded in the app. It does not say how many tasks were finished, because tasks
+  do not yet record when they were closed.
+- **Proof:** tests check the counts follow the seven-day window, that no file name or email appears, and
+  that running it twice in a week sends one message.
 
 ### 3 Nov 2026: Answer a customer's security questionnaire (PR 63, 64)
 - **Say:** "Paste the customer's questions. Each one is answered from your own controls, with the controls

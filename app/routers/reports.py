@@ -28,7 +28,7 @@ def weekly(actor: Actor = Depends(current_actor), db: Session = Depends(get_sess
     report = reports.build(db, _org(actor, db))
     return {**report, "text": reports.text(report),
             "delivery": {"webhook_configured": notify.enabled(),
-                         "schedule": os.environ.get("WEEKLY_REPORT_SCHEDULE", "Mondays 07:30 IST")}}
+                         "schedule": os.environ.get("WEEKLY_REPORT_SCHEDULE", "Mondays 07:15 IST")}}
 
 
 @router.get("/weekly.md", response_class=PlainTextResponse)
