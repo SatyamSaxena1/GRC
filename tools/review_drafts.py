@@ -8,6 +8,11 @@ with its mappings re-marked source: EXPERT (a person has now vouched for them) a
 source_ref naming the exact provision and its sha256. A "not documentable" draft is either
 confirmed, which records the omission in the pack header so it is never silently dropped, or
 overridden by writing the requirement by hand in the editor.
+
+    python -m tools.review_drafts eu-ai-act --assist
+
+adds advisory help beside each draft (tools/review_assist.py, ADR-035): mechanical checks, the
+provisions it cites fetched by id, and a sceptical model critique. It never accepts or changes a draft.
 """
 
 from __future__ import annotations
@@ -22,6 +27,7 @@ from pathlib import Path
 import yaml
 
 from app.content.load import CONTENT_DIR, Requirement
+from tools import review_assist
 from tools.ingest_source import DRAFTS, FRAMEWORKS, SOURCES, read_provisions
 
 LEFT_OUT = "# Left out (reviewed as not documentable, ADR-016 admission test):"
@@ -98,12 +104,19 @@ def _show(entry: dict, provision: dict) -> None:
             print(f"!! proposes new artefact type(s): {entry['new_artefact_types']}")
 
 
+def _pack_clauses(pack: Path) -> set[str]:
+    if not pack.exists():
+        return set()
+    return {r["clause"] for r in (yaml.safe_load(pack.read_text(encoding="utf-8")) or {}).get("requirements") or []}
+
+
 def review(framework: str, ask=input, drafts: Path = DRAFTS, content_dir: Path = CONTENT_DIR,
-           sources: Path = SOURCES, edit=_edit) -> dict:
+           sources: Path = SOURCES, edit=_edit, assist: bool = False, gateway=None) -> dict:
     path = drafts / f"{framework}.yaml"
     doc = yaml.safe_load(path.read_text(encoding="utf-8"))
     pack = content_dir / FRAMEWORKS[framework]["pack"]
     provisions = {p["id"]: p for p in read_provisions(framework, sources)}
+    provisions_by_id = provisions
     counts: dict[str, int] = {}
     for entry in doc["drafts"]:
         if entry["status"] != "pending":
@@ -113,6 +126,11 @@ def review(framework: str, ask=input, drafts: Path = DRAFTS, content_dir: Path =
             print(f"\n{entry['ref']}: source text changed since drafting; re-draft it. Skipped.")
             continue
         _show(entry, provision)
+        if assist:
+            # Advice, stored beside the draft and shown labelled. Nothing below reads it.
+            entry["assist"] = review_assist.assist(entry, provision, provisions_by_id, FRAMEWORKS[framework],
+                                                   _pack_clauses(pack), gateway)
+            print(review_assist.render(entry["assist"], drafter=str(doc.get("model", ""))))
         documentable = entry.get("verdict_basis") == "documentable"
         options = "[a]ccept [e]dit [r]eject [s]kip [q]uit" if documentable \
             else "[c]onfirm omission [e]dit (write it anyway) [s]kip [q]uit"
@@ -154,7 +172,17 @@ def review(framework: str, ask=input, drafts: Path = DRAFTS, content_dir: Path =
 def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(prog="python -m tools.review_drafts")
     ap.add_argument("framework", choices=FRAMEWORKS)
-    print(review(ap.parse_args(argv).framework))
+    ap.add_argument("--assist", action="store_true",
+                    help="show mechanical checks, related provisions and a model critique beside each draft")
+    args = ap.parse_args(argv)
+    gateway = None
+    if args.assist:
+        from app.ai.provider import make_gateway
+        gateway = make_gateway(model=os.environ.get("REVIEW_ASSIST_MODEL") or None)
+        if not gateway.available():
+            print(f"model {gateway.model!r} is not available: showing mechanical checks only")
+            gateway = None
+    print(review(args.framework, assist=args.assist, gateway=gateway))
 
 
 if __name__ == "__main__":
