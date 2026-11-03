@@ -1,0 +1,28 @@
+{
+  "attributes": {
+    "repositories_in_scope": 3,
+    "default_branch_protected": true,
+    "required_approving_reviews": 1,
+    "stale_reviews_dismissed": false,
+    "admins_can_bypass": false,
+    "force_push_allowed_on_default": false,
+    "merges_in_period": 42,
+    "merges_without_independent_approval": 3,
+    "merges_with_failing_or_missing_checks": 1,
+    "direct_pushes_to_default": 0,
+    "ai_assisted_merges": 9,
+    "ai_assisted_merges_without_independent_approval": 1,
+    "gate_path_merges": 4,
+    "gate_path_merges_without_two_independent_approvals": 1,
+    "gate_files_removed": 0,
+    "production_deployments": 11,
+    "deployments_not_from_default_branch": 0,
+    "deployments_of_unreviewed_changes": 1
+  },
+  "exceptions": [
+    {"kind": "MERGE_WITHOUT_INDEPENDENT_APPROVAL", "repo": "demo-org/payments-api", "ref": "PR #214", "url": "https://example.invalid/demo-org/payments-api/pull/214", "at": "2026-10-03T09:12:00Z", "author": "dev-a", "ai_assisted": false, "reasons": ["approved only by the author's pair, who also committed to the branch"]},
+    {"kind": "MERGE_WITHOUT_INDEPENDENT_APPROVAL", "repo": "demo-org/ledger", "ref": "PR #88", "url": "https://example.invalid/demo-org/ledger/pull/88", "at": "2026-10-11T15:40:00Z", "author": "dev-b", "ai_assisted": true, "reasons": ["no approving review at the head commit"]},
+    {"kind": "DEPLOY_OF_UNREVIEWED_CHANGE", "repo": "demo-org/payments-api", "ref": "deploy 2026-10-19", "url": "https://example.invalid/demo-org/payments-api/deployments/19", "at": "2026-10-19T22:05:00Z", "author": "release-bot", "ai_assisted": false, "reasons": ["the deployed commit was merged without review"]}
+  ],
+  "exceptions_left_out": 0
+}

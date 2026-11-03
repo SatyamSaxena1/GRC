@@ -1,0 +1,8 @@
+{
+  "attributes": {
+    "encryption_at_rest": true,
+    "privileged_access_mfa": true,
+    "access_logging_enabled": false,
+    "backup_enabled": true
+  }
+}
