@@ -4,6 +4,12 @@
 // OIDC client library for what is a handful of calls.
 
 const VERIFIER_KEY = "grc.oidc.code_verifier";
+const SIGNED_OUT_KEY = "grc.oidc.signed_out";
+
+/** Call on sign-out: the next sign-in will ask the IdP for credentials again. */
+export function markSignedOut(): void {
+  localStorage.setItem(SIGNED_OUT_KEY, "1");
+}
 
 function base64url(bytes: ArrayBuffer): string {
   return btoa(String.fromCharCode(...new Uint8Array(bytes)))
@@ -34,6 +40,12 @@ export async function startLogin(hint?: { email: string }): Promise<void> {
   url.searchParams.set("scope", "openid email profile");
   url.searchParams.set("code_challenge", await challengeFor(verifier));
   url.searchParams.set("code_challenge_method", "S256");
+  if (localStorage.getItem(SIGNED_OUT_KEY)) {
+    // The IdP keeps its own session after our sign-out; without this it would sign the
+    // same person straight back in, so switching roles would silently return the old one.
+    url.searchParams.set("prompt", "login");
+    localStorage.removeItem(SIGNED_OUT_KEY);
+  }
   if (hint) {
     // Prefills the IdP's email box; the password is still typed by the person.
     url.searchParams.set("login_hint", hint.email);
