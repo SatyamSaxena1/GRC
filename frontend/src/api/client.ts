@@ -946,6 +946,12 @@ export async function downloadCheckpoint(): Promise<void> {
 }
 export const downloadAuditEvents = () => downloadFile("/audit/events.ndjson", "audit-events.ndjson");
 
+/** Policy starting points whose figures come from the framework rules (ADR-038). */
+export type PolicyTemplate = { id: string; title: string; evidence_type: string };
+export const listPolicyTemplates = () => request<PolicyTemplate[]>("GET", "/templates");
+export const downloadPolicyTemplate = (t: PolicyTemplate) =>
+  downloadFile(`/templates/${t.id}`, `${t.id}-policy-template.md`);
+
 // ---------------------------------------------------------------- export
 
 /** Triggers a browser download of an authenticated response. There is no
