@@ -176,3 +176,20 @@ requirements:
           # Our baseline: a change to CI, tests or ownership can weaken every later check,
           # so it needs two independent approvals (ADR-019 rule 2, ADR-020).
           - {attribute: gate_path_merges_without_two_independent_approvals, operator: "==", value: 0}
+
+  # Evidenced by a connector snapshot, not a document: the same facts DPDP reads from AWS. The
+  # mapping is our reading of the clause, with a stated baseline (ADR-037).
+  - clause: "CC7.2"
+    title: Monitoring of system components
+    text: >
+      The entity monitors system components and the operation of those components for anomalies that are indicative of malicious acts, natural disasters and errors affecting the entity's ability to meet its objectives.
+    evidence_requirements:
+      - artefact_type: AWS_SNAPSHOT
+        required_attributes: [access_logging_enabled]
+    mappings:
+      - uco: UCO-LOG-001
+        coverage: PARTIAL
+        confidence: 0.6
+        source: EXPERT
+        delta_conditions:
+          - {attribute: access_logging_enabled, operator: "==", value: true}

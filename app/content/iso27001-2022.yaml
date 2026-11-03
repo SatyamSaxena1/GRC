@@ -135,3 +135,54 @@ requirements:
           - {attribute: duplicate_public_keys, operator: "==", value: 0}
           # The cheap built-in checks are not the full weak-key corpus: say so when it did not run.
           - {attribute: full_corpus_checked, operator: "==", value: true}
+
+  # Evidenced by a connector snapshot, not a document: the same facts DPDP reads from Microsoft 365. The
+  # mapping is our reading of the clause, with a stated baseline (ADR-037).
+  - clause: "A.8.5"
+    title: Secure authentication
+    text: >
+      Secure authentication technologies and procedures are implemented based on access restrictions.
+    evidence_requirements:
+      - artefact_type: M365_SNAPSHOT
+        required_attributes: [privileged_access_mfa]
+    mappings:
+      - uco: UCO-IAM-012
+        coverage: FULL
+        confidence: 0.7
+        source: EXPERT
+        delta_conditions:
+          - {attribute: privileged_access_mfa, operator: "==", value: true}
+
+  # Evidenced by a connector snapshot, not a document: the same facts DPDP reads from AWS. The
+  # mapping is our reading of the clause, with a stated baseline (ADR-037).
+  - clause: "A.8.2"
+    title: Privileged access rights
+    text: >
+      The allocation and use of privileged access rights is restricted and managed.
+    evidence_requirements:
+      - artefact_type: AWS_SNAPSHOT
+        required_attributes: [privileged_access_mfa]
+    mappings:
+      - uco: UCO-IAM-012
+        coverage: PARTIAL
+        confidence: 0.6
+        source: EXPERT
+        delta_conditions:
+          - {attribute: privileged_access_mfa, operator: "==", value: true}
+
+  # Evidenced by a connector snapshot, not a document: the same facts DPDP reads from AWS. The
+  # mapping is our reading of the clause, with a stated baseline (ADR-037).
+  - clause: "A.8.15"
+    title: Logging
+    text: >
+      Logs that record activities, exceptions, faults and other relevant events are produced, stored, protected and analysed.
+    evidence_requirements:
+      - artefact_type: AWS_SNAPSHOT
+        required_attributes: [access_logging_enabled]
+    mappings:
+      - uco: UCO-LOG-001
+        coverage: PARTIAL
+        confidence: 0.6
+        source: EXPERT
+        delta_conditions:
+          - {attribute: access_logging_enabled, operator: "==", value: true}

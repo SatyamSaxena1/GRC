@@ -164,3 +164,71 @@ requirements:
           # Our baseline: a change to CI, tests or ownership can weaken every later check,
           # so it needs two independent approvals (ADR-019 rule 2, ADR-020).
           - {attribute: gate_path_merges_without_two_independent_approvals, operator: "==", value: 0}
+
+  # Evidenced by a connector snapshot, not a document: the same facts DPDP reads from AWS. The
+  # mapping is our reading of the clause, with a stated baseline (ADR-037).
+  - clause: "10.2.1"
+    title: Audit logs are enabled and active
+    text: >
+      Audit logs are enabled and active for all system components and cardholder data.
+    evidence_requirements:
+      - artefact_type: AWS_SNAPSHOT
+        required_attributes: [access_logging_enabled]
+    mappings:
+      - uco: UCO-LOG-001
+        coverage: PARTIAL
+        confidence: 0.6
+        source: EXPERT
+        delta_conditions:
+          - {attribute: access_logging_enabled, operator: "==", value: true}
+
+  # Evidenced by a connector snapshot, not a document: the same facts DPDP reads from AWS. The
+  # mapping is our reading of the clause, with a stated baseline (ADR-037).
+  - clause: "8.4.1"
+    title: MFA for administrative access
+    text: >
+      Multi-factor authentication is implemented for all non-console administrative access into the cardholder data environment.
+    evidence_requirements:
+      - artefact_type: AWS_SNAPSHOT
+        required_attributes: [privileged_access_mfa]
+    mappings:
+      - uco: UCO-IAM-012
+        coverage: PARTIAL
+        confidence: 0.6
+        source: EXPERT
+        delta_conditions:
+          - {attribute: privileged_access_mfa, operator: "==", value: true}
+
+  # Evidenced by a connector snapshot, not a document: the same facts DPDP reads from Microsoft 365. The
+  # mapping is our reading of the clause, with a stated baseline (ADR-037).
+  - clause: "8.4.3"
+    title: MFA for remote network access
+    text: >
+      Multi-factor authentication is implemented for all remote network access originating from outside the entity's network.
+    evidence_requirements:
+      - artefact_type: M365_SNAPSHOT
+        required_attributes: [privileged_access_mfa]
+    mappings:
+      - uco: UCO-IAM-012
+        coverage: FULL
+        confidence: 0.7
+        source: EXPERT
+        delta_conditions:
+          - {attribute: privileged_access_mfa, operator: "==", value: true}
+
+  # Evidenced by a connector snapshot, not a document: the same facts DPDP reads from the HR system. The
+  # mapping is our reading of the clause, with a stated baseline (ADR-037).
+  - clause: "8.2.5"
+    title: Terminated users' access is revoked
+    text: >
+      Access for terminated users is immediately revoked.
+    evidence_requirements:
+      - artefact_type: HRMS_SNAPSHOT
+        required_attributes: [terminated_users_with_active_accounts]
+    mappings:
+      - uco: UCO-IAM-020
+        coverage: FULL
+        confidence: 0.7
+        source: EXPERT
+        delta_conditions:
+          - {attribute: terminated_users_with_active_accounts, operator: "==", value: 0}

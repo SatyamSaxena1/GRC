@@ -56,3 +56,21 @@ def test_the_demo_files_are_obviously_fake_and_only_use_supported_attributes():
         urls = [r["url"] for r in data.get("exceptions", [])]
         assert all(u.split("/")[2].endswith(".invalid") for u in urls)
         assert all(r["repo"].startswith("demo-org/") for r in data.get("exceptions", []))
+
+
+# Which framework controls each connector snapshot is read against (ADR-037). The DPDP clause was
+# the only place these facts counted; the same evidence now also counts toward these controls.
+FRAMEWORK_CONTROLS = {
+    "aws": {("ISO-27001", "A.8.2"), ("ISO-27001", "A.8.15"), ("SOC-2", "CC7.2"),
+            ("PCI-DSS", "10.2.1"), ("PCI-DSS", "8.4.1")},
+    "m365": {("ISO-27001", "A.8.5"), ("PCI-DSS", "8.4.3")},
+    "hrms": {("PCI-DSS", "8.2.5")},
+}
+
+
+@pytest.mark.parametrize("source", list(FRAMEWORK_CONTROLS))
+def test_connector_evidence_also_counts_toward_framework_controls(client, bootstrap, monkeypatch, source):
+    _sync(client, bootstrap, monkeypatch, source)
+    with Session(db_module.engine) as s:
+        linked = {(l.framework, l.clause) for l in s.query(EvidenceControlLink).all()}
+    assert FRAMEWORK_CONTROLS[source] <= linked
