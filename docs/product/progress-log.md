@@ -17,13 +17,27 @@ on screen, and where the proof is. Add to the top. Say only what the live site d
 | Fuller framework catalogue | Open |
 | Policy templates | **Started** (PR 58, ADR-038): three templates whose figures come from the rules |
 | Trust page | **Done** (PR 60/61, ADR-039): opt-in, counts only, revocable |
-| Vendor risk, questionnaire answers | Open |
+| Questionnaire answers | **Done** (PR 63, 64, ADR-040): status from verdicts, model only words it |
+| Vendor risk | Open |
 | AI help on the live site | **Working for demos** (model on a personal machine, reached through a tunnel; not for real use) |
 
 Where we lead: the verdict comes from fixed rules, never from a model; a named human signs and locks; every
 step is in a tamper-evident log; the DPDP Act pack for India.
 
 ## Entries
+
+### 3 Nov 2026: Answer a customer's security questionnaire (PR 63, 64)
+- **Say:** "Paste the customer's questions. Each one is answered from your own controls, with the controls
+  named beside it. The Yes or No is decided by your verdicts, never by the AI. If you have no evidence, it
+  says so instead of guessing."
+- **Show:** Questionnaires page. Paste: multi-factor authentication for remote access, audit logs,
+  leavers, and one silly question (pets in the office). Watch answers appear one by one: Yes with the
+  PCI control that backs it, Partly for logging, Not yet evidenced for the silly one. Download the CSV.
+- **Honest detail:** these are drafts for a person to review. A question phrased oddly may miss and read as
+  not evidenced, which is the safe way to be wrong.
+- **Found by trying it live:** the first version never used the AI because the model server refused one
+  request format, and a stray word like "access" pulled in unrelated controls and lowered a Yes to Partly.
+  Both are fixed and tested against the real model.
 
 ### 3 Nov 2026: A trust page you control (PR 60, 61)
 - **Say:** "Customers ask how you handle security. Publish one link that shows the facts, and take it down
