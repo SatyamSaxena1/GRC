@@ -1,3 +1,4 @@
+import { AskAIButton } from "../components/Assistant";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ApiError, downloadGapsExport, getCisoSyncStatus, listGaps, listTasks, type GapRow } from "../api/client";
@@ -75,6 +76,7 @@ export function GapsListPage() {
   const columns: Column<GapRow>[] = [
     { key: "framework", header: "Control", render: (g) => `${g.framework} ${g.clause}` },
     { key: "gap", header: "Gap", render: (g) => <GapFinding gap={g} /> },
+    { key: "ask", header: "Ask", render: (g) => <AskAIButton label="Explain" question={`Explain the ${g.framework} ${g.clause} gap on evidence ${g.evidence_id}: what is missing (${g.attribute}), why it matters, and what the document should say.`} /> },
     {
       key: "priority", header: "Priority",
       render: (g) => { const t = taskByGap.get(g.id); return t ? <Badge value={t.priority} /> : <span className="muted">—</span>; },
@@ -110,7 +112,7 @@ export function GapsListPage() {
     <div>
       <div className="page-header">
         <div>
-          <h2>Gaps</h2>
+          <h2>Gaps</h2> <AskAIButton question={"Which open gaps matter most, and what would close them fastest?"} />
           <p>Every unmet requirement, with the exact value observed and the exact value needed.</p>
         </div>
         <div style={{ display: "flex", gap: 8 }}>

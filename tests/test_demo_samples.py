@@ -70,6 +70,13 @@ def test_story_claims_hold():
     assert set(by_id["scan-current"]["expect"].values()) == {"PASS"}
     assert by_id["review-record-stale"]["expect"]["ISO-27001 A.5.18"] == "FAIL"
     assert by_id["review-record-fresh"]["expect"]["ISO-27001 A.5.18"] == "PASS"
+    # The AI policy story (who owns the decision): v2 fixes decommissioning and escalation,
+    # closes the override gap, and leaves fairness open so it carries forward.
+    ai1, ai2 = by_id["ai-policy-asteron"]["expect"], by_id["ai-policy-asteron-v2"]["expect"]
+    assert ai1["NIST-AI-RMF GOVERN 1.7"] == "FAIL" and ai2["NIST-AI-RMF GOVERN 1.7"] == "PASS"
+    assert ai1["NIST-AI-RMF GOVERN 2.1"] == "PARTIAL" and ai2["NIST-AI-RMF GOVERN 2.1"] == "PASS"
+    assert ai1["NIST-AI-RMF GOVERN 1.2"] == ai2["NIST-AI-RMF GOVERN 1.2"] == "PARTIAL"
+    assert "fair" not in " ".join(by_id["ai-policy-asteron-v2"]["attrs"]["trustworthy_ai_characteristics_addressed"])
 
 
 def test_revises_points_at_a_real_sample_of_the_same_kind():

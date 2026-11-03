@@ -30,6 +30,8 @@ dev = ["pytest", "httpx", "jsonschema"]  # jsonschema: OSCAL export validation (
 # Rasterizes scanned PDF pages for the VLM fallback. Optional: without it those
 # pages degrade to "no text recovered" rather than failing. See ADR-008.
 ocr = ["pymupdf"]
+# The full weak-key corpus for app/collectors/weak_keys.py; run `badkeys --update-bl` once after installing.
+keys = ["badkeys"]
 
 [build-system]
 requires = ["setuptools>=68"]
@@ -47,4 +49,6 @@ packages = ["app", "app.ai", "app.collectors", "app.content", "app.review", "app
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]  # so tests can import the repo-root tools/ package without an install
 filterwarnings = ["ignore::PendingDeprecationWarning"]
+markers = ["model_unavailable: the extraction model is down for this test (no default stub)"]

@@ -6,7 +6,8 @@
   "NIST-CSF",
   "HIPAA",
   "CIS-CONTROLS",
-  "GDPR"
+  "GDPR",
+  "NIST-AI-RMF"
  ],
  "golden": {
   "today": "2026-10-05",
@@ -355,7 +356,8 @@
     "NIST-CSF PR.AA-05": "FAIL",
     "HIPAA 164.308(a)(4)(ii)(C)": "FAIL",
     "CIS-CONTROLS 6.2": "FAIL",
-    "GDPR Art.32(4)": "FAIL"
+    "GDPR Art.32(4)": "FAIL",
+    "NIST-AI-RMF GOVERN 1.5": "FAIL"
    }
   },
   {
@@ -397,7 +399,8 @@
     "NIST-CSF PR.AA-05": "PASS",
     "HIPAA 164.308(a)(4)(ii)(C)": "PASS",
     "CIS-CONTROLS 6.2": "PASS",
-    "GDPR Art.32(4)": "PASS"
+    "GDPR Art.32(4)": "PASS",
+    "NIST-AI-RMF GOVERN 1.5": "FAIL"
    }
   },
   {
@@ -552,6 +555,196 @@
     "GDPR Art.5(1)(f) & 32": "PASS",
     "GDPR Art.32(1)": "PASS",
     "GDPR Art.32(4)": "PASS"
+   }
+  },
+  {
+   "id": "ai-policy-asteron",
+   "title": "AI governance policy (Asteron, version 1)",
+   "artefact_type": "AI_POLICY",
+   "filename": "demo-ai-governance-policy-{{runid}}.txt",
+   "needs_model": true,
+   "body": [
+    "ASTERON SYSTEMS PVT. LTD. - AI GOVERNANCE POLICY",
+    "Document ID: AIG-001 | Version 1.0",
+    "Demo run: {{runid}}",
+    "",
+    "Document Control",
+    "Approved by: Meera Khanna, Chief Information Security Officer",
+    "Approval Date: {{date:-30}}",
+    "Status: Approved and Published",
+    "",
+    "1. Purpose and legal requirements",
+    "This policy governs every AI system Asteron builds, buys or uses, including the AI agents that approve vendor purchases. The legal and regulatory requirements that apply to our AI systems are documented and kept current by the Legal team. Applicable regulations: EU AI Act, GDPR, Digital Personal Data Protection Act 2023.",
+    "",
+    "2. Trustworthy AI",
+    "Asteron's AI systems must be valid and reliable, safe, secure and resilient, and transparent and explainable.",
+    "",
+    "3. Risk tolerance and tiering",
+    "Asteron's AI risk tolerance is defined and approved by the Risk Committee. Risk tiering criteria: impact on customers, autonomy of the system, and financial exposure per decision.",
+    "",
+    "4. Review",
+    "This policy and the AI governance programme are reviewed every 365 days.",
+    "",
+    "5. Roles",
+    "Each AI system has a named business owner responsible for its decisions.",
+    "",
+    "6. Human oversight",
+    "A named person oversees every high-impact AI system, including the purchasing agent.",
+    "",
+    "7. Training",
+    "All staff who build, buy or operate AI systems complete AI risk training every 365 days.",
+    "",
+    "8. Incidents",
+    "AI incidents and failures follow a defined incident process. Report them to ai-incidents@asteron.example.",
+    "",
+    "9. Third-party AI",
+    "Third-party AI systems, models and data are risk-assessed before purchase and annually after, under a defined third-party AI risk policy. Intellectual-property terms of every AI vendor are reviewed by Legal."
+   ],
+   "attrs": {
+    "ai_legal_requirements_documented": true,
+    "ai_applicable_regulations": [
+     "EU AI Act",
+     "GDPR",
+     "Digital Personal Data Protection Act 2023"
+    ],
+    "ai_risk_tolerance_defined": true,
+    "ai_risk_tiering_criteria": "impact on customers, autonomy of the system, and financial exposure per decision",
+    "ai_governance_review_frequency_days": 365,
+    "ai_roles_documented": true,
+    "human_oversight_defined": true,
+    "ai_training_frequency_days": 365,
+    "ai_training_audience_defined": true,
+    "ai_incident_process_defined": true,
+    "ai_incident_reporting_channel": "ai-incidents@asteron.example",
+    "third_party_ai_risk_policy_defined": true,
+    "third_party_ai_ip_terms_reviewed": true,
+    "trustworthy_ai_characteristics_addressed": [
+     "valid and reliable",
+     "safe",
+     "secure and resilient",
+     "transparent and explainable"
+    ]
+   },
+   "story": "Asteron lets an AI agent approve vendor purchases. Its AI governance policy names an owner and an overseer for every system, but it never says who can override the agent, how to escalate, or how a system is retired.",
+   "watch": [
+    "Facts appearing one by one, each with the sentence it came from",
+    "NIST AI RMF clauses judged by fixed rules: oversight defined, but no override or escalation path stated",
+    "Fairness is missing from the trustworthy-AI list, so GOVERN 1.2 cannot pass"
+   ],
+   "while_waiting": [
+    "The model reads the policy and pulls out facts, never verdicts.",
+    "Fixed rules decide each NIST AI RMF clause afterwards, and every verdict can be replayed."
+   ],
+   "expect": {
+    "NIST-AI-RMF GOVERN 1.1": "PASS",
+    "NIST-AI-RMF GOVERN 1.2": "PARTIAL",
+    "NIST-AI-RMF GOVERN 1.3": "PASS",
+    "NIST-AI-RMF GOVERN 1.5": "PARTIAL",
+    "NIST-AI-RMF GOVERN 1.7": "FAIL",
+    "NIST-AI-RMF GOVERN 2.1": "PARTIAL",
+    "NIST-AI-RMF GOVERN 2.2": "PARTIAL",
+    "NIST-AI-RMF GOVERN 3.2": "PARTIAL",
+    "NIST-AI-RMF GOVERN 4.3": "PASS",
+    "NIST-AI-RMF GOVERN 6.1": "PASS"
+   }
+  },
+  {
+   "id": "ai-policy-asteron-v2",
+   "revises": "ai-policy-asteron",
+   "title": "AI governance policy (Asteron, version 2: who owns the decision)",
+   "artefact_type": "AI_POLICY",
+   "filename": "demo-ai-governance-policy-v2-{{runid}}.txt",
+   "needs_model": true,
+   "body": [
+    "ASTERON SYSTEMS PVT. LTD. - AI GOVERNANCE POLICY",
+    "Document ID: AIG-001 | Version 2.0",
+    "Demo run: {{runid}}",
+    "",
+    "Document Control",
+    "Approved by: Meera Khanna, Chief Information Security Officer",
+    "Approval Date: {{date:-2}}",
+    "Status: Approved and Published",
+    "",
+    "1. Purpose and legal requirements",
+    "This policy governs every AI system Asteron builds, buys or uses, including the AI agents that approve vendor purchases. The legal and regulatory requirements that apply to our AI systems are documented and kept current by the Legal team. Applicable regulations: EU AI Act, GDPR, Digital Personal Data Protection Act 2023.",
+    "",
+    "2. Trustworthy AI",
+    "Asteron's AI systems must be valid and reliable, safe, secure and resilient, and transparent and explainable.",
+    "",
+    "3. Risk tolerance and tiering",
+    "Asteron's AI risk tolerance is defined and approved by the Risk Committee. Risk tiering criteria: impact on customers, autonomy of the system, and financial exposure per decision.",
+    "",
+    "4. Review",
+    "This policy and the AI governance programme are reviewed every 365 days.",
+    "",
+    "5. Roles",
+    "Each AI system has a named business owner responsible for its decisions. An escalation path is defined for every AI decision: the owner first, then the Chief Information Security Officer, then the Risk Committee.",
+    "",
+    "6. Human oversight",
+    "A named person oversees every high-impact AI system, including the purchasing agent. The overseer can override or stop any AI decision at any time, and every override is logged.",
+    "",
+    "7. Training",
+    "All staff who build, buy or operate AI systems complete AI risk training every 365 days.",
+    "",
+    "8. Incidents",
+    "AI incidents and failures follow a defined incident process. Report them to ai-incidents@asteron.example.",
+    "",
+    "9. Third-party AI",
+    "Third-party AI systems, models and data are risk-assessed before purchase and annually after, under a defined third-party AI risk policy. Intellectual-property terms of every AI vendor are reviewed by Legal.",
+    "",
+    "10. Decommissioning",
+    "AI systems are decommissioned through a defined process: the owner signs off, affected users are told in advance, and the system's records are kept for audit."
+   ],
+   "attrs": {
+    "ai_legal_requirements_documented": true,
+    "ai_applicable_regulations": [
+     "EU AI Act",
+     "GDPR",
+     "Digital Personal Data Protection Act 2023"
+    ],
+    "ai_risk_tolerance_defined": true,
+    "ai_risk_tiering_criteria": "impact on customers, autonomy of the system, and financial exposure per decision",
+    "ai_governance_review_frequency_days": 365,
+    "ai_roles_documented": true,
+    "human_oversight_defined": true,
+    "ai_training_frequency_days": 365,
+    "ai_training_audience_defined": true,
+    "ai_incident_process_defined": true,
+    "ai_incident_reporting_channel": "ai-incidents@asteron.example",
+    "third_party_ai_risk_policy_defined": true,
+    "third_party_ai_ip_terms_reviewed": true,
+    "trustworthy_ai_characteristics_addressed": [
+     "valid and reliable",
+     "safe",
+     "secure and resilient",
+     "transparent and explainable"
+    ],
+    "ai_escalation_path_defined": true,
+    "human_override_capability": true,
+    "ai_decommissioning_process_defined": true
+   },
+   "story": "The policy now says who can override the agent, how decisions escalate and how a system is retired. Those gaps close themselves. Fairness is still missing, so that gap carries forward with its owner instead of being raised again.",
+   "watch": [
+    "Upload it as a new version of version 1, not a fresh file",
+    "Decommissioning (GOVERN 1.7) goes FAIL to PASS and escalation (GOVERN 2.1) PARTIAL to PASS, naming the new version as the reason",
+    "The override gap on GOVERN 3.2 closes, but the clause stays PARTIAL by design: a policy alone only partly proves human oversight",
+    "The fairness gap (GOVERN 1.2) is carried forward, not duplicated"
+   ],
+   "while_waiting": [
+    "Same pipeline, second pass. The platform compares it with what was true before."
+   ],
+   "base_of": "ai-policy-asteron",
+   "expect": {
+    "NIST-AI-RMF GOVERN 1.1": "PASS",
+    "NIST-AI-RMF GOVERN 1.2": "PARTIAL",
+    "NIST-AI-RMF GOVERN 1.3": "PASS",
+    "NIST-AI-RMF GOVERN 1.5": "PARTIAL",
+    "NIST-AI-RMF GOVERN 1.7": "PASS",
+    "NIST-AI-RMF GOVERN 2.1": "PASS",
+    "NIST-AI-RMF GOVERN 2.2": "PARTIAL",
+    "NIST-AI-RMF GOVERN 3.2": "PARTIAL",
+    "NIST-AI-RMF GOVERN 4.3": "PASS",
+    "NIST-AI-RMF GOVERN 6.1": "PASS"
    }
   }
  ]

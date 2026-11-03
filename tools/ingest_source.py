@@ -1,4 +1,4 @@
-"""Source text in, DRAFT pack requirements out (ADR-029 section 6).
+"""Source text in, DRAFT pack requirements out (ADR-034 section 6).
 
     python -m tools.ingest_source parse eu-ai-act
     python -m tools.ingest_source draft eu-ai-act --articles 4 5 26 27

@@ -1,4 +1,4 @@
-"""Human review gate for drafted pack requirements (ADR-029 section 6).
+"""Human review gate for drafted pack requirements (ADR-034 section 6).
 
     python -m tools.review_drafts eu-ai-act
 

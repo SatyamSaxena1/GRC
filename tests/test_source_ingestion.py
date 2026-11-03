@@ -1,4 +1,4 @@
-"""Source-text ingestion (ADR-029 section 6): one check per stage. Parsing is deterministic,
+"""Source-text ingestion (ADR-034 section 6): one check per stage. Parsing is deterministic,
 a draft that fails the schema never reaches review, an accepted clause loads through the
 real loader, and no copyrighted standard's text is stored under sources/."""
 

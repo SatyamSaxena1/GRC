@@ -22,7 +22,7 @@ VERDICT_KEYS = ("PASS", "PARTIAL", "FAIL", "NO_EVIDENCE")
 # link.verdict with the auditor's own vocabulary. Fold it back to the
 # deterministic scale this rollup counts in — otherwise a locked COMPLIANT
 # control 500s the dashboard on an unknown key.
-_AUDITOR_VERDICT = {"COMPLIANT": "PASS", "PARTIALLY_COMPLIANT": "PARTIAL", "NON_COMPLIANT": "FAIL"}
+_AUDITOR_VERDICT = analytics.AUDITOR_VERDICT
 
 
 def best_verdict(links: list[dict]) -> str:

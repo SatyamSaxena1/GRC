@@ -202,7 +202,7 @@ def test_unlock_requires_a_reason_and_is_recorded(client, bootstrap, upload, stu
     link = links_of(evidence_id)[("ISO-27001", "A.5.15")]
     headers = {"authorization": f"auditor:{engagement_id}"}
 
-    client.post(f"/audit/links/{link.id}/lock", headers=headers, json={"verdict": "COMPLIANT"})
+    client.post(f"/audit/links/{link.id}/lock", headers=headers, json={"verdict": "COMPLIANT", "reason": "reviewed the policy against this control and accept it"})
 
     assert client.post(f"/audit/links/{link.id}/unlock", headers=headers,
                        json={"reason": ""}).status_code == 422
@@ -229,7 +229,7 @@ def test_v3_after_lock_leaves_the_locked_verdict_alone(client, bootstrap, upload
     link = links_of(v2)[("PCI-DSS", "8.3.6")]
     client.post(f"/audit/links/{link.id}/lock",
                 headers={"authorization": f"auditor:{engagement_id}"},
-                json={"verdict": "COMPLIANT"})
+                json={"verdict": "COMPLIANT", "reason": "reviewed the policy against this control and accept it"})
 
     v3 = client.post(f"/evidence/{v2}/versions", headers=headers,
                      files={"file": ("v3.txt", b"v3", "text/plain")}).json()["evidence_id"]

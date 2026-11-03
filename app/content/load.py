@@ -75,7 +75,7 @@ class EvidenceRequirement(_Model):
 
 
 class SourceRef(_Model):
-    """The exact source paragraph a clause was drafted from (ADR-029): a provision id
+    """The exact source paragraph a clause was drafted from (ADR-034): a provision id
     from sources/<framework>/provisions.jsonl and the sha256 of that provision's text."""
     provision: str
     sha256: str

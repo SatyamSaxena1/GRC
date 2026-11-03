@@ -419,6 +419,92 @@ class GapException(Base):
     decision_note: Mapped[str] = mapped_column(Text, default="")
 
 
+class VerdictRecord(Base):
+    """One step in the history of a control's verdict (ADR-029). Immutable: a reopening or a
+    replacement is a new row whose supersedes_id points at the one before it, never an edit
+    of that row. The current state is the head of the chain, the row nothing supersedes.
+    The link's own verdict / locked columns are a cache of that head.
+
+    rule_hash / evaluation_hash / engine_verdict are copied from the link at decision time,
+    so each step can be replayed against the rules it saw (ADR-022). audit_chain_seq and
+    audit_entry_hash point at the audit event that recorded the step, and that event commits
+    to record_hash, which covers every other field here."""
+    __tablename__ = "verdict_records"
+    __table_args__ = (UniqueConstraint("link_id", "seq"), UniqueConstraint("supersedes_id"))
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"))
+    link_id: Mapped[str] = mapped_column(ForeignKey("evidence_control_links.id"))
+    seq: Mapped[int] = mapped_column(Integer)
+    supersedes_id: Mapped[str | None] = mapped_column(ForeignKey("verdict_records.id"), default=None)
+    kind: Mapped[str]  # DECISION | REOPENED
+    verdict: Mapped[str | None] = mapped_column(default=None)  # null on REOPENED
+    engine_verdict: Mapped[str | None] = mapped_column(default=None)
+    rule_hash: Mapped[str | None] = mapped_column(default=None)
+    evaluation_hash: Mapped[str | None] = mapped_column(default=None)
+    engine_version: Mapped[str | None] = mapped_column(default=None)
+    decided_by: Mapped[str]
+    decided_by_user_id: Mapped[str | None] = mapped_column(default=None)
+    engagement_id: Mapped[str | None] = mapped_column(default=None)
+    decided_at: Mapped[datetime] = mapped_column(default=_now)
+    reason_code: Mapped[str]
+    reasoning: Mapped[str] = mapped_column(Text, default="")
+    origin: Mapped[str] = mapped_column(String, default="LIVE")  # LIVE | MIGRATED
+    record_hash: Mapped[str] = mapped_column(String, default="")
+    audit_chain_seq: Mapped[int | None] = mapped_column(Integer, default=None)
+    audit_entry_hash: Mapped[str | None] = mapped_column(default=None)
+
+
+class Finding(Base):
+    """An auditor's finding on one control (ADR-032). Raised by an auditor, answered by the auditee,
+    closed (or reopened) by an auditor. Every transition is an audit event with before and after;
+    the row holds the current state and the latest response and closing note."""
+    __tablename__ = "findings"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"))
+    org_control_id: Mapped[str] = mapped_column(ForeignKey("org_controls.id"))
+    title: Mapped[str]
+    severity: Mapped[str] = mapped_column(String, default="MEDIUM")  # LOW | MEDIUM | HIGH | CRITICAL
+    description: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(String, default="OPEN")  # OPEN | RESPONDED | CLOSED
+    raised_by: Mapped[str]
+    raised_at: Mapped[datetime] = mapped_column(default=_now)
+    response: Mapped[str] = mapped_column(Text, default="")
+    responded_by: Mapped[str | None] = mapped_column(default=None)
+    responded_at: Mapped[datetime | None] = mapped_column(default=None)
+    closed_by: Mapped[str | None] = mapped_column(default=None)
+    closed_at: Mapped[datetime | None] = mapped_column(default=None)
+    close_note: Mapped[str] = mapped_column(Text, default="")
+
+
+class NotificationLog(Base):
+    """Which attention items the webhook digest has already sent (ADR-031), so a daily cron does
+    not repeat itself. Not an audit record: a row's sent_at moves forward when it is re-sent."""
+    __tablename__ = "notification_log"
+    __table_args__ = (UniqueConstraint("org_id", "item_key"),)
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"))
+    item_key: Mapped[str]
+    sent_at: Mapped[datetime] = mapped_column(default=_now)
+
+
+class CollectionRun(Base):
+    """What one connector run asked for, what came back, and whether that can be trusted
+    (ADR-030). "No evidence found" and "we could not collect evidence" are different states:
+    a PARTIAL or FAILED run is never read as a pass. Insert-only; every run, including a failed
+    one, has a row and a CONNECTOR_RUN audit event."""
+    __tablename__ = "collection_runs"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"))
+    source: Mapped[str]
+    started_at: Mapped[datetime] = mapped_column(default=_now)
+    status: Mapped[str]  # COMPLETE | PARTIAL | FAILED
+    expectation: Mapped[str]  # what completeness was judged against: REPORTED | HISTORY | NONE
+    requested: Mapped[dict] = mapped_column(JSON, default=dict)  # totals the collector said to expect
+    returned: Mapped[dict] = mapped_column(JSON, default=dict)  # what came back, and the next run's baseline
+    signals: Mapped[list] = mapped_column(JSON, default=list)  # why it is not COMPLETE, in words
+    evidence_id: Mapped[str | None] = mapped_column(ForeignKey("evidence.id"), default=None)
+
+
 class TaskRow(Base):
     """A unit of remediation work. Two ways one comes to exist: the evaluator
     opens one per gap (`gap_id` set, status is evidence-driven — only new

@@ -1,12 +1,41 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { listNotifications } from "../api/client";
+import { getModelHealth, listNotifications } from "../api/client";
 import { useApi } from "../lib/useApi";
 import { useSession } from "../lib/session";
 import { Hint } from "./Hint";
 import { GettingStartedTour } from "./GettingStartedTour";
 import { RoleSwitcher } from "./RoleSwitcher";
+import { AssistantPanel } from "./Assistant";
 import { navFor } from "../lib/nav";
+
+// Whether the backend can reach its model server right now (GET /health/ready asks
+// the configured gateway, e.g. LM Studio on the operator's PC). Polled every 30s
+// while the tab is visible. Verdicts don't need the model, so "offline" means new
+// uploads wait for review, not that the app is down.
+function ModelStatus() {
+  const readiness = useApi(() => getModelHealth(), []);
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      if (document.visibilityState === "visible") readiness.reload();
+    }, 30_000);
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const checks = readiness.data?.checks;
+  const up = checks?.model === "ok";
+  const label = !checks
+    ? "Model: checking…"
+    : up
+      ? `Model connected · ${checks.model_name}`
+      : `Model offline · ${checks.model_name}`;
+  return (
+    <div className="model-status" role="status" aria-live="polite" title={checks?.model_degraded ?? label}>
+      <span className={`model-status__dot${up ? " is-up" : checks ? " is-down" : ""}`} aria-hidden="true" />
+      {label}
+    </div>
+  );
+}
 
 // No persisted read/unread state (see app/routers/notifications.py) — the
 // count is "how many open items right now," refreshed every 60s so it isn't
@@ -70,6 +99,7 @@ export function AppShell() {
 
   return (
     <div className="app-shell">
+      <a className="skip-link" href="#main-content">Skip to main content</a>
       <div className="topbar">
         <button aria-label="Open menu" aria-expanded={open} aria-controls="primary-nav" onClick={() => setOpen(true)}>☰</button>
         GRC Workspace
@@ -90,6 +120,7 @@ export function AppShell() {
           );
         })}
         <GettingStartedTour />
+        <ModelStatus />
         {import.meta.env.VITE_CISO_ASSISTANT_URL && (
           <a href={import.meta.env.VITE_CISO_ASSISTANT_URL} target="_blank" rel="noreferrer">
             Risk &amp; policy ↗
@@ -110,9 +141,10 @@ export function AppShell() {
           </div>
         )}
       </nav>
-      <main className="main" key={viewKey}>
+      <main className="main" id="main-content" tabIndex={-1} key={viewKey}>
         <Outlet />
       </main>
+      <AssistantPanel />
     </div>
   );
 }

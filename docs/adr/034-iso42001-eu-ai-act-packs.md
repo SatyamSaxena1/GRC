@@ -1,4 +1,4 @@
-# ADR-029 (Proposed): ISO/IEC 42001 and EU AI Act packs on the existing AI_GOVERNANCE objectives
+# ADR-034 (Proposed): ISO/IEC 42001 and EU AI Act packs on the existing AI_GOVERNANCE objectives
 
 Status: **Proposed**. Section 6 (ingestion) is built: `tools/ingest_source.py`,
 `tools/review_drafts.py`, `tests/test_source_ingestion.py`. The AI Act Art. 4, 5, 26 and 27

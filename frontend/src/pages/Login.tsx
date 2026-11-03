@@ -97,7 +97,7 @@ function RoleGate({ production }: { production: boolean }) {
         <RoleSurface color={active.color} />
       </Suspense>
       <header className="gate-bar">
-        <strong>GRC Workspace</strong>
+        <h1 className="gate-bar__title">GRC Workspace</h1>
         {!production && <span className="gate-bar__demo">DEMO</span>}
         <span className="gate-bar__what">
           {production
@@ -113,6 +113,7 @@ function RoleGate({ production }: { production: boolean }) {
         </button>
       </header>
 
+      <main>
       {manual ? (
         <div className="gate-manual"><ClassicLogin embedded /></div>
       ) : (
@@ -155,7 +156,7 @@ function RoleGate({ production }: { production: boolean }) {
             </p>
           </section>
 
-          <section className="gate-map">
+          <section className="gate-map" aria-label="Screens this role can open">
             <div className="gate-map__caption">
               <span className="gate-map__dot" />
               <strong>{active.name}</strong> can open <strong>{lit.size}</strong> of {FEATURES.length} screens.
@@ -181,6 +182,7 @@ function RoleGate({ production }: { production: boolean }) {
           </section>
         </div>
       )}
+      </main>
     </div>
   );
 }
@@ -407,11 +409,11 @@ function QuickStart({ onDone }: { onDone: () => void }) {
       {error && <div className="alert alert-error">{error}</div>}
       <div>
         <label>Organisation name</label>
-        <input value={orgName} onChange={(e) => setOrgName(e.target.value)} />
+        <input aria-label="Organisation name" value={orgName} onChange={(e) => setOrgName(e.target.value)} />
       </div>
       <div>
         <label>Audit firm name</label>
-        <input value={firmName} onChange={(e) => setFirmName(e.target.value)} />
+        <input aria-label="Audit firm name" value={firmName} onChange={(e) => setFirmName(e.target.value)} />
       </div>
       <div>
         <label>Frameworks to subscribe</label>
@@ -480,11 +482,11 @@ function FirmStart({ onDone }: { onDone: () => void }) {
       {error && <div className="alert alert-error">{error}</div>}
       <div>
         <label>Audit firm name</label>
-        <input value={firmName} onChange={(e) => setFirmName(e.target.value)} />
+        <input aria-label="Audit firm name" value={firmName} onChange={(e) => setFirmName(e.target.value)} />
       </div>
       <div>
         <label>Firm admin email</label>
-        <input value={email} onChange={(e) => setEmail(e.target.value)} />
+        <input aria-label="Firm admin email" value={email} onChange={(e) => setEmail(e.target.value)} />
       </div>
       <button data-tour="firm-submit" className="btn btn-primary" disabled={busy || !firmName || !email} onClick={create}>
         {busy ? "Creating…" : "Create firm & sign in as its admin"}
@@ -493,7 +495,7 @@ function FirmStart({ onDone }: { onDone: () => void }) {
       <hr />
       <div>
         <label>…or sign in as an existing firm user</label>
-        <input
+        <input aria-label="…or sign in as an existing firm user"
           value={existingId}
           onChange={(e) => setExistingId(e.target.value)}
           placeholder="paste a firm admin or auditor user id"
@@ -561,19 +563,19 @@ function RequestAudit() {
       {error && <div className="alert alert-error">{error}</div>}
       <div>
         <label>Audit firm id</label>
-        <input value={firmId} onChange={(e) => setFirmId(e.target.value)} placeholder="the firm you want to audit you" />
+        <input aria-label="Audit firm id" value={firmId} onChange={(e) => setFirmId(e.target.value)} placeholder="the firm you want to audit you" />
       </div>
       <div>
         <label>Organisation name</label>
-        <input value={orgName} onChange={(e) => setOrgName(e.target.value)} placeholder="Acme Corp" />
+        <input aria-label="Organisation name" value={orgName} onChange={(e) => setOrgName(e.target.value)} placeholder="Acme Corp" />
       </div>
       <div>
         <label>Contact email</label>
-        <input value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} placeholder="ciso@acme.test" />
+        <input aria-label="Contact email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} placeholder="ciso@acme.test" />
       </div>
       <div>
         <label>Registration details</label>
-        <input value={detail} onChange={(e) => setDetail(e.target.value)} placeholder="registered entity, scope, sites" />
+        <input aria-label="Registration details" value={detail} onChange={(e) => setDetail(e.target.value)} placeholder="registered entity, scope, sites" />
       </div>
       <div>
         <label>Frameworks you need audited</label>

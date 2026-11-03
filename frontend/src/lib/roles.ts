@@ -101,8 +101,11 @@ export function applyRoleTheme(role: RoleDef | null): void {
     delete root.dataset.role;
     return;
   }
-  root.style.setProperty("--primary", role.color);
-  root.style.setProperty("--primary-dark", role.dark);
+  // --primary carries text and sits behind white text, so it uses the dark shade:
+  // amber and teal at full brightness fail WCAG AA contrast (about 3.2:1), and every
+  // role's dark shade passes (at least 4.5:1). The bright colour stays as --role, for decoration.
+  root.style.setProperty("--primary", role.dark);
+  root.style.setProperty("--primary-dark", `color-mix(in srgb, ${role.dark} 78%, #000)`);
   root.style.setProperty("--role", role.color);
   root.style.setProperty("--role-dark", role.dark);
   root.dataset.role = role.id;

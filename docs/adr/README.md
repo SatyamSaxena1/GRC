@@ -30,3 +30,9 @@
 | [026](026-ai-code-review-evidence.md) | AI code review is evidence, not approval | Proposed |
 | [027](027-grc-reviews-code.md) | GRC reviews code: Review Standards, a rule engine, and what it may read and keep | Proposed |
 | [028](028-code-review-github-app.md) | The code-review GitHub App: tenant binding, durable jobs, check outcomes | Proposed |
+| [029](029-verdict-register.md) | Verdict register: a locked verdict is reopened and replaced, never edited | Proposed |
+| [030](030-connector-evidence-gaps.md) | Connector evidence gaps: "could not collect" is not "found nothing" | Proposed |
+| [031](031-outbound-webhook-notifications.md) | Outbound notifications through one optional webhook | Proposed |
+| [032](032-auditor-findings.md) | Auditor findings on a control: raise, respond, close, reopen, all audited | Proposed |
+| [033](033-weak-key-check.md) | Check the keys, not the paperwork: a weak-key collector | Proposed |
+| [034](034-iso42001-eu-ai-act-packs.md) | ISO/IEC 42001 and EU AI Act packs, with source-text ingestion | Proposed |

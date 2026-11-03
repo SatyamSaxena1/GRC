@@ -6,20 +6,27 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 import json
+import re
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app import audit_log, authorization, checkpoints, ciso_sync
+from app import audit_log, authorization, checkpoints, ciso_sync, notify, verdict_register
 from app.auth import Actor, current_actor
 from app.db import get_session
-from app.models import Evidence, EvidenceControlLink
+from app.models import Evidence, EvidenceControlLink, GapException
 
 router = APIRouter(prefix="/audit", tags=["audit"])
 
 CLOSING_VERDICTS = {"COMPLIANT", "PASS"}
+
+# What each auditor verdict says relative to the rules' own PASS / PARTIAL / FAIL. A verdict that
+# disagrees is an override: allowed, because the auditor decides, but never silent.
+AGREES_WITH = {"COMPLIANT": "PASS", "PASS": "PASS", "PARTIALLY_COMPLIANT": "PARTIAL",
+               "PARTIAL": "PARTIAL", "NON_COMPLIANT": "FAIL", "FAIL": "FAIL"}
+OVERRIDE_MIN_CHARS, OVERRIDE_MIN_WORDS = 15, 3
 
 
 class VerdictIn(BaseModel):
@@ -29,6 +36,55 @@ class VerdictIn(BaseModel):
 
 class UnlockIn(BaseModel):
     reason: str = Field(min_length=3)  # unlocking always needs a stated reason
+    reason_code: str = "OTHER"
+
+
+class SupersedeIn(BaseModel):
+    verdict: str
+    reason_code: str
+    reasoning: str
+
+
+def _reason(reason_code: str, reasoning: str) -> str:
+    """A reopening or replacement is refused without a known reason code and specific reasoning."""
+    if reason_code not in verdict_register.REASON_CODES:
+        raise HTTPException(422, f"reason_code must be one of {sorted(verdict_register.REASON_CODES)}")
+    try:
+        return verdict_register.check_reasoning(reasoning)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from None
+
+
+def _not_exception_requester(db: Session, actor: Actor, link: EvidenceControlLink) -> None:
+    """Whoever asked for an exception on this requirement cannot also reopen or replace its verdict."""
+    asked = db.query(GapException).filter_by(
+        org_id=actor.org_id, framework=link.framework, clause=link.clause, requested_by=actor.label()).first()
+    if asked is None:
+        return
+    audit_log.record(db, actor=actor.label(), request_id=actor.request_id,
+                     action="SEGREGATION_OF_DUTIES_BLOCKED", entity_type="evidence_control_link",
+                     entity=link.id, org_id=actor.org_id, detail={"exception_id": asked.id})
+    db.commit()
+    raise HTTPException(403, "segregation of duties: the requester of an exception on this "
+                             "requirement cannot reopen or replace its verdict")
+
+
+def _overridden_engine_verdict(link: EvidenceControlLink, verdict: str) -> str | None:
+    """The rules' verdict if `verdict` contradicts it, else None. Read before a lock overwrites it."""
+    engine = link.engine_verdict or link.verdict
+    expected = AGREES_WITH.get((verdict or "").upper())
+    return engine if expected and engine in {"PASS", "PARTIAL", "FAIL"} and expected != engine else None
+
+
+def _require_override_reason(link: EvidenceControlLink, verdict: str, reason: str) -> None:
+    engine = _overridden_engine_verdict(link, verdict)
+    if engine is None:
+        return
+    text = (reason or "").strip()
+    if len(text) < OVERRIDE_MIN_CHARS or len(re.findall(r"\w+", text)) < OVERRIDE_MIN_WORDS:
+        raise HTTPException(
+            422, f"the rules' verdict is {engine}; recording {verdict} overrides it, so give the reason "
+                 f"(at least {OVERRIDE_MIN_WORDS} words) in the remarks")
 
 
 def _auditor_link(db: Session, actor: Actor, link_id: str) -> EvidenceControlLink:
@@ -122,17 +178,24 @@ def record_verdict(link_id: str, body: VerdictIn, actor: Actor = Depends(current
     link = _auditor_link(db, actor, link_id)
     if link.locked:
         raise HTTPException(409, "control is locked; unlock it first")
+    _require_override_reason(link, body.verdict, body.reason)
 
     before = _snapshot(link)
+    overrides = _overridden_engine_verdict(link, body.verdict)
     link.auditor_verdict = body.verdict
+    verdict_register.append(db, actor, link, kind="DECISION", verdict=body.verdict,
+                            reason_code=verdict_register.RECORDED, reasoning=body.reason,
+                            org_id=actor.org_id)
     audit_log.record(db, actor=actor.label(), request_id=actor.request_id, action="AUDITOR_VERDICT",
                      entity_type="evidence_control_link", entity=link.id, org_id=actor.org_id,
-                     detail={"verdict": body.verdict}, reason=body.reason,
+                     detail={"verdict": body.verdict, "overrides_engine_verdict": overrides},
+                     reason=body.reason,
                      before=before, after=_snapshot(link))
 
     if body.verdict.upper() in CLOSING_VERDICTS:
-        _lock(db, actor, link, body.verdict)
+        _lock(db, actor, link, body.verdict, body.reason)
     db.commit()
+    _announce_lock(link, actor)
     return {"id": link.id, "auditor_verdict": link.auditor_verdict, "locked": link.locked}
 
 
@@ -143,19 +206,20 @@ def _snapshot(link: EvidenceControlLink) -> dict:
             "locked": link.locked, "locked_by_engagement_id": link.locked_by_engagement_id}
 
 
-def _lock(db: Session, actor: Actor, link: EvidenceControlLink, verdict: str) -> None:
+def _lock(db: Session, actor: Actor, link: EvidenceControlLink, verdict: str, reason: str = "") -> None:
     before = _snapshot(link)
+    overrides = _overridden_engine_verdict(link, verdict)  # before the lock overwrites link.verdict
     link.verdict = verdict
     link.locked_by_engagement_id = actor.engagement_id
     link.locked_at = datetime.now(timezone.utc)
-    link.unlocked_at = None
     audit_log.record(db, actor=actor.label(), request_id=actor.request_id, action="CONTROL_LOCKED",
                      entity_type="evidence_control_link", entity=link.id, org_id=actor.org_id,
                      detail={"verdict": verdict, "evidence_id": link.evidence_id,
                              # what the rules decided, exactly (ADR-022)
                              "engine_verdict": link.engine_verdict, "rule_hash": link.rule_hash,
-                             "evaluation_hash": link.evaluation_hash},
-                     before=before, after=_snapshot(link))
+                             "evaluation_hash": link.evaluation_hash,
+                             "overrides_engine_verdict": overrides},
+                     reason=reason, before=before, after=_snapshot(link))
     ciso_sync.push_verdict(db, actor.label(), actor.request_id, link, actor.org_id)
 
 
@@ -165,29 +229,93 @@ def lock_link(link_id: str, body: VerdictIn, actor: Actor = Depends(current_acto
     link = _auditor_link(db, actor, link_id)
     if link.locked:
         raise HTTPException(409, "already locked")
+    _require_override_reason(link, body.verdict, body.reason)
     link.auditor_verdict = body.verdict
-    _lock(db, actor, link, body.verdict)
+    verdict_register.append(db, actor, link, kind="DECISION", verdict=body.verdict,
+                            reason_code=verdict_register.RECORDED, reasoning=body.reason,
+                            org_id=actor.org_id)
+    _lock(db, actor, link, body.verdict, body.reason)
     db.commit()
+    _announce_lock(link, actor)
     return {"id": link.id, "verdict": link.verdict, "locked": True}
+
+
+def _announce_lock(link: EvidenceControlLink, actor: Actor) -> None:
+    if link.locked:
+        notify.event("CONTROL_LOCKED", "info", f"{link.framework} {link.clause} locked as {link.verdict}",
+                     "/controls", actor.org_id)
+
+
+def _reopen(db: Session, actor: Actor, link: EvidenceControlLink, reason_code: str, reasoning: str) -> None:
+    """Unlock the control and add a REOPENED step to its history. The verdict that was in force
+    stays in the register untouched; the link's own verdict columns are only a cache of the head."""
+    before = _snapshot(link)
+    link.locked_by_engagement_id = None
+    link.locked_at = None
+    verdict_register.append(db, actor, link, kind="REOPENED", verdict=None, reason_code=reason_code,
+                            reasoning=reasoning, org_id=actor.org_id)
+    audit_log.record(db, actor=actor.label(), request_id=actor.request_id, action="CONTROL_UNLOCKED",
+                     entity_type="evidence_control_link", entity=link.id, org_id=actor.org_id,
+                     detail={"framework": link.framework, "clause": link.clause, "reason_code": reason_code},
+                     reason=reasoning, before=before, after=_snapshot(link))
 
 
 @router.post("/links/{link_id}/unlock")
 def unlock_link(link_id: str, body: UnlockIn, actor: Actor = Depends(current_actor),
                 db: Session = Depends(get_session)):
-    """Reopens a control for re-review. The reason is mandatory and recorded."""
+    """Reopens a control for re-review. A reason is mandatory, specific and permanent."""
     link = _auditor_link(db, actor, link_id)
     if not link.locked:
         raise HTTPException(409, "control is not locked")
+    reasoning = _reason(body.reason_code, body.reason)
+    _not_exception_requester(db, actor, link)
 
-    before = _snapshot(link)
-    link.locked_by_engagement_id = None
-    link.locked_at = None
-    link.unlocked_at = datetime.now(timezone.utc)
-    link.unlock_reason = body.reason
-    audit_log.record(db, actor=actor.label(), request_id=actor.request_id, action="CONTROL_UNLOCKED",
-                     entity_type="evidence_control_link", entity=link.id, org_id=actor.org_id,
-                     detail={"framework": link.framework, "clause": link.clause},
-                     reason=body.reason, before=before, after=_snapshot(link))
+    _reopen(db, actor, link, body.reason_code, reasoning)
     ciso_sync.push_verdict(db, actor.label(), actor.request_id, link, actor.org_id)
     db.commit()
-    return {"id": link.id, "locked": False, "unlock_reason": link.unlock_reason}
+    return {"id": link.id, "locked": False, "unlock_reason": reasoning}
+
+
+@router.post("/links/{link_id}/supersede")
+def supersede_verdict(link_id: str, body: SupersedeIn, actor: Actor = Depends(current_actor),
+                      db: Session = Depends(get_session)):
+    """Replace a locked verdict. The original stays in the register, unaltered; this adds a
+    reopening and the replacement, both with the reason, and re-locks on a closing verdict."""
+    link = _auditor_link(db, actor, link_id)
+    if not link.locked:
+        raise HTTPException(409, "control is not locked; record a verdict instead")
+    reasoning = _reason(body.reason_code, body.reasoning)
+    _not_exception_requester(db, actor, link)
+
+    _reopen(db, actor, link, body.reason_code, reasoning)
+    link.auditor_verdict = body.verdict
+    verdict_register.append(db, actor, link, kind="DECISION", verdict=body.verdict,
+                            reason_code=body.reason_code, reasoning=reasoning, org_id=actor.org_id)
+    if body.verdict.upper() in CLOSING_VERDICTS:
+        _lock(db, actor, link, body.verdict)
+    else:
+        ciso_sync.push_verdict(db, actor.label(), actor.request_id, link, actor.org_id)
+    db.commit()
+    return {"id": link.id, "auditor_verdict": link.auditor_verdict, "locked": link.locked}
+
+
+@router.get("/links/{link_id}/register")
+def verdict_history(link_id: str, actor: Actor = Depends(current_actor), db: Session = Depends(get_session)):
+    """Original verdict, every reopening and replacement, with reasons, rule fingerprints and actors."""
+    link = db.get(EvidenceControlLink, link_id)
+    evidence = db.get(Evidence, link.evidence_id) if link else None
+    if evidence is None or evidence.org_id != actor.org_id:
+        raise HTTPException(404)
+    if actor.is_auditor:
+        authorization.assert_engagement_covers(db, actor, link.framework)
+    return verdict_register.register(db, link)
+
+
+@router.get("/register.json")
+def export_register(actor: Actor = Depends(current_actor), db: Session = Depends(get_session)):
+    """Machine-readable register for this organisation, verifiable against GET /audit/events.ndjson."""
+    if not actor.is_auditor:
+        raise HTTPException(403, "only an auditor under an engagement can export the register")
+    return Response(content=json.dumps(verdict_register.export(db, _org_scope(actor)), indent=2, sort_keys=True),
+                    media_type="application/json",
+                    headers={"Content-Disposition": "attachment; filename=verdict-register.json"})

@@ -1,3 +1,4 @@
+import { AskAIButton } from "../components/Assistant";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -5,6 +6,8 @@ import {
   type ConnectorStatus,
 } from "../api/client";
 import { Badge } from "../components/Badge";
+import { CollectionStatus } from "../components/CollectionStatus";
+import { localTime } from "../lib/format";
 import { useApi } from "../lib/useApi";
 
 export function DpdpPage() {
@@ -54,7 +57,7 @@ export function DpdpPage() {
     <div>
       <div className="page-header">
         <div>
-          <h2>DPDP readiness assessment</h2>
+          <h2>DPDP readiness assessment</h2> <AskAIButton question={"How ready are we for India's DPDP Act, and what is missing?"} />
           <p>Evidence-backed preparation for the DPDP Act 2023 and Rules 2025.</p>
         </div>
         <button className="btn" onClick={() => window.print()}>Print score report</button>
@@ -103,11 +106,12 @@ export function DpdpPage() {
               {!connector.applicable
                 ? "Marked out of scope — doesn't count against your DPDP score."
                 : connector.last_synced_at
-                  ? `Last collected ${new Date(connector.last_synced_at).toLocaleString()}`
+                  ? `Last collected ${localTime(connector.last_synced_at)}`
                   : connector.configured
                     ? "Configured, but no evidence has been collected yet."
                     : "Requires a server-side collector URL and its least-privilege credential."}
             </p>
+            <CollectionStatus connector={connector} />
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
               <button
                 className="btn btn-primary"

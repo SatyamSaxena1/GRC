@@ -1,3 +1,4 @@
+import { AskAIButton } from "../components/Assistant";
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
@@ -6,6 +7,7 @@ import {
   getControl,
   getControlEvidence,
   getControlHistory,
+  listControlFindings,
   listControlMessages,
   lockLink,
   postControlMessage,
@@ -22,9 +24,17 @@ import { GapExceptions } from "../components/GapExceptions";
 import { Badge } from "../components/Badge";
 import { CisoSyncBadge } from "../components/CisoSyncBadge";
 import { PageTour } from "../components/PageTour";
+import { OwnerEditor } from "../components/OwnerEditor";
+import { FindingsPanel } from "../components/FindingsPanel";
+import { isAuditorIdentity } from "../lib/nav";
+import { EventLine } from "../components/EventLine";
+import { localTime } from "../lib/format";
+import { ReplaceVerdict, VerdictRegister } from "../components/VerdictRegister";
 import { Term } from "../components/Term";
 
 const AUDITOR_VERDICTS = ["COMPLIANT", "PARTIALLY_COMPLIANT", "NON_COMPLIANT"];
+// What each auditor verdict says relative to the rules' PASS / PARTIAL / FAIL (mirrors the backend).
+const AGREES_WITH: Record<string, string> = { COMPLIANT: "PASS", PARTIALLY_COMPLIANT: "PARTIAL", NON_COMPLIANT: "FAIL" };
 const VERDICT_RANK: Record<string, number> = { PASS: 3, PARTIAL: 2, FAIL: 1 };
 
 function buildTourSteps(isAuditor: boolean) {
@@ -72,7 +82,7 @@ function RecordIcon({ locked }: { locked: boolean }) {
   );
 }
 
-type TabId = "overview" | "review" | "discussion" | "history";
+type TabId = "overview" | "review" | "findings" | "discussion" | "history";
 
 export function ControlDetailPage() {
   const { id = "" } = useParams();
@@ -80,12 +90,13 @@ export function ControlDetailPage() {
   const control = useApi(() => getControl(id), [id]);
   const evidenceRows = useApi(() => getControlEvidence(id), [id]);
   const history = useApi(() => getControlHistory(id), [id]);
+  const findings = useApi(() => listControlFindings(id!), [id]);
   const cisoSync = useApi(() => getCisoSyncStatus(), []);
   const messages = useApi(() => listControlMessages(id), [id]);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<TabId>("overview");
 
-  const isAuditor = identity?.kind === "auditor";
+  const isAuditor = isAuditorIdentity(identity);
 
   const submit = async () => {
     setError(null);
@@ -129,6 +140,7 @@ export function ControlDetailPage() {
   const tabs: { id: TabId; label: string; count?: number }[] = [
     { id: "overview", label: "Overview" },
     ...(isAuditor ? [{ id: "review" as TabId, label: "Auditor review", count: data.links.length }] : []),
+    { id: "findings", label: "Findings", count: findings.data?.filter((f) => f.status !== "CLOSED").length },
     { id: "discussion", label: "Discussion", count: messages.data?.length },
     { id: "history", label: "History", count: history.data?.length },
   ];
@@ -144,7 +156,7 @@ export function ControlDetailPage() {
       <div className="record-header">
         <RecordIcon locked={data.locked} />
         <div className="record-title-block">
-          <h2>{data.title || `${data.framework} ${data.clause}`}</h2>
+          <h2>{data.title || `${data.framework} ${data.clause}`}</h2> <AskAIButton question={`Explain ${data.framework} ${data.clause} in plain words: what it requires, what evidence we have for it, and what is still missing.`} />
           {data.text && <p>{data.text}</p>}
         </div>
         <div className="record-actions">
@@ -178,7 +190,8 @@ export function ControlDetailPage() {
         </div>
         <div className="meta-item">
           <span className="meta-label">Owner</span>
-          <span className="meta-value">{data.owner_emails.length ? data.owner_emails.join(", ") : "Unassigned"}</span>
+          <OwnerEditor controlId={data.id} ownerIds={data.owner_ids} ownerEmails={data.owner_emails}
+                       canEdit={identity?.kind === "org"} onChanged={control.reload} />
         </div>
         <div className="meta-item">
           <span className="meta-label"><Term>Evidence</Term></span>
@@ -243,7 +256,7 @@ export function ControlDetailPage() {
         <>
           {data.links.map((link) => (
             <AuditorLinkPanel
-              key={link.id} linkId={link.id} verdict={link.verdict}
+              key={link.id} linkId={link.id} verdict={link.verdict} engineVerdict={link.engine_verdict}
               auditorVerdict={link.auditor_verdict} locked={link.locked}
               nutshell={link.nutshell}
               onChanged={() => { control.reload(); cisoSync.reload(); history.reload(); }}
@@ -251,6 +264,11 @@ export function ControlDetailPage() {
             />
           ))}
         </>
+      )}
+
+      {tab === "findings" && (
+        <FindingsPanel controlId={data.id} findings={findings.data ?? []} isAuditor={isAuditor}
+                       canRespond={!isAuditor && identity?.role !== "COMPLIANCE_VIEWER"} onChanged={findings.reload} />
       )}
 
       {tab === "discussion" && (
@@ -267,9 +285,8 @@ export function ControlDetailPage() {
         <ul className="timeline">
           {history.data?.map((e, i) => (
             <li key={i}>
-              <div className="ts">{new Date(e.at).toLocaleString()}</div>
-              <strong>{e.action}</strong> by {e.actor}
-              {e.reason && <span className="muted"> — {e.reason}</span>}
+              <div className="ts">{localTime(e.at)}</div>
+              <EventLine event={e} />
             </li>
           ))}
           {history.data?.length === 0 && <li className="muted">No events yet.</li>}
@@ -282,6 +299,7 @@ export function ControlDetailPage() {
 function AuditorLinkPanel({
   linkId,
   verdict,
+  engineVerdict,
   auditorVerdict,
   locked,
   nutshell,
@@ -290,6 +308,7 @@ function AuditorLinkPanel({
 }: {
   linkId: string;
   verdict: string;
+  engineVerdict: string | null;
   auditorVerdict: string | null;
   locked: boolean;
   nutshell?: string;
@@ -300,6 +319,10 @@ function AuditorLinkPanel({
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Disagreeing with the rules is allowed, but the reason is then required (and kept in the audit trail).
+  const rules = engineVerdict ?? (locked ? null : verdict);
+  const overrides = !!rules && !!AGREES_WITH[choice] && AGREES_WITH[choice] !== rules;
+  const needsReason = overrides && reason.trim().split(/\s+/).filter(Boolean).length < 3;
 
   const act = async (fn: () => Promise<unknown>) => {
     setBusy(true);
@@ -317,15 +340,22 @@ function AuditorLinkPanel({
   return (
     <div className="card" style={{ marginBottom: 12 }}>
       <div style={{ display: "flex", justifyContent: "space-between" }}>
-        <span className="muted">Deterministic verdict:</span>
-        <Badge value={verdict} />
+        <span className="muted">Rules' verdict:</span>
+        {rules ? <Badge value={rules} /> : <span className="muted">not recorded</span>}
       </div>
+      {locked && auditorVerdict && (
+        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
+          <span className="muted">Auditor's verdict:</span>
+          <Badge value={auditorVerdict} />
+        </div>
+      )}
       {nutshell && <p className="muted" style={{ marginTop: 8 }}>{nutshell}</p>}
       {locked && <CisoSyncBadge status={syncStatus} />}
       {error && <div className="alert alert-error">{error}</div>}
       {locked ? (
         <div style={{ marginTop: 10 }}>
           <div className="badge badge-locked">locked — {auditorVerdict}</div>
+          <ReplaceVerdict linkId={linkId} onChanged={onChanged} />
           <div className="form-row" style={{ marginTop: 10 }}>
             <input placeholder="reason for unlocking (required)" value={reason} onChange={(e) => setReason(e.target.value)} />
             <button className="btn btn-danger" disabled={busy || reason.trim().length < 3} onClick={() => act(() => unlockLink(linkId, reason))}>
@@ -342,11 +372,12 @@ function AuditorLinkPanel({
               </option>
             ))}
           </select>
-          <input placeholder="remarks (optional)" value={reason} onChange={(e) => setReason(e.target.value)} />
-          <button className="btn btn-primary" disabled={busy} onClick={() => act(() => recordVerdict(linkId, choice, reason))}>
+          <input placeholder={overrides ? `required: you are overriding the rules' ${rules} verdict` : "remarks (optional)"}
+                 value={reason} onChange={(e) => setReason(e.target.value)} />
+          <button className="btn btn-primary" disabled={busy || needsReason} onClick={() => act(() => recordVerdict(linkId, choice, reason))}>
             Record verdict
           </button>
-          <button className="btn" disabled={busy} onClick={() => act(() => lockLink(linkId, choice))}>
+          <button className="btn" disabled={busy || needsReason} onClick={() => act(() => lockLink(linkId, choice, reason))}>
             Lock
           </button>
         </div>
@@ -356,6 +387,7 @@ function AuditorLinkPanel({
         be the one recording its verdict — the backend rejects that as a segregation-of-duties
         violation.
       </p>
+      <VerdictRegister linkId={linkId} />
     </div>
   );
 }
@@ -418,7 +450,7 @@ function DiscussionThread({
       <ul className="timeline">
         {messages.map((m) => (
           <li key={m.id}>
-            <div className="ts">{new Date(m.created_at).toLocaleString()}</div>
+            <div className="ts">{localTime(m.created_at)}</div>
             <strong>{KIND_LABEL[m.kind]}</strong> by {m.created_by}
             {m.kind !== "COMMENT" && <Badge value={m.status} />}
             <p style={{ margin: "4px 0" }}>{m.body}</p>

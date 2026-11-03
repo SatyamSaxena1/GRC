@@ -22,6 +22,7 @@ from pathlib import Path
 from app.review import agent, diff, engine, standards
 
 PER_PR_SECONDS = 13 * 60   # the benchmark's limit is 15 minutes per pull request
+# RB_CONFIG_PER_PR_SECONDS lifts it for an offline quality run; a portal run must keep the default.
 
 
 def _rule_findings(files: list[diff.FileDiff]) -> list[dict]:
@@ -54,7 +55,7 @@ def main() -> int:
         print(f"model={model.model} base_url={model.base_url} mode={mode} prompt={agent.PROMPT_VERSION}",
               file=sys.stderr)
         reviewed, stats = agent.review(model, agent.RepoTools(env.get("RB_REPO", "/work/repo")), diff_text, files,
-                                       pr.get("title", ""), pr.get("body", ""), deadline=started + PER_PR_SECONDS)
+                                       pr.get("title", ""), pr.get("body", ""), deadline=started + float(env.get("RB_CONFIG_PER_PR_SECONDS") or PER_PR_SECONDS))
         print(f"chunks={stats.chunks} calls={stats.calls} tool_calls={stats.tool_calls} "
               f"kept={len(reviewed)} dropped={len(stats.dropped)}", file=sys.stderr)
         taken = {(f["file"], f["start_line"]) for f in findings}
