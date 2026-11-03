@@ -48,6 +48,20 @@ needed.
   without that pattern are not fetched.
 - Advice can anchor a tired reviewer. It is shown after the draft and labelled advisory for that reason.
 
+## Measured (EU AI Act drafts Art. 4, 5(2), 26(1), LM Studio, 2026-11)
+Same prompt, three reviewers. Prompts were 700 to 1,600 tokens, so the 116k-token context window of the
+loaded model was never a factor and no call was truncated.
+
+| Reviewer | Time per draft | Output tokens | What it did |
+|---|---|---|---|
+| gemma-4-e4b (the drafter), reasoning off | 1 to 3 s | about 300 | Found the Art. 4 over-reach, but faulted drafts for what the adjacent paragraph says and once rated a draft "faithful" while listing such a concern |
+| qwen3.5-9b, reasoning off (`LLM_REASONING_EFFORT=none`, the default) | 4 to 5 s | 320 to 380 | More substantive, mostly about the provision's own text: "the law requires measures be taken, not that they be documented" is exactly the documentable-or-not question |
+| qwen3.5-9b, reasoning on (server default) | 60 to 100 s | 5,000 to 8,500 | No clearer; on Art. 5(2) it brought in requirements (FRIA, registration) that are not in the provision |
+
+So: use `REVIEW_ASSIST_MODEL=qwen/qwen3.5-9b` with reasoning off. Thinking costs 15 to 20 times as long
+and did not improve the critique. This is five drafts by eye, not a measurement of how often a bad
+draft is caught; the neighbour tagging stays on for every reviewer.
+
 ## Not covered
 Reviewing edits as well as drafts, checking mappings to unified control objectives for plausibility,
 cross-law conflicts, and measuring whether the critique actually catches bad drafts (that needs a set
