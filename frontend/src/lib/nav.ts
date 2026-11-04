@@ -72,10 +72,14 @@ export const ORG_NAV: NavItem[] = [
     to: "/vendors", label: "Vendors",
     hint: "The third parties you depend on, each with a risk tier from fixed rules and a review date that tells you when it is due.",
   },
+  {
+    to: "/connections", label: "Connections",
+    hint: "Connect your team chat so alerts and the Monday summary reach you. What you paste is stored encrypted and never shown again.",
+  },
 ];
 
 // Org-wide read, no setup surface — see docs/adr/017-compliance-officer-persona.md.
-export const VIEWER_NAV: NavItem[] = ORG_NAV.filter((item) => item.to !== "/admin");
+export const VIEWER_NAV: NavItem[] = ORG_NAV.filter((item) => item.to !== "/admin" && item.to !== "/connections");
 
 export const OWNER_NAV: NavItem[] = [
   { ...ORG_NAV[4], label: "My tasks" },
@@ -134,7 +138,7 @@ export function navFor(identity: Identity | null): NavItem[] {
 // rendered separately (AppShell's NotificationsLink), so it is listed here too.
 const STAGE: Record<string, string> = {
   "/evidence": "Collect", "/map": "Collect",
-  "/overview": "Assess", "/questionnaire": "Assure", "/vendors": "Assess", "/controls": "Assess", "/gaps": "Assess", "/code-review": "Assess",
+  "/overview": "Assess", "/questionnaire": "Assure", "/vendors": "Assess", "/connections": "Act", "/controls": "Assess", "/gaps": "Assess", "/code-review": "Assess",
   "/tasks": "Act", "/notifications": "Act", "/dpdp/operations": "Act", "/admin": "Act",
   "/firm": "Assure", "/activity": "Assure", "/ciso-sync": "Assure",
   "/ai-compliance": "Regulate", "/dpdp": "Regulate", "/glossary": "Regulate",

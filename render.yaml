@@ -10,6 +10,10 @@
 #   OIDC_ISSUER, OIDC_AUDIENCE, OIDC_JWKS_URL
 #   OIDC_EMAIL_CLAIM     only if the IdP namespaces it (Auth0: https://grc-api/email)
 #   OLLAMA_BASE_URL, OLLAMA_API_KEY   (the GPU host from deploy/llm/)
+#   CONNECTIONS_KEY      encrypts what an organisation saves on its Connections page (ADR-044). Make one with:
+#                        python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+#                        Keep a copy: without it saved connections cannot be read (they would have to be pasted again).
+#                        The weekly-report cron job needs the same value as a GitHub secret to read them.
 #   optional: CISO_ASSISTANT_*, DPDP_*_COLLECTOR_URL / _TOKEN
 #   DATABASE_URL is NOT set here — the web service below gets it directly from
 #   grc-db (fromDatabase), which overrides any placeholder in the group.

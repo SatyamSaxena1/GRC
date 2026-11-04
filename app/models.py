@@ -79,6 +79,24 @@ class VendorReport(Base):
     uploaded_at: Mapped[datetime] = mapped_column(default=_now)
 
 
+class Connection(Base):
+    """Something an organisation connects itself, e.g. its chat webhook (ADR-044). The secret exists only as
+    ciphertext; hint, status and last_error are the non-secret facts the page shows."""
+    __tablename__ = "connections"
+    __table_args__ = (UniqueConstraint("org_id", "kind", name="uq_connections_org_kind"),)
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"))
+    kind: Mapped[str] = mapped_column(String)  # CHAT_WEBHOOK
+    config_encrypted: Mapped[str] = mapped_column(Text)
+    hint: Mapped[str] = mapped_column(String, default="")
+    status: Mapped[str] = mapped_column(String, default="UNTESTED")  # UNTESTED | OK | FAILED
+    last_tested_at: Mapped[datetime | None] = mapped_column(default=None)
+    last_error: Mapped[str] = mapped_column(String, default="")
+    created_by: Mapped[str] = mapped_column(String, default="")
+    created_at: Mapped[datetime] = mapped_column(default=_now)
+    updated_at: Mapped[datetime] = mapped_column(default=_now)
+
+
 class AuditFirm(Base):
     __tablename__ = "audit_firms"
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)

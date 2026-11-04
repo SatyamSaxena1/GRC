@@ -27,7 +27,7 @@ def _org(actor: Actor, db: Session) -> Organization:
 def weekly(actor: Actor = Depends(current_actor), db: Session = Depends(get_session)):
     report = reports.build(db, _org(actor, db))
     return {**report, "text": reports.text(report),
-            "delivery": {"webhook_configured": notify.enabled(),
+            "delivery": {"webhook_configured": notify.destination_in(db, actor.org_id) is not None,
                          "schedule": os.environ.get("WEEKLY_REPORT_SCHEDULE", "Mondays 07:15 IST")}}
 
 

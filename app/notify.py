@@ -29,7 +29,8 @@ from datetime import datetime, timedelta, timezone
 import requests
 from sqlalchemy.orm import Session
 
-from app.models import NotificationLog
+from app import connections
+from app.models import Connection, NotificationLog
 
 logger = logging.getLogger("app.notify")
 
@@ -49,14 +50,46 @@ def _payload(kind: str, severity: str, message: str, link: str, org_id: str) -> 
             "link": _link(link), "org_id": org_id, "at": datetime.now(timezone.utc).isoformat()}
 
 
-def _post(payload: dict) -> bool:
-    """One delivery attempt. Never raises."""
+def destination_in(db: Session, org_id: str) -> tuple[str, bool] | None:
+    """(address, signed) for this organisation: its own chat connection first (ADR-044), else the server-wide
+    NOTIFY_WEBHOOK_URL. An organisation whose own connection cannot be read gets nothing, never the shared
+    channel: another organisation's alert must not land in the operator's."""
+    if connections.available():
+        row = db.query(Connection).filter_by(org_id=org_id, kind=connections.KIND_CHAT).one_or_none()
+        if row is not None:
+            try:
+                return connections.decrypt(row.config_encrypted), False
+            except ValueError:
+                logger.warning("notify_connection_unreadable org=%s", org_id)
+                return None
     url = os.environ.get("NOTIFY_WEBHOOK_URL", "")
+    return (url, True) if url else None
+
+
+def _deliver(org_id: str, payload: dict) -> None:
+    """Resolve the destination in its own session (this runs off the request thread) and send. Best effort."""
+    from app.db import session_scope, set_tenant
+
+    try:
+        with session_scope() as db:
+            set_tenant(db, org_id)
+            dest = destination_in(db, org_id)
+    except Exception as exc:  # noqa: BLE001 - delivery is best effort by design
+        logger.warning("notify_destination_failed error=%s", type(exc).__name__)
+        return
+    if dest:
+        _post(payload, *dest)
+
+
+def _post(payload: dict, url: str | None = None, signed: bool = True) -> bool:
+    """One delivery attempt. Never raises. `url` defaults to the server-wide setting; an organisation's own
+    connection is posted unsigned (a chat service has no use for the signature)."""
+    url = url if url is not None else os.environ.get("NOTIFY_WEBHOOK_URL", "")
     if not url:
         return False
     body = json.dumps(payload, sort_keys=True).encode()
     headers = {"Content-Type": "application/json"}
-    secret = os.environ.get("NOTIFY_WEBHOOK_SECRET", "")
+    secret = os.environ.get("NOTIFY_WEBHOOK_SECRET", "") if signed else ""
     if secret:
         headers["X-GRC-Signature"] = "sha256=" + hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
     try:
@@ -78,10 +111,10 @@ def _spawn(work) -> None:
 
 def event(kind: str, severity: str, message: str, link: str, org_id: str) -> None:
     """A notice from the request path. Call after the change is committed."""
-    if not enabled():
+    if not enabled() and not connections.available():
         return
     payload = _payload(kind, severity, message, link, org_id)
-    _spawn(lambda: _post(payload))
+    _spawn(lambda: _deliver(org_id, payload))
 
 
 def _key(item: dict) -> str:
@@ -91,7 +124,8 @@ def _key(item: dict) -> str:
 def digest(db: Session, org_id: str, items: list[dict]) -> int:
     """Send what needs attention, once per item until NOTIFY_RESEND_DAYS (default 7) have passed.
     Returns how many were sent. Runs in the cron process, so it posts synchronously."""
-    if not enabled() or not items:
+    dest = destination_in(db, org_id) if items else None
+    if dest is None:
         return 0
     resend_after = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(
         days=float(os.environ.get("NOTIFY_RESEND_DAYS", "7")))
@@ -101,7 +135,7 @@ def digest(db: Session, org_id: str, items: list[dict]) -> int:
         row = db.query(NotificationLog).filter_by(org_id=org_id, item_key=key).one_or_none()
         if row is not None and row.sent_at.replace(tzinfo=None) > resend_after:
             continue
-        if not _post(_payload(item["kind"], item["severity"], item["message"], item["link"], org_id)):
+        if not _post(_payload(item["kind"], item["severity"], item["message"], item["link"], org_id), *dest):
             continue
         now = datetime.now(timezone.utc).replace(tzinfo=None)
         if row is None:
