@@ -13,7 +13,7 @@ on screen, and where the proof is. Add to the top. Say only what the live site d
 | Firm admin could not open a client | **Fixed** (PR 51) |
 | Users page: see team, change roles, switch someone off | **Done** (PR 52, ADR-036) |
 | Controls page fed by every source, not only GitHub | **Done** (PR 56, ADR-037): 3 controls became 11 |
-| In-app connector setup | Open (needs a design for stored secrets first) |
+| In-app connector setup | **Started** (PR 77, ADR-044): team chat (Discord/Slack) done; evidence collectors still open |
 | Fuller framework catalogue | Open |
 | Policy templates | **Started** (PR 58, ADR-038): three templates whose figures come from the rules |
 | Trust page | **Done** (PR 60/61, ADR-039): opt-in, counts only, revocable |
@@ -26,6 +26,20 @@ Where we lead: the verdict comes from fixed rules, never from a model; a named h
 step is in a tamper-evident log; the DPDP Act pack for India.
 
 ## Entries
+
+### 4 Nov 2026: Connect your team chat yourself, no server settings (PR 77)
+- **Say:** "Open Connections, paste your Discord or Slack webhook address, press Save, then Send a test
+  message. From then on your alerts and the Monday summary go to your own channel. What you paste is stored
+  scrambled and is never shown again."
+- **Show:** Connections page (org admin only): the address box is masked while you paste; after Save it shows
+  only "discord.com ...xxxx" and a status. Press the test button and the message appears in the channel.
+  Then assign a task and watch the alert arrive.
+- **Honest detail:** only Discord and Slack addresses are accepted. If the stored address ever cannot be
+  read, nothing is sent, and it never falls back to the shared server channel. The "task assigned" alert still
+  names the person, so use a channel only your own team reads.
+- **Proof:** the old server-wide webhook setting was deleted from Render and GitHub, the site redeployed, and
+  an assignment still produced the alert, so it came through the saved connection. The audit log records
+  who set, tested or removed it, never the address. 35 tests cover validation, encryption and routing.
 
 ### 4 Nov 2026: The weekly report and live alerts arrive in Discord (PR 66, 73, 74, 75)
 - **Say:** "Every Monday, and the moment something happens, your team gets a short message in the channel
