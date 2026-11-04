@@ -22,11 +22,17 @@ on:
     - cron: "0 */6 * * *"   # sync connectors, every 6 hours (UTC)
     - cron: "30 1 * * *"    # daily attention report, 07:00 IST
     - cron: "45 1 * * 1"    # weekly compliance report to the webhook, Mondays 07:15 IST (ADR-041)
-  workflow_dispatch:        # manual "Run workflow" button for testing
+  workflow_dispatch:        # manual "Run workflow" button: runs ONE job, chosen below, never all of them
+    inputs:
+      job:
+        description: Which job to run by hand
+        type: choice
+        default: weekly-report
+        options: [weekly-report, daily-report, sync-connectors]
 
 jobs:
   sync-connectors:
-    if: github.event.schedule == '0 */6 * * *' || github.event_name == 'workflow_dispatch'
+    if: github.event.schedule == '0 */6 * * *' || (github.event_name == 'workflow_dispatch' && inputs.job == 'sync-connectors')
     runs-on: ubuntu-latest
     # Secrets go on the steps that need them, not the job: `pip install` runs
     # third-party build code and has no business seeing the DB password.
@@ -115,7 +121,7 @@ jobs:
           python -m app.monitor --sync-connectors --source github "${args[@]}"
 
   daily-report:
-    if: github.event.schedule == '30 1 * * *' || github.event_name == 'workflow_dispatch'
+    if: github.event.schedule == '30 1 * * *' || (github.event_name == 'workflow_dispatch' && inputs.job == 'daily-report')
     runs-on: ubuntu-latest
     steps:
       - name: Require DATABASE_URL
@@ -135,7 +141,7 @@ jobs:
   weekly-report:
     # Posts one content-free summary per organisation to NOTIFY_WEBHOOK_URL (app/reports.py). Sends
     # nothing, and does not fail, when no webhook secret is set. Re-running in the same week is a no-op.
-    if: github.event.schedule == '45 1 * * 1' || github.event_name == 'workflow_dispatch'
+    if: github.event.schedule == '45 1 * * 1' || (github.event_name == 'workflow_dispatch' && inputs.job == 'weekly-report')
     runs-on: ubuntu-latest
     steps:
       - name: Require DATABASE_URL
