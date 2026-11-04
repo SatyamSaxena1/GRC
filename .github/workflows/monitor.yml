@@ -9,6 +9,10 @@
 # When you move off the free tier, delete this file and use the two Render
 # cron services in the paid render.yaml instead.
 #
+# These jobs hold their OWN copy of DATABASE_URL and the storage settings: moving the database or the
+# bucket means updating the repo secrets too (gh secret set ...), or every run here fails or writes to the
+# old place. DATABASE_URL must be reachable from GitHub's runners over IPv4 (Supabase: the session pooler URI).
+#
 # daily-report exits 1 whenever something needs a human (app/monitor.py,
 # ADR-006) — a red run there can be the alert working, not a broken job.
 name: DPDP monitor
@@ -70,7 +74,7 @@ jobs:
           DPDP_BITBUCKET_COLLECTOR_TOKEN: ${{ secrets.DPDP_BITBUCKET_COLLECTOR_TOKEN }}
           # The same object storage the web service reads, so stored snapshots are viewable
           STORAGE_BACKEND: s3
-          AWS_REGION: ap-northeast-1
+          AWS_REGION: ap-southeast-1
           S3_BUCKET: ${{ secrets.S3_BUCKET }}
           S3_ENDPOINT_URL: ${{ secrets.S3_ENDPOINT_URL }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -97,7 +101,7 @@ jobs:
           ORGS: ${{ vars.CHANGE_CONTROL_ORG_IDS }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           STORAGE_BACKEND: s3
-          AWS_REGION: ap-northeast-1
+          AWS_REGION: ap-southeast-1
           S3_BUCKET: ${{ secrets.S3_BUCKET }}
           S3_ENDPOINT_URL: ${{ secrets.S3_ENDPOINT_URL }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
