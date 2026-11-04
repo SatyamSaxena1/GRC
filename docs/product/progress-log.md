@@ -19,13 +19,25 @@ on screen, and where the proof is. Add to the top. Say only what the live site d
 | Trust page | **Done** (PR 60/61, ADR-039): opt-in, counts only, revocable |
 | Questionnaire answers | **Done** (PR 63, 64, ADR-040): status from verdicts, model only words it |
 | Weekly report | **Done** (PR 66, ADR-041): counts only, readable in the app, to a chat webhook on Mondays |
-| Vendor risk | Open |
+| Vendor risk | **Started** (PR 68, ADR-042): register, rule-decided tier, review dates |
 | AI help on the live site | **Working for demos** (model on a personal machine, reached through a tunnel; not for real use) |
 
 Where we lead: the verdict comes from fixed rules, never from a model; a named human signs and locks; every
 step is in a tamper-evident log; the DPDP Act pack for India.
 
 ## Entries
+
+### 4 Nov 2026: Know your vendors, and when each is due (PR 68)
+- **Say:** "List the companies you depend on. Each gets a risk level from simple rules you can read:
+  what data they can reach, how much you rely on them, and whether they have a security report on file.
+  The level decides how often you must review them, and the page tells you who is overdue."
+- **Show:** Vendors page. Add a payments provider (sensitive data, high dependence): tier High, never
+  reviewed. Tick "report on file" and watch the points drop. Press Mark reviewed, type what you checked,
+  and the due date appears.
+- **Honest detail:** a review needs a few words about what was checked, and every change is in the activity
+  log. It does not store the vendor's report yet, and overdue reviews are not yet in the weekly summary.
+- **Proof:** tests pin every tier boundary and every review state; the table is locked to each
+  organisation in the database itself.
 
 ### 3 Nov 2026: A weekly report that writes itself (PR 66)
 - **Say:** "Every Monday, one short message tells your team where compliance stands and what changed:
