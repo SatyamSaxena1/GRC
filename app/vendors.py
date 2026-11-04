@@ -8,7 +8,7 @@ ADR so an organisation can see exactly why a vendor landed where it did.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
 DATA_ACCESS = {"NONE": 0, "INTERNAL": 1, "PERSONAL": 2, "SENSITIVE": 3}
 CRITICALITY = {"LOW": 0, "MEDIUM": 1, "HIGH": 2}
@@ -36,3 +36,12 @@ def review(status: str, risk_tier: str, last_reviewed_at: datetime | None, now: 
     due = last_reviewed_at + timedelta(days=REVIEW_EVERY_DAYS[risk_tier])
     state = "OVERDUE" if due < now else "DUE_SOON" if due < now + timedelta(days=DUE_SOON_DAYS) else "CURRENT"
     return {"state": state, "due": due.date().isoformat()}
+
+ATTESTING_TYPES = ("SOC2_TYPE2", "SOC2_TYPE1", "ISO27001")
+REPORT_TYPES = ATTESTING_TYPES + ("OTHER",)
+
+
+def attests(report_type: str, valid_until: date, today: date | None = None) -> bool:
+    """A SOC 2 or ISO 27001 report counts as an attestation only while its stated valid-until date has not
+    passed. Any other document is kept on the record and never counts."""
+    return report_type in ATTESTING_TYPES and valid_until >= (today or datetime.now(timezone.utc).date())

@@ -131,7 +131,13 @@ export const closeEngagement = (engagementId: string) =>
   request<{ id: string; status: string }>("POST", `/admin/engagements/${engagementId}/close`);
 
 /** The vendor register (ADR-042): tier and review status come from fixed rules on the server. */
+export type VendorReport = {
+  id: string; report_type: string; valid_until: string; filename: string; size_bytes: number; sha256: string;
+  uploaded_by: string; uploaded_at: string; counts: boolean;
+};
 export type Vendor = {
+  attestation: { on_file: boolean; source: "report" | "manual" | "none"; valid_until: string | null };
+  reports: VendorReport[];
   id: string; name: string; service: string; data_access: string; criticality: string; has_attestation: boolean;
   owner_user_id: string | null; owner_email: string | null; status: "ACTIVE" | "OFFBOARDED"; notes: string;
   last_reviewed_at: string | null; tier: "LOW" | "MEDIUM" | "HIGH"; points: number; review_every_days: number;
@@ -142,6 +148,15 @@ export const listVendors = () => request<Vendor[]>("GET", "/vendors");
 export const addVendor = (v: VendorIn) => request<Vendor>("POST", "/vendors", { json: v });
 export const updateVendor = (id: string, patch: Partial<VendorIn> & { status?: string }) =>
   request<Vendor>("PATCH", `/vendors/${id}`, { json: patch });
+export const attachVendorReport = (vendorId: string, file: File, reportType: string, validUntil: string) => {
+  const form = new FormData();
+  form.append("file", file);
+  form.append("report_type", reportType);
+  form.append("valid_until", validUntil);
+  return request<Vendor>("POST", `/vendors/${vendorId}/reports`, { form });
+};
+export const downloadVendorReport = (vendorId: string, r: VendorReport) =>
+  downloadFile(`/vendors/${vendorId}/reports/${r.id}/file`, r.filename);
 export const reviewVendor = (id: string, note: string) =>
   request<Vendor>("POST", `/vendors/${id}/review`, { json: { note } });
 
