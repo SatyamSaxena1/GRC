@@ -333,6 +333,9 @@ table.data-table th {
 }
 table.data-table tbody tr:hover { background: #f9fafc; cursor: pointer; }
 table.data-table tbody tr:last-child td { border-bottom: none; }
+/* Rows that do not open anything: no pointer cursor, no hover tint. */
+table.data-table.static tbody tr:hover { background: transparent; cursor: default; }
+table.data-table.static td { vertical-align: top; }
 
 .badge {
   display: inline-block;

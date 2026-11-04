@@ -101,7 +101,7 @@ function TeamCard() {
         attributed to them in the audit log.
       </p>
       {error && <div className="alert alert-error">{error}</div>}
-      <table>
+      <table className="data-table static">
         <thead><tr><th>Email</th><th>Role</th><th>Status</th><th /></tr></thead>
         <tbody>
           {(team.data ?? []).map((u) => (

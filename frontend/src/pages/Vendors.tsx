@@ -39,7 +39,7 @@ export function VendorsPage() {
       </div>
       {error && <div className="alert alert-error">{error}</div>}
 
-      <table>
+      <table className="data-table static">
         <thead><tr><th>Vendor</th><th>Data</th><th>Criticality</th><th>Attestation</th><th>Tier</th><th>Review</th><th /></tr></thead>
         <tbody>
           {rows.length === 0 && <tr><td colSpan={7} className="muted">No vendors yet. Add the first one below.</td></tr>}
