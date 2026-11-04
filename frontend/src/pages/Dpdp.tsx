@@ -117,7 +117,7 @@ export function DpdpPage() {
                     ? "Configured, but no evidence has been collected yet."
                     : "Requires a server-side collector URL and its least-privilege credential."}
             </p>
-            <CollectionStatus connector={connector} />
+            <CollectionStatus connector={connector} onChanged={() => { connectors.reload(); readiness.reload(); }} />
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
               <button
                 className="btn btn-primary"

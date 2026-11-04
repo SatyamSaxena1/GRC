@@ -335,6 +335,40 @@ def _sync_in_background(org_id: str, actor_label: str, request_id: str, source: 
         process_evidence(db, CONTENT, evidence, actor_label, request_id)
 
 
+SCOPE_SIGNAL = "repositories in scope fell"
+MIN_REASON_WORDS = 6
+
+
+@router.post("/{source}/accept-scope")
+def accept_scope(source: str, body: dict, actor: Actor = Depends(current_actor),
+                 db: Session = Depends(get_session)):
+    """An organisation admin accepts that fewer repositories are now in scope (ADR-046). The last run is PARTIAL only
+    because it covered fewer repositories than the last complete one. This inserts (never edits) a COMPLETE run
+    carrying that run's figures, with the admin's reason, so it becomes the baseline the next collection is judged
+    against. Anything the collector itself reported as wrong (incomplete, truncated, rate limited, errors) cannot be
+    accepted this way. The caller then collects again to get verdicts."""
+    if source not in EXCEPTION_SOURCES:
+        raise HTTPException(404, "scope can only be accepted for a repository connector")
+    if actor.role != "ORG_ADMIN" or actor.engagement_id or not actor.org_id:
+        raise HTTPException(403, "only an organisation admin may accept a new scope")
+    reason = str(body.get("reason") or "").strip()
+    if len(reason.split()) < MIN_REASON_WORDS:
+        raise HTTPException(422, f"say why the smaller scope is right, in at least {MIN_REASON_WORDS} words")
+    last = _last_run(db, actor.org_id, source)
+    if last is None or last.status != "PARTIAL" or not last.signals or not all(
+            str(s).startswith(SCOPE_SIGNAL) for s in last.signals):
+        raise HTTPException(409, "the last run is not partial for a reduced repository scope only")
+    accepted = {**last.returned}
+    run = _record_run(db, actor.label(), actor.request_id, actor.org_id, source,
+                      {"status": "COMPLETE", "expectation": "ACCEPTED", "requested": {}, "returned": accepted,
+                       "signals": [f"smaller scope accepted by {actor.label()}: {reason}"]}, last.evidence_id)
+    audit_log.record(db, actor=actor.label(), request_id=actor.request_id, action="CONNECTOR_SCOPE_ACCEPTED",
+                     entity_type="collection_run", entity=run.id, org_id=actor.org_id, reason=reason,
+                     detail={"source": source, "accepted_run": last.id, "signals": last.signals})
+    db.commit()
+    return {"source": source, "run_id": run.id, "status": run.status}
+
+
 @router.patch("/{source}/not-applicable")
 def set_connector_not_applicable(
     source: str,
