@@ -35,7 +35,7 @@ from datetime import date, datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session
 
-from app import audit_log
+from app import audit_log, vendors
 from app.content.load import Content
 from app.evaluate import evaluate
 from app.ai import decision
@@ -115,11 +115,12 @@ class AttentionReport:
     failed: tuple[StalledEvidence, ...] = field(default=())
     breach: tuple[DeadlineItem, ...] = field(default=())
     dsr: tuple[DeadlineItem, ...] = field(default=())
+    vendors: tuple[DeadlineItem, ...] = field(default=())
 
     @property
     def total(self) -> int:
         return (len(self.expired) + len(self.expiring_soon) + len(self.stuck) + len(self.failed)
-                + len(self.breach) + len(self.dsr))
+                + len(self.breach) + len(self.dsr) + len(self.vendors))
 
     def to_dict(self) -> dict:
         return {
@@ -131,6 +132,7 @@ class AttentionReport:
             "failed": [s.to_dict() for s in self.failed],
             "breach": [b.to_dict() for b in self.breach],
             "dsr": [d.to_dict() for d in self.dsr],
+            "vendors": [v.to_dict() for v in self.vendors],
         }
 
 
@@ -191,6 +193,17 @@ def _stale_clauses(evidence: Evidence, content: Content, frameworks: list[str],
         for gap in link.gaps
         if gap.kind == "STALE"
     }
+
+
+def _vendor_attention(db: Session, org_id: str, now: datetime) -> list[DeadlineItem]:
+    """Active vendors whose review is overdue or never done (a person must act). Due-soon ones are left to the
+    Vendors page and the weekly report: a daily nag a month early would be noise."""
+    out = []
+    for v, r in vendors.review_states(db, org_id, now):
+        if r["state"] in ("OVERDUE", "NEVER_REVIEWED"):
+            out.append(DeadlineItem(id=v.id, title=v.name, due_at=r["due"] or "", overdue=True,
+                                    detail="never reviewed" if r["state"] == "NEVER_REVIEWED" else "review overdue"))
+    return out
 
 
 def attention_report(db: Session, org_id: str, content: Content, *,
@@ -262,6 +275,7 @@ def attention_report(db: Session, org_id: str, content: Content, *,
         expired=tuple(expired), expiring_soon=tuple(expiring_soon),
         stuck=tuple(stuck), failed=tuple(failed),
         breach=tuple(deadlines["breach"]), dsr=tuple(deadlines["dsr"]),
+        vendors=tuple(_vendor_attention(db, org_id, now)),
     )
 
 
@@ -350,7 +364,7 @@ def _main() -> int:
             if "--notify" in sys.argv:
                 from app import notify
                 from app.routers.notifications import _attention_items
-                sent = notify.digest(db, org.id, _attention_items(report.to_dict(), report.checked_at))
+                sent = notify.digest(db, org.id, _attention_items(report.to_dict(), report.checked_at, names=False))
                 print(f"  webhook: {sent} notice(s) sent" if (sent or notify.enabled()) else "  webhook: not configured")
             if report.total == 0:
                 print("  nothing needs attention")
