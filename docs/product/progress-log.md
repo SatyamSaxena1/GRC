@@ -27,6 +27,17 @@ step is in a tamper-evident log; the DPDP Act pack for India.
 
 ## Entries
 
+### 4 Nov 2026: Connect your own GitHub from the Connections page (PR, part of issue 79)
+- **Say:** "Paste a read-only GitHub token and name your repositories. We collect how code reaches production
+  (reviews, checks, deployments) as evidence, with no server settings to edit."
+- **Show:** Connections page, second card: token box (masked) and repositories box, Save, then Check access.
+  Collect evidence on the DPDP page and see the change-control controls fill in.
+- **Honest detail:** the server only ever calls api.github.com, so a customer cannot aim it elsewhere. If the
+  saved token can no longer be read, the sync fails; it never borrows another organisation's collector. Self-hosted
+  GitLab and Bitbucket still need the extra address-safety work and are not part of this step.
+- **Proof:** tests cover bad input, write-only storage, no token in audit or errors, the access check's failure
+  reasons, per-organisation isolation, and that a sync uses the organisation's own token and repositories.
+
 ### 4 Nov 2026: A tool to clean up old duplicate gaps (PR 88, closes issue 85)
 - **Say:** "Gaps that an old bug duplicated can be cleaned up safely. We checked the live system and none exist,
   so nothing needed changing."

@@ -7,6 +7,7 @@ Nothing here ever returns, logs or raises a secret. The only functions that see 
 
 from __future__ import annotations
 
+import json
 import os
 import re
 from urllib.parse import urlparse
@@ -15,6 +16,7 @@ import requests
 from cryptography.fernet import Fernet, InvalidToken, MultiFernet
 
 KIND_CHAT = "CHAT_WEBHOOK"
+KIND_GITHUB = "GITHUB_CHANGE_CONTROL"
 
 
 def _keys() -> list[str]:
@@ -87,3 +89,65 @@ def send(url: str, message: str, timeout: float = 5.0) -> tuple[bool, str]:
     if 200 <= response.status_code < 300:
         return True, ""
     return False, f"the service answered HTTP {response.status_code}"
+
+
+# ---- GitHub change control (ADR-045). One fixed host, so nothing the customer types can redirect the server:
+# only a token and a list of owner/name repositories are accepted, never an address.
+GITHUB_API = "https://api.github.com"
+MAX_REPOS = 10
+_REPO = re.compile(r"^[A-Za-z0-9_.-]{1,100}/[A-Za-z0-9_.-]{1,100}$")
+_TOKEN = re.compile(r"^[A-Za-z0-9_]{20,255}$")
+
+
+def validate_github(token: str, repos: list[str]) -> tuple[str, list[str]]:
+    """The cleaned (token, repositories), or ValueError saying what is wrong (never echoing the token)."""
+    token = (token or "").strip()
+    if not _TOKEN.match(token):
+        raise ValueError("that does not look like a GitHub access token")
+    cleaned = list(dict.fromkeys(r.strip() for r in repos if r and r.strip()))
+    if not cleaned:
+        raise ValueError("name at least one repository, as owner/name")
+    if len(cleaned) > MAX_REPOS:
+        raise ValueError(f"at most {MAX_REPOS} repositories")
+    for r in cleaned:
+        if not _REPO.match(r):
+            raise ValueError("repositories must look like owner/name")
+    return token, cleaned
+
+
+def pack_github(token: str, repos: list[str]) -> str:
+    return json.dumps({"token": token, "repos": repos}, separators=(",", ":"))
+
+
+def unpack_github(plain: str) -> tuple[str, list[str]]:
+    data = json.loads(plain)
+    return data["token"], list(data["repos"])
+
+
+def github_hint(token: str, repos: list[str]) -> str:
+    return f"{len(repos)} repositor{'y' if len(repos) == 1 else 'ies'}, token ...{token[-4:]}"
+
+
+def github_session(token: str) -> requests.Session:
+    s = requests.Session()
+    s.trust_env = False
+    s.headers.update({"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28",
+                      "Authorization": f"Bearer {token}"})
+    return s
+
+
+def github_test(token: str, repos: list[str], timeout: float = 10.0) -> tuple[bool, str]:
+    """Can this token see every named repository? Returns (ok, short reason); never the token, never a body."""
+    session = github_session(token)
+    for repo in repos:
+        try:
+            r = session.get(f"{GITHUB_API}/repos/{repo}", timeout=timeout, allow_redirects=False)
+        except Exception as exc:  # noqa: BLE001 - reported, never raised
+            return False, f"could not connect ({type(exc).__name__})"
+        if r.status_code == 401:
+            return False, "GitHub rejected the token"
+        if r.status_code == 404:
+            return False, f"{repo} was not found, or the token cannot see it"
+        if r.status_code != 200:
+            return False, f"GitHub answered HTTP {r.status_code} for {repo}"
+    return True, ""

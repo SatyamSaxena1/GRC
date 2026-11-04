@@ -132,7 +132,7 @@ export const closeEngagement = (engagementId: string) =>
 
 /** Connections an organisation sets up itself (ADR-044). The address is write-only: only a hint comes back. */
 export type ConnectionView = {
-  kind: "CHAT_WEBHOOK"; configured: boolean; hint: string; status: "NONE" | "UNTESTED" | "OK" | "FAILED";
+  kind: "CHAT_WEBHOOK" | "GITHUB_CHANGE_CONTROL"; configured: boolean; hint: string; status: "NONE" | "UNTESTED" | "OK" | "FAILED";
   last_tested_at: string | null; last_error: string;
 };
 export type ConnectionsState = { key_configured: boolean; connections: ConnectionView[] };
@@ -140,6 +140,9 @@ export const getConnections = () => request<ConnectionsState>("GET", "/connectio
 export const saveChatWebhook = (url: string) => request<ConnectionsState>("PUT", "/connections/chat-webhook", { json: { url } });
 export const testChatWebhook = () => request<ConnectionsState>("POST", "/connections/chat-webhook/test");
 export const removeChatWebhook = () => request<ConnectionsState>("DELETE", "/connections/chat-webhook");
+export const saveGithub = (token: string, repos: string[]) => request<ConnectionsState>("PUT", "/connections/github", { json: { token, repos } });
+export const testGithub = () => request<ConnectionsState>("POST", "/connections/github/test");
+export const removeGithub = () => request<ConnectionsState>("DELETE", "/connections/github");
 
 /** The vendor register (ADR-042): tier and review status come from fixed rules on the server. */
 export type VendorReport = {

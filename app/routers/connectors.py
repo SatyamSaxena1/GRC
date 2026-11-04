@@ -10,18 +10,18 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import requests
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app import audit_log, collection
+from app import audit_log, collection, connections
 from app.auth import Actor, current_actor, deny_read_only
 from app.collectors import github_change_control, weak_keys
 from app.content.load import load as load_content
 from app.db import get_session, session_scope, set_tenant
-from app.models import CollectionRun, Evidence, Organization
+from app.models import CollectionRun, Connection, Evidence, Organization
 from app.service import process_evidence
 from app.storage import get_storage, object_key
 
@@ -71,6 +71,11 @@ def _latest(db: Session, org_id: str, source: str) -> Evidence | None:
     )
 
 
+def _has_own_github(db: Session, org_id: str) -> bool:
+    return connections.available() and db.query(Connection).filter_by(
+        org_id=org_id, kind=connections.KIND_GITHUB).first() is not None
+
+
 @router.get("")
 def connector_status(actor: Actor = Depends(current_actor), db: Session = Depends(get_session)):
     org = db.get(Organization, actor.org_id)
@@ -79,7 +84,7 @@ def connector_status(actor: Actor = Depends(current_actor), db: Session = Depend
         {
             "source": source,
             "label": label,
-            "configured": bool(os.environ.get(_env_key(source, "URL"))),
+            "configured": bool(os.environ.get(_env_key(source, "URL"))) or (source == "github" and _has_own_github(db, actor.org_id)),
             "evidence_id": latest.id if (latest := _latest(db, actor.org_id, source)) else None,
             "last_synced_at": latest.created_at.isoformat() if latest else None,
             "status": latest.status if latest else "NEVER_SYNCED",
@@ -131,21 +136,49 @@ def _record_run(db: Session, actor_label: str, request_id: str, org_id: str, sou
     return run
 
 
-def _pull(source: str) -> dict:
+def org_github_config(db: Session, org_id: str) -> tuple[str, list[str]] | None:
+    """The organisation's own GitHub token and repositories (ADR-045), or None when it has not connected any.
+    Raises 502 if a saved connection can no longer be read: it must not silently fall back to the shared one."""
+    if not connections.available():
+        return None
+    row = db.query(Connection).filter_by(org_id=org_id, kind=connections.KIND_GITHUB).one_or_none()
+    if row is None:
+        return None
+    try:
+        return connections.unpack_github(connections.decrypt(row.config_encrypted))
+    except ValueError as exc:
+        raise HTTPException(502, f"github connection unreadable: {exc}") from None
+
+
+def _collect_github(token: str, repos: list[str], days: int = 90) -> dict:
+    """Run the read-only change-control collector in-process against api.github.com with the org's own token."""
+    session = connections.github_session(token)
+    since = datetime.now(timezone.utc) - timedelta(days=days)
+    found = [dict(github_change_control.fetch(session, r, since, ["production"], []),
+                  extra_gate_patterns=[], extra_ai_reviewers=[]) for r in repos]
+    rows, left_out = github_change_control.exceptions(found)
+    return {"attributes": github_change_control.summarize(found), "exceptions": rows, "exceptions_left_out": left_out}
+
+
+def _pull(source: str, db: Session | None = None, org_id: str | None = None) -> dict:
+    own = org_github_config(db, org_id) if (source == "github" and db is not None and org_id) else None
     url = os.environ.get(_env_key(source, "URL"))
-    if not url:
+    if not url and own is None:
         raise HTTPException(409, f"{source} collector is not configured")
     token = os.environ.get(_env_key(source, "TOKEN"))
     try:
-        response = requests.get(
-            url,
-            headers={"Authorization": f"Bearer {token}"} if token else {},
-            timeout=float(os.environ.get("DPDP_CONNECTOR_TIMEOUT_S", "20")),
-        )
-        response.raise_for_status()
-        if len(response.content) > MAX_SNAPSHOT_BYTES:
-            raise ValueError("snapshot exceeds 1 MB")
-        payload = response.json()
+        if own is not None:
+            payload = _collect_github(*own)
+        else:
+            response = requests.get(
+                url,
+                headers={"Authorization": f"Bearer {token}"} if token else {},
+                timeout=float(os.environ.get("DPDP_CONNECTOR_TIMEOUT_S", "20")),
+            )
+            response.raise_for_status()
+            if len(response.content) > MAX_SNAPSHOT_BYTES:
+                raise ValueError("snapshot exceeds 1 MB")
+            payload = response.json()
         attributes = payload.get("attributes") if isinstance(payload, dict) else None
         if not isinstance(attributes, dict):
             raise ValueError("collector response must contain an attributes object")
@@ -155,6 +188,10 @@ def _pull(source: str) -> dict:
             raise ValueError(f"collector returned no supported attributes: {sorted(allowed)}")
     except (requests.RequestException, ValueError) as exc:
         raise HTTPException(502, f"{source} collector failed: {exc}") from exc
+    except Exception as exc:  # noqa: BLE001 - the class only: nothing from an own-token run may carry the token
+        if own is None:
+            raise
+        raise HTTPException(502, f"{source} collector failed ({type(exc).__name__})") from None
 
     snapshot = {"source": source, "collected_at": datetime.now(timezone.utc).isoformat(),
                 "attributes": filtered, "declared": payload.get("collection")}
@@ -201,7 +238,7 @@ def sync_connector_for_org(db: Session, org_id: str, actor_label: str, request_i
         raise HTTPException(404, "unknown connector")
 
     try:
-        snapshot = _pull(source)
+        snapshot = _pull(source, db, org_id)
     except HTTPException as exc:
         # "Could not collect" is recorded, not swallowed: earlier evidence stays CURRENT but the
         # connector reads as failed, so nothing here can look like a clean run (ADR-030).
