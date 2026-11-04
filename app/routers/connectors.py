@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 from datetime import datetime, timedelta, timezone
 
@@ -27,6 +28,7 @@ from app.storage import get_storage, object_key
 
 router = APIRouter(prefix="/connectors", tags=["connectors"])
 CONTENT = load_content()
+logger = logging.getLogger(__name__)
 MAX_SNAPSHOT_BYTES = 1_000_000
 
 SOURCES = {
@@ -309,9 +311,28 @@ def sync_connector(
     if not actor.can_write:
         raise deny_read_only(actor, "collect evidence")
 
+    if source == "github" and _has_own_github(db, actor.org_id):
+        # Reading a repository's review history takes minutes, longer than a web request may live (ADR-045).
+        # Run it in the background; the run is recorded (COMPLETE or FAILED) when it ends, and the page shows it.
+        background.add_task(_sync_in_background, actor.org_id, actor.label(), actor.request_id, source)
+        return {"source": source, "evidence_id": None, "status": "RUNNING"}
+
     evidence = sync_connector_for_org(db, actor.org_id, actor.label(), actor.request_id, source)
     background.add_task(_process, evidence.id, actor.org_id, actor.label(), actor.request_id)
     return {"source": source, "evidence_id": evidence.id, "status": evidence.status}
+
+
+def _sync_in_background(org_id: str, actor_label: str, request_id: str, source: str) -> None:
+    """The whole pull-store-evaluate cycle, in its own session. A failure is already recorded as a FAILED run by
+    sync_connector_for_org, so it is only logged here, never raised into the server."""
+    with session_scope() as db:
+        set_tenant(db, org_id)
+        try:
+            evidence = sync_connector_for_org(db, org_id, actor_label, request_id, source)
+        except HTTPException as exc:
+            logger.warning("background_sync_failed source=%s detail=%s", source, exc.detail)
+            return
+        process_evidence(db, CONTENT, evidence, actor_label, request_id)
 
 
 @router.patch("/{source}/not-applicable")

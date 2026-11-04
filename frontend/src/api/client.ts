@@ -836,7 +836,7 @@ export const listConnectorRuns = (source: string) =>
   request<ConnectorRun[]>("GET", `/connectors/${encodeURIComponent(source)}/runs`);
 export const listConnectors = () => request<ConnectorStatus[]>("GET", "/connectors");
 export const syncConnector = (source: ConnectorStatus["source"]) =>
-  request<{ source: string; evidence_id: string; status: string }>(
+  request<{ source: string; evidence_id: string | null; status: string }>(
     "POST", `/connectors/${encodeURIComponent(source)}/sync`,
   );
 export const setConnectorNotApplicable = (source: ConnectorStatus["source"], applicable: boolean) =>

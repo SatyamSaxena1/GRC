@@ -155,3 +155,37 @@ def test_a_collector_crash_reports_the_class_only(client, bootstrap, key, monkey
     with Session(db_module.engine) as s, pytest.raises(HTTPException) as e:
         connectors._pull("github", s, org)
     assert TOKEN not in e.value.detail and "RuntimeError" in e.value.detail
+
+
+def test_a_github_sync_with_an_own_connection_returns_at_once_and_runs_in_the_background(client, bootstrap, key, monkeypatch):
+    org = _org(client, bootstrap)
+    _put(client, org)
+    ran = []
+    monkeypatch.setattr(connectors, "_sync_in_background", lambda *a: ran.append(a))
+    monkeypatch.setattr(connectors, "sync_connector_for_org",
+                        lambda *a, **k: (_ for _ in ()).throw(AssertionError("must not run in the request")))
+    r = client.post("/connectors/github/sync", headers=H(org))
+    assert r.status_code == 202 and r.json()["status"] == "RUNNING" and r.json()["evidence_id"] is None
+    assert len(ran) == 1 and ran[0][0] == org and ran[0][3] == "github"
+
+
+def test_the_background_run_stores_evidence_and_records_failure_without_raising(client, bootstrap, key, monkeypatch):
+    from app.models import CollectionRun, Evidence
+    org = _org(client, bootstrap)
+    _put(client, org)
+    monkeypatch.delenv("DPDP_GITHUB_COLLECTOR_URL", raising=False)
+    fetch = lambda session, repo, since, envs, jobs: {}  # noqa: E731
+    monkeypatch.setattr(connectors.github_change_control, "fetch", fetch)
+    monkeypatch.setattr(connectors.github_change_control, "summarize", lambda repos: {"merges_in_period": 3})
+    monkeypatch.setattr(connectors.github_change_control, "exceptions", lambda repos: ([], 0))
+    connectors._sync_in_background(org, "user:test", "", "github")
+    with Session(db_module.engine) as s:
+        assert s.query(Evidence).filter_by(org_id=org, original_filename="connector-github.json").count() == 1
+
+    def boom(*a, **k):
+        raise RuntimeError("down")
+
+    monkeypatch.setattr(connectors.github_change_control, "fetch", boom)
+    connectors._sync_in_background(org, "user:test", "", "github")          # must not raise
+    with Session(db_module.engine) as s:
+        assert s.query(CollectionRun).filter_by(org_id=org, source="github", status="FAILED").count() == 1

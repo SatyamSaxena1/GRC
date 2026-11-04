@@ -15,6 +15,7 @@ export function DpdpPage() {
   const connectors = useApi(() => listConnectors(), []);
   const [syncing, setSyncing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
   const report = readiness.data;
   const score = Math.round((report?.readiness ?? 0) * 100);
 
@@ -31,8 +32,12 @@ export function DpdpPage() {
   const sync = async (source: ConnectorStatus["source"]) => {
     setSyncing(source);
     setError(null);
+    setNote(null);
     try {
-      await syncConnector(source);
+      const started = await syncConnector(source);
+      if (started.status === "RUNNING") {
+        setNote("Collecting from GitHub in the background. This can take a few minutes; the card updates when it finishes.");
+      }
       connectors.reload();
       readiness.reload();
     } catch (err) {
@@ -70,6 +75,7 @@ export function DpdpPage() {
         exemptions, consent validity and legal interpretation still require counsel.
       </div>
       {error && <div className="alert alert-error">{error}</div>}
+      {note && <div className="alert alert-info">{note}</div>}
       {readiness.error && <div className="alert alert-error">{readiness.error}</div>}
 
       <div className="card-grid">
