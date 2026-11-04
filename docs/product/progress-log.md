@@ -19,13 +19,25 @@ on screen, and where the proof is. Add to the top. Say only what the live site d
 | Trust page | **Done** (PR 60/61, ADR-039): opt-in, counts only, revocable |
 | Questionnaire answers | **Done** (PR 63, 64, ADR-040): status from verdicts, model only words it |
 | Weekly report | **Done** (PR 66, ADR-041): counts only, readable in the app, to a chat webhook on Mondays |
-| Vendor risk | **Started** (PR 68, ADR-042): register, rule-decided tier, review dates |
+| Vendor risk | **Done for v1** (PR 68, 71; ADR-042, 043): register, rule-decided tier, review dates, reports as proof |
 | AI help on the live site | **Working for demos** (model on a personal machine, reached through a tunnel; not for real use) |
 
 Where we lead: the verdict comes from fixed rules, never from a model; a named human signs and locks; every
 step is in a tamper-evident log; the DPDP Act pack for India.
 
 ## Entries
+
+### 4 Nov 2026: A vendor's security report is the proof (PR 71)
+- **Say:** "Don't just tick a box that says the vendor is certified. Attach their security report. It counts
+  only until the date it expires, and the vendor's risk level updates by itself when it runs out."
+- **Show:** Vendors page, Reports on a vendor: attach a SOC 2 report with its valid-until date; the vendor
+  now reads "report, valid to ...". Attach an expired one and see it kept but marked "does not count".
+  Open a report to download it.
+- **Honest detail:** the expiry date is the one you type in; the platform checks it has not passed, it does
+  not read the report to confirm it. A report cannot be deleted, so a wrong file stays on the record.
+- **Proof:** tests cover each report type and expiry boundary, upload checks, duplicate files, download-only
+  delivery, and who may see what. An automated review caught a real flaw before release: a half-filled form
+  could have attached one vendor's file to another, which is permanent, so the form now resets and refuses.
 
 ### 4 Nov 2026: Know your vendors, and when each is due (PR 68)
 - **Say:** "List the companies you depend on. Each gets a risk level from simple rules you can read:
