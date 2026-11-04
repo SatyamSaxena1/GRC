@@ -27,6 +27,15 @@ step is in a tamper-evident log; the DPDP Act pack for India.
 
 ## Entries
 
+### 4 Nov 2026: A tool to clean up old duplicate gaps (PR 88, closes issue 85)
+- **Say:** "Gaps that an old bug duplicated can be cleaned up safely. We checked the live system and none exist,
+  so nothing needed changing."
+- **Show:** run `python -m app.gap_repair` (report only), then with `--apply` on a database that has duplicates.
+- **Honest detail:** it never deletes. The earliest gap stays open, the copies are marked closed with a reason
+  naming the one kept, and each closure is in the audit log. It is safe to run twice.
+- **Proof:** tests for report-only, apply, no deletion, audit event, second run, and task handling; a read-only
+  count on the live database found zero duplicate groups.
+
 ### 4 Nov 2026: Overdue vendor reviews show up in the daily list (PR 86, closes issue 83)
 - **Say:** "A vendor whose review is overdue, or was never done, now appears in the same daily list as expiring
   evidence and breach deadlines, with a link straight to the Vendors page."
