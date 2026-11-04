@@ -28,7 +28,8 @@ out with a customer's credential.
 
 ## Consequences
 - Recommend a fine-grained, read-only token limited to the named repositories; the page says so.
-- The sync runs inside the request or cron process and is bounded only by GitHub's API speed. Many large
-  repositories may need a background run later.
+- Reading a repository's review history takes minutes, longer than a web request may live (found when first tried
+  live). A sync by the button now runs in the background and returns 202 RUNNING at once; the run is recorded
+  COMPLETE or FAILED when it ends. Cron already runs outside a request.
 - Rotating `CONNECTIONS_KEY` works as for the chat webhook (comma-separated keys).
 - The platform-wide CI job and its secrets remain as a fallback for the operator's own organisation.
