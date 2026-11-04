@@ -14,7 +14,10 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.models import AuditEvent, EvidenceControlLink, Evidence, GapRow, Organization, TaskRow
+from app import vendors
+from app.models import (
+    AuditEvent, Evidence, EvidenceControlLink, GapRow, Organization, TaskRow, Vendor, VendorReport,
+)
 from app.routers import trust
 
 WEEK = timedelta(days=7)
@@ -22,6 +25,24 @@ WEEK = timedelta(days=7)
 
 def _naive(dt: datetime) -> datetime:
     return dt.astimezone(timezone.utc).replace(tzinfo=None) if dt.tzinfo else dt
+
+
+def vendor_counts(db: Session, org: Organization, now: datetime) -> dict:
+    """How many active vendors are overdue for review or due soon, by the same rules as the Vendors page. Counts
+    only: a vendor's name says who the organisation buys from, so it never goes in a report."""
+    rows = db.query(Vendor).filter_by(org_id=org.id, status="ACTIVE").all()
+    reports: dict[str, list[VendorReport]] = {}
+    for r in db.query(VendorReport).filter_by(org_id=org.id):
+        reports.setdefault(r.vendor_id, []).append(r)
+    overdue = soon = 0
+    for v in rows:
+        attested = v.has_attestation or any(vendors.attests(r.report_type, r.valid_until, now.date())
+                                            for r in reports.get(v.id, []))
+        state = vendors.review(v.status, vendors.tier(v.data_access, v.criticality, attested),
+                               v.last_reviewed_at, now)["state"]
+        overdue += state in ("OVERDUE", "NEVER_REVIEWED")
+        soon += state == "DUE_SOON"
+    return {"active": len(rows), "reviews_overdue": overdue, "reviews_due_soon": soon}
 
 
 def build(db: Session, org: Organization, now: datetime | None = None) -> dict:
@@ -47,7 +68,15 @@ def build(db: Session, org: Organization, now: datetime | None = None) -> dict:
             "tasks_overdue": db.query(TaskRow).filter(TaskRow.org_id == org.id, TaskRow.status == "OPEN",
                                                       TaskRow.due_at.isnot(None), TaskRow.due_at < now).count(),
         },
+        "vendors": vendor_counts(db, org, now),
     }
+
+
+def _vendor_sentence(v: dict) -> str:
+    """Said only when the organisation keeps a vendor register at all."""
+    if not v["active"]:
+        return ""
+    return f" Vendors: {v['active']} active, {v['reviews_overdue']} reviews overdue, {v['reviews_due_soon']} due soon."
 
 
 def text(report: dict) -> str:
@@ -59,13 +88,17 @@ def text(report: dict) -> str:
             f"locked by an auditor {c['reviewed_and_locked_by_an_auditor']}. "
             f"This week: {w['new_gaps']} new gaps, {w['gaps_resolved']} resolved, "
             f"{w['evidence_collected_or_uploaded']} evidence collections or uploads, {w['controls_locked']} controls locked. "
-            f"Open now: {o['gaps']} gaps, {o['tasks_overdue']} overdue tasks.")
+            f"Open now: {o['gaps']} gaps, {o['tasks_overdue']} overdue tasks."
+            + _vendor_sentence(report["vendors"]))
 
 
 def markdown(report: dict) -> str:
     c, w, o, p = report["now"]["controls"], report["this_week"], report["open_now"], report["period"]
     rows = "\n".join(f"| {f['framework']} | {f['requirements_met']} of {f['requirements']} | {f['readiness_percent']}% |"
                      for f in report["now"]["frameworks"]) or "| none | | |"
+    v = report["vendors"]
+    vendor_md = (f"\n## Vendors\n- Active: {v['active']}\n- Reviews overdue or never done: {v['reviews_overdue']}\n"
+                 f"- Reviews due within 30 days: {v['reviews_due_soon']}\n") if v["active"] else ""
     return f"""# Weekly compliance report: {report['organisation']}
 
 {p['from']} to {p['to']}
@@ -88,4 +121,4 @@ def markdown(report: dict) -> str:
 ## Open now
 - Gaps: {o['gaps']}
 - Overdue tasks: {o['tasks_overdue']}
-"""
+{vendor_md}"""
