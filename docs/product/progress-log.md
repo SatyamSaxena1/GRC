@@ -18,7 +18,7 @@ on screen, and where the proof is. Add to the top. Say only what the live site d
 | Policy templates | **Started** (PR 58, ADR-038): three templates whose figures come from the rules |
 | Trust page | **Done** (PR 60/61, ADR-039): opt-in, counts only, revocable |
 | Questionnaire answers | **Done** (PR 63, 64, ADR-040): status from verdicts, model only words it |
-| Weekly report | **Done** (PR 66, ADR-041): counts only, readable in the app, to a chat webhook on Mondays |
+| Weekly report | **Done** (PR 66, 73; ADR-041): counts only, vendor reviews included, posts to Discord on Mondays |
 | Vendor risk | **Done for v1** (PR 68, 71; ADR-042, 043): register, rule-decided tier, review dates, reports as proof |
 | AI help on the live site | **Working for demos** (model on a personal machine, reached through a tunnel; not for real use) |
 
@@ -26,6 +26,20 @@ Where we lead: the verdict comes from fixed rules, never from a model; a named h
 step is in a tamper-evident log; the DPDP Act pack for India.
 
 ## Entries
+
+### 4 Nov 2026: The weekly report and live alerts arrive in Discord (PR 66, 73, 74, 75)
+- **Say:** "Every Monday, and the moment something happens, your team gets a short message in the channel
+  they already read: where compliance stands, what changed, which vendor reviews are due, or that a task
+  was just assigned."
+- **Show:** the Discord channel with the weekly summary, then assign a task in the app and watch the alert
+  appear a few seconds later in the channel.
+- **Honest detail:** the weekly summary is numbers only. The instant "task assigned" alert does include the
+  assignee's email address and the task's title, so keep that channel to your own team.
+- **Fixed on the way:** the scheduled jobs had failed for days because their copy of the database address
+  still pointed at the old database. They now reach the live one. The manual run button now runs one chosen
+  job instead of everything.
+- **Proof:** a real run posted "webhook: 1 report(s) sent" and the message appeared; a real assignment
+  produced the alert; the task was then put back as it was.
 
 ### 4 Nov 2026: A vendor's security report is the proof (PR 71)
 - **Say:** "Don't just tick a box that says the vendor is certified. Attach their security report. It counts
