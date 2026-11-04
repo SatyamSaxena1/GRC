@@ -61,6 +61,24 @@ class Vendor(Base):
     created_by: Mapped[str] = mapped_column(String, default="")
 
 
+class VendorReport(Base):
+    """A SOC 2 / ISO 27001 report (or other document) attached to a vendor (ADR-043). Immutable: there is
+    no update or delete. Whether it counts as an attestation is a fixed rule at read time."""
+    __tablename__ = "vendor_reports"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"))
+    vendor_id: Mapped[str] = mapped_column(ForeignKey("vendors.id"))
+    report_type: Mapped[str] = mapped_column(String)  # SOC2_TYPE2 | SOC2_TYPE1 | ISO27001 | OTHER
+    valid_until: Mapped[date]
+    filename: Mapped[str]
+    mime_type: Mapped[str]
+    size_bytes: Mapped[int]
+    sha256: Mapped[str]
+    storage_key: Mapped[str]
+    uploaded_by: Mapped[str] = mapped_column(String, default="")
+    uploaded_at: Mapped[datetime] = mapped_column(default=_now)
+
+
 class AuditFirm(Base):
     __tablename__ = "audit_firms"
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)

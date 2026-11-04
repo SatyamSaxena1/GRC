@@ -1,5 +1,8 @@
 import { useState } from "react";
-import { ApiError, addVendor, listVendors, reviewVendor, updateVendor, type Vendor } from "../api/client";
+import {
+  ApiError, addVendor, attachVendorReport, downloadVendorReport, listVendors, reviewVendor, updateVendor,
+  type Vendor,
+} from "../api/client";
 import { useApi } from "../lib/useApi";
 
 const STATE_LABEL: Record<Vendor["review"]["state"], string> = {
@@ -7,6 +10,9 @@ const STATE_LABEL: Record<Vendor["review"]["state"], string> = {
 };
 const DATA = ["NONE", "INTERNAL", "PERSONAL", "SENSITIVE"];
 const CRIT = ["LOW", "MEDIUM", "HIGH"];
+const REPORT_TYPES: [string, string][] = [
+  ["SOC2_TYPE2", "SOC 2 Type II"], ["SOC2_TYPE1", "SOC 2 Type I"], ["ISO27001", "ISO 27001 certificate"], ["OTHER", "Other document"],
+];
 const blank = { name: "", service: "", data_access: "NONE", criticality: "LOW", has_attestation: false };
 
 /** Third parties you depend on (ADR-042). The tier is points from fixed rules, shown with its working so it
@@ -16,6 +22,9 @@ export function VendorsPage() {
   const [form, setForm] = useState(blank);
   const [reviewing, setReviewing] = useState<string | null>(null);
   const [note, setNote] = useState("");
+  const [openReports, setOpenReports] = useState<string | null>(null);
+  const [reportForm, setReportForm] = useState({ type: "SOC2_TYPE2", until: "" });
+  const [reportFile, setReportFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const run = async (fn: () => Promise<unknown>) => {
@@ -43,12 +52,15 @@ export function VendorsPage() {
         <thead><tr><th>Vendor</th><th>Data</th><th>Criticality</th><th>Attestation</th><th>Tier</th><th>Review</th><th /></tr></thead>
         <tbody>
           {rows.length === 0 && <tr><td colSpan={7} className="muted">No vendors yet. Add the first one below.</td></tr>}
-          {rows.map((v) => (
+          {rows.map((v) => [
             <tr key={v.id} style={v.status === "OFFBOARDED" ? { opacity: 0.6 } : undefined}>
               <td><strong>{v.name}</strong><div className="muted" style={{ fontSize: 12 }}>{v.service}</div></td>
               <td>{v.data_access.toLowerCase()}</td>
               <td>{v.criticality.toLowerCase()}</td>
-              <td>{v.has_attestation ? "on file" : "none"}</td>
+              <td>
+                {v.attestation.source === "report" ? `report, valid to ${v.attestation.valid_until}`
+                  : v.attestation.source === "manual" ? "ticked by hand" : "none"}
+              </td>
               <td title={`${v.points} points`}>{v.tier} <span className="muted">({v.points})</span></td>
               <td>
                 {STATE_LABEL[v.review.state]}
@@ -65,15 +77,46 @@ export function VendorsPage() {
                 ) : (
                   <>
                     <button className="btn btn-sm" onClick={() => { setReviewing(v.id); setNote(""); }}>Mark reviewed</button>{" "}
-                    <button className="btn btn-sm" onClick={() => run(() => updateVendor(v.id, { has_attestation: !v.has_attestation }))}>
-                      {v.has_attestation ? "Remove attestation" : "Attestation on file"}
+                    <button className="btn btn-sm" onClick={() => setOpenReports(openReports === v.id ? null : v.id)}>
+                      Reports ({v.reports.length})
                     </button>{" "}
                     <button className="btn btn-sm btn-danger" onClick={() => run(() => updateVendor(v.id, { status: "OFFBOARDED" }))}>Offboard</button>
                   </>
                 ))}
               </td>
-            </tr>
-          ))}
+            </tr>,
+            openReports === v.id && (
+              <tr key={v.id + "-reports"}>
+                <td colSpan={7} style={{ background: "var(--neutral-bg)" }}>
+                  <strong>Reports for {v.name}</strong>
+                  <p className="muted" style={{ fontSize: 12, margin: "2px 0 8px" }}>
+                    A SOC 2 or ISO 27001 report counts as an attestation until the date you give. Any other document is kept
+                    on the record and never counts. Files cannot be deleted.
+                  </p>
+                  {v.reports.length === 0 && <p className="muted">No reports attached.</p>}
+                  {v.reports.map((r) => (
+                    <div key={r.id}>
+                      <button type="button" className="link-btn" onClick={() => downloadVendorReport(v.id, r)}>{r.filename}</button>
+                      <span className="muted"> {r.report_type.replace(/_/g, " ")}, valid to {r.valid_until},
+                        {r.counts ? " counts as an attestation" : " does not count"}</span>
+                    </div>
+                  ))}
+                  <div style={{ marginTop: 8 }}>
+                    <select aria-label="Report type" value={reportForm.type} onChange={(e) => setReportForm({ ...reportForm, type: e.target.value })}>
+                      {REPORT_TYPES.map(([k, label]) => <option key={k} value={k}>{label}</option>)}
+                    </select>{" "}
+                    <label>valid until <input type="date" value={reportForm.until}
+                      onChange={(e) => setReportForm({ ...reportForm, until: e.target.value })} /></label>{" "}
+                    <input type="file" aria-label="Report file" onChange={(e) => setReportFile(e.target.files?.[0] ?? null)} />{" "}
+                    <button className="btn btn-sm btn-primary" disabled={!reportFile || !reportForm.until}
+                      onClick={() => run(async () => { await attachVendorReport(v.id, reportFile as File, reportForm.type, reportForm.until); setReportFile(null); })}>
+                      Attach
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ),
+          ])}
         </tbody>
       </table>
 
