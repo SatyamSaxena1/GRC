@@ -37,5 +37,5 @@ An owner, if set, must be a user of the same organisation.
   audit trail with before and after.
 - The register records that a review happened and what was checked. It does not hold the vendor's reports;
   uploading them as evidence is the next step and not part of this change.
-- Overdue vendor reviews are shown on the Vendors page. They are not yet in the weekly report or the daily
-  attention list.
+- Overdue vendor reviews are shown on the Vendors page and, as counts, in the weekly report (ADR-041). They
+  are not yet in the daily attention list.

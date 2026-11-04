@@ -91,3 +91,49 @@ def test_without_a_webhook_the_cron_sends_nothing_and_does_not_fail(client, boot
     monkeypatch.delenv("NOTIFY_WEBHOOK_URL", raising=False)
     assert monitor._weekly_report() == 0
     assert "not configured" in capsys.readouterr().out
+
+
+def _vendor(client, org, name, **kw):
+    body = {"name": name, "data_access": "PERSONAL", "criticality": "HIGH", **kw}
+    return client.post("/vendors", json=body, headers=AUTH(org)).json()
+
+
+def test_vendor_reviews_are_counted_and_never_named(client, bootstrap, monkeypatch):
+    _sync(client, bootstrap, monkeypatch, "m365")
+    org = _org(client)
+    with Session(db_module.engine) as s:
+        assert reports.build(s, s.query(Organization).first())["vendors"]["active"] == 0
+        assert "Vendors:" not in reports.text(reports.build(s, s.query(Organization).first()))  # no register, no sentence
+
+    never = _vendor(client, org, "Secret Supplier Ltd")
+    done = _vendor(client, org, "Another Hidden Vendor")
+    client.post(f"/vendors/{done['id']}/review", json={"note": "Read their latest audit report"}, headers=AUTH(org))
+    off = _vendor(client, org, "Departed Vendor")
+    client.patch(f"/vendors/{off['id']}", json={"status": "OFFBOARDED"}, headers=AUTH(org))
+
+    with Session(db_module.engine) as s:
+        org_row = s.query(Organization).first()
+        now = datetime.now(timezone.utc)
+        report = reports.build(s, org_row, now)
+        year_on = reports.build(s, org_row, now + timedelta(days=400))
+    assert report["vendors"] == {"active": 2, "reviews_overdue": 1, "reviews_due_soon": 0}  # offboarded is not counted
+    assert year_on["vendors"]["reviews_overdue"] == 2  # a year later the reviewed one has lapsed too
+    line = reports.text(report)
+    assert "Vendors: 2 active, 1 reviews overdue, 0 due soon." in line
+    blob = (json.dumps(report) + line + reports.markdown(report)).lower()
+    for name in ("secret supplier", "another hidden", "departed"):
+        assert name not in blob, name
+    assert never["name"] not in blob
+
+
+def test_a_current_report_changes_when_a_review_is_due(client, bootstrap, monkeypatch):
+    _sync(client, bootstrap, monkeypatch, "m365")
+    org = _org(client)
+    v = _vendor(client, org, "Cadence Co", data_access="NONE", criticality="LOW")  # LOW tier: reviewed yearly
+    client.post(f"/vendors/{v['id']}/review", json={"note": "Checked their security page"}, headers=AUTH(org))
+    with Session(db_module.engine) as s:
+        org_row = s.query(Organization).first()
+        now = datetime.now(timezone.utc)
+        assert reports.build(s, org_row, now)["vendors"]["reviews_overdue"] == 0
+        assert reports.build(s, org_row, now + timedelta(days=340))["vendors"]["reviews_due_soon"] == 1
+        assert reports.build(s, org_row, now + timedelta(days=370))["vendors"]["reviews_overdue"] == 1

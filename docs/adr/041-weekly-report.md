@@ -28,3 +28,7 @@ the app, and competitors send one.
 - "Tasks completed" is not reported: tasks carry no completion time, and the audit trail is not queried for
   it. It can be added when tasks record when they were closed.
 - The week is a rolling seven days ending when the report runs, not a calendar week.
+- When an organisation keeps a vendor register, the report adds one sentence of counts: active vendors, reviews
+  overdue or never done, and reviews due within 30 days, by the same rules as the Vendors page (ADR-042). It
+  never names a vendor, since who an organisation buys from can be sensitive. With no register there is no
+  vendor sentence.
