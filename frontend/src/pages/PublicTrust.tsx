@@ -28,7 +28,7 @@ export function TrustView({ s }: { s: TrustSummary }) {
 
       <h3>Frameworks</h3>
       {s.frameworks.length === 0 ? <p className="muted">None published.</p> : (
-        <table>
+        <table className="data-table static">
           <thead><tr><th>Framework</th><th>Requirements met</th><th>Readiness</th></tr></thead>
           <tbody>
             {s.frameworks.map((f) => (

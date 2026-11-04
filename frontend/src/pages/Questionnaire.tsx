@@ -71,7 +71,7 @@ export function QuestionnairePage() {
       </div>
 
       {rows.length > 0 && (
-        <table style={{ marginTop: 16 }}>
+        <table className="data-table static" style={{ marginTop: 16 }}>
           <thead><tr><th>Question</th><th>Status</th><th>Draft answer</th><th>Based on</th></tr></thead>
           <tbody>
             {rows.map((r, i) => (
