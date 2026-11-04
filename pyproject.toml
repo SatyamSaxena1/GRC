@@ -14,6 +14,7 @@ dependencies = [
     "python-multipart",
     "requests",
     "pyjwt[crypto]",      # RS256 verification against an OIDC provider's JWKS (app/oidc.py)
+    "cryptography",       # Fernet encryption of saved connections (app/connections.py, ADR-044)
     # document parsing, one library per format
     "pypdf",
     "python-docx",

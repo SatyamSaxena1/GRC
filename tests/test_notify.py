@@ -152,7 +152,7 @@ def test_the_digest_sends_each_item_once_until_the_resend_window_passes(client, 
 
 def test_a_failed_digest_send_is_retried_next_run(client, bootstrap, configured, monkeypatch):
     org_id, _ = bootstrap(client)
-    monkeypatch.setattr(notify, "_post", lambda payload: False)
+    monkeypatch.setattr(notify, "_post", lambda payload, *args, **kwargs: False)
     with Session(db_module.engine) as s:
         assert notify.digest(s, org_id, [ITEM]) == 0
         assert s.query(NotificationLog).count() == 0  # not recorded as sent

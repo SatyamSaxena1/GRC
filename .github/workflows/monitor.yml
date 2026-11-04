@@ -159,4 +159,5 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           NOTIFY_WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
           NOTIFY_WEBHOOK_SECRET: ${{ secrets.NOTIFY_WEBHOOK_SECRET }}
+          CONNECTIONS_KEY: ${{ secrets.CONNECTIONS_KEY }}  # to read organisations' own saved webhooks (ADR-044)
           NOTIFY_LINK_BASE_URL: ${{ vars.NOTIFY_LINK_BASE_URL }}

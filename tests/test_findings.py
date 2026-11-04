@@ -120,7 +120,7 @@ def test_raising_a_finding_notifies_without_leaking_its_text(world, monkeypatch)
     sent = []
     monkeypatch.setenv("NOTIFY_WEBHOOK_URL", "https://hooks.test/x")
     monkeypatch.setattr(notify, "_spawn", lambda work: work())
-    monkeypatch.setattr(notify, "_post", lambda payload: sent.append(payload) or True)
+    monkeypatch.setattr(notify, "_post", lambda payload, *args, **kwargs: sent.append(payload) or True)
     _raise(client, auditor, cid)
     (payload,) = sent
     assert payload["kind"] == "FINDING_RAISED" and payload["severity"] == "high"

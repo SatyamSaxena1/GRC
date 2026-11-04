@@ -351,7 +351,7 @@ def _main() -> int:
                 from app import notify
                 from app.routers.notifications import _attention_items
                 sent = notify.digest(db, org.id, _attention_items(report.to_dict(), report.checked_at))
-                print(f"  webhook: {sent} notice(s) sent" if notify.enabled() else "  webhook: not configured")
+                print(f"  webhook: {sent} notice(s) sent" if (sent or notify.enabled()) else "  webhook: not configured")
             if report.total == 0:
                 print("  nothing needs attention")
                 continue
@@ -571,7 +571,7 @@ def _weekly_report() -> int:
             print(f"{org.name}: {message}")
             sent += notify.digest(db, org.id, [{"kind": "weekly_report", "severity": "info",
                                                 "message": message, "link": "/overview"}])
-    print(f"webhook: {sent} report(s) sent" if notify.enabled() else "webhook: not configured, nothing sent")
+    print(f"webhook: {sent} report(s) sent" if (sent or notify.enabled()) else "webhook: not configured, nothing sent")
     return 0
 
 

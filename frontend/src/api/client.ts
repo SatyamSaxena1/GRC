@@ -130,6 +130,17 @@ export const createEngagement = (audit_firm_id: string, org_id: string, framewor
 export const closeEngagement = (engagementId: string) =>
   request<{ id: string; status: string }>("POST", `/admin/engagements/${engagementId}/close`);
 
+/** Connections an organisation sets up itself (ADR-044). The address is write-only: only a hint comes back. */
+export type ConnectionView = {
+  kind: "CHAT_WEBHOOK"; configured: boolean; hint: string; status: "NONE" | "UNTESTED" | "OK" | "FAILED";
+  last_tested_at: string | null; last_error: string;
+};
+export type ConnectionsState = { key_configured: boolean; connections: ConnectionView[] };
+export const getConnections = () => request<ConnectionsState>("GET", "/connections");
+export const saveChatWebhook = (url: string) => request<ConnectionsState>("PUT", "/connections/chat-webhook", { json: { url } });
+export const testChatWebhook = () => request<ConnectionsState>("POST", "/connections/chat-webhook/test");
+export const removeChatWebhook = () => request<ConnectionsState>("DELETE", "/connections/chat-webhook");
+
 /** The vendor register (ADR-042): tier and review status come from fixed rules on the server. */
 export type VendorReport = {
   id: string; report_type: string; valid_until: string; filename: string; size_bytes: number; sha256: string;
