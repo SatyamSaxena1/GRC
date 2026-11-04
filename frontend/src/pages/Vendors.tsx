@@ -24,7 +24,11 @@ export function VendorsPage() {
   const [note, setNote] = useState("");
   const [openReports, setOpenReports] = useState<string | null>(null);
   const [reportForm, setReportForm] = useState({ type: "SOC2_TYPE2", until: "" });
-  const [reportFile, setReportFile] = useState<File | null>(null);
+  const [reportFile, setReportFile] = useState<{ vendorId: string; file: File } | null>(null);
+  const [fileKey, setFileKey] = useState(0); // remount the file input to clear a chosen file
+  const resetReportForm = () => { setReportFile(null); setReportForm({ type: "SOC2_TYPE2", until: "" }); setFileKey((k) => k + 1); };
+  // Reports are permanent, so a half-filled form must never carry over from one vendor to another.
+  const toggleReports = (id: string) => { resetReportForm(); setOpenReports(openReports === id ? null : id); };
   const [error, setError] = useState<string | null>(null);
 
   const run = async (fn: () => Promise<unknown>) => {
@@ -67,6 +71,7 @@ export function VendorsPage() {
                 {v.review.due && <div className="muted" style={{ fontSize: 12 }}>due {v.review.due}</div>}
               </td>
               <td>
+                <button className="btn btn-sm" onClick={() => toggleReports(v.id)}>Reports ({v.reports.length})</button>{" "}
                 {v.status === "ACTIVE" && (reviewing === v.id ? (
                   <span>
                     <input aria-label={`Review note for ${v.name}`} value={note} onChange={(e) => setNote(e.target.value)}
@@ -77,9 +82,6 @@ export function VendorsPage() {
                 ) : (
                   <>
                     <button className="btn btn-sm" onClick={() => { setReviewing(v.id); setNote(""); }}>Mark reviewed</button>{" "}
-                    <button className="btn btn-sm" onClick={() => setOpenReports(openReports === v.id ? null : v.id)}>
-                      Reports ({v.reports.length})
-                    </button>{" "}
                     <button className="btn btn-sm btn-danger" onClick={() => run(() => updateVendor(v.id, { status: "OFFBOARDED" }))}>Offboard</button>
                   </>
                 ))}
@@ -101,18 +103,25 @@ export function VendorsPage() {
                         {r.counts ? " counts as an attestation" : " does not count"}</span>
                     </div>
                   ))}
-                  <div style={{ marginTop: 8 }}>
+                  {v.status === "ACTIVE" && <div style={{ marginTop: 8 }}>
                     <select aria-label="Report type" value={reportForm.type} onChange={(e) => setReportForm({ ...reportForm, type: e.target.value })}>
                       {REPORT_TYPES.map(([k, label]) => <option key={k} value={k}>{label}</option>)}
                     </select>{" "}
                     <label>valid until <input type="date" value={reportForm.until}
                       onChange={(e) => setReportForm({ ...reportForm, until: e.target.value })} /></label>{" "}
-                    <input type="file" aria-label="Report file" onChange={(e) => setReportFile(e.target.files?.[0] ?? null)} />{" "}
-                    <button className="btn btn-sm btn-primary" disabled={!reportFile || !reportForm.until}
-                      onClick={() => run(async () => { await attachVendorReport(v.id, reportFile as File, reportForm.type, reportForm.until); setReportFile(null); })}>
+                    <input key={`${v.id}-${fileKey}`} type="file" aria-label="Report file"
+                      onChange={(e) => setReportFile(e.target.files?.[0] ? { vendorId: v.id, file: e.target.files[0] } : null)} />{" "}
+                    <button className="btn btn-sm btn-primary"
+                      disabled={reportFile?.vendorId !== v.id || !reportForm.until}
+                      onClick={() => run(async () => {
+                        if (reportFile?.vendorId !== v.id) return;
+                        await attachVendorReport(v.id, reportFile.file, reportForm.type, reportForm.until);
+                        resetReportForm();
+                      })}>
                       Attach
                     </button>
-                  </div>
+                  </div>}
+                  {v.status !== "ACTIVE" && <p className="muted" style={{ fontSize: 12 }}>Offboarded: reports can be read but not added.</p>}
                 </td>
               </tr>
             ),
