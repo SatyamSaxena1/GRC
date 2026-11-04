@@ -839,6 +839,10 @@ export const syncConnector = (source: ConnectorStatus["source"]) =>
   request<{ source: string; evidence_id: string | null; status: string }>(
     "POST", `/connectors/${encodeURIComponent(source)}/sync`,
   );
+export const acceptConnectorScope = (source: string, reason: string) =>
+  request<{ source: string; run_id: string; status: string }>(
+    "POST", `/connectors/${encodeURIComponent(source)}/accept-scope`, { json: { reason } },
+  );
 export const setConnectorNotApplicable = (source: ConnectorStatus["source"], applicable: boolean) =>
   request<{ source: string; applicable: boolean; dpdp_na_sources: string[] }>(
     "PATCH", `/connectors/${encodeURIComponent(source)}/not-applicable`, { json: { applicable } },

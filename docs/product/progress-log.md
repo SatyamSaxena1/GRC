@@ -27,6 +27,18 @@ step is in a tamper-evident log; the DPDP Act pack for India.
 
 ## Entries
 
+### 4 Nov 2026: Your own GitHub evidence, tried live, and a way to accept a smaller scope (PRs 90, 91, this one)
+- **Say:** "We connected a real GitHub token from the page. It collected 78 merges from the repository. It was
+  held back as partial because a one-off earlier run had covered three repositories. A named admin can now accept
+  the smaller scope with a reason, and the next collection is complete."
+- **Show:** Connections card (token saved, access checked), then Collect evidence on the DPDP page: the card
+  shows PARTIAL with the reason, the admin writes why, presses Accept, and it collects again and turns COMPLETE.
+- **Found by trying it live:** reading review history takes minutes, so the button now runs it in the background;
+  and the "fewer repositories" guard had no way out.
+- **Honest detail:** only a smaller repository count can be accepted this way. Anything the collector itself
+  reported as wrong cannot. Stored evidence is never edited; acceptance adds a run.
+- **Proof:** tests for accepting, refusing a collector-flagged run, the reason, the role and the baseline.
+
 ### 4 Nov 2026: Connect your own GitHub from the Connections page (PR, part of issue 79)
 - **Say:** "Paste a read-only GitHub token and name your repositories. We collect how code reaches production
   (reviews, checks, deployments) as evidence, with no server settings to edit."

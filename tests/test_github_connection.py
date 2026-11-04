@@ -189,3 +189,57 @@ def test_the_background_run_stores_evidence_and_records_failure_without_raising(
     connectors._sync_in_background(org, "user:test", "", "github")          # must not raise
     with Session(db_module.engine) as s:
         assert s.query(CollectionRun).filter_by(org_id=org, source="github", status="FAILED").count() == 1
+
+
+# --- accepting a smaller repository scope (ADR-046) -------------------------------------------------------------------
+def _runs(org, source="github"):
+    from app.models import CollectionRun
+    with Session(db_module.engine) as s:
+        return s.query(CollectionRun).filter_by(org_id=org, source=source).order_by(CollectionRun.started_at).all()
+
+
+def _seed_runs(org, signals):
+    from datetime import datetime, timedelta
+    from app.models import CollectionRun
+    t = datetime(2026, 11, 3)
+    with Session(db_module.engine) as s:
+        s.add(CollectionRun(org_id=org, source="github", started_at=t, status="COMPLETE", expectation="NONE",
+                            returned={"repositories_in_scope": 3, "merges_in_period": 42, "attributes": ["a"]}, signals=[]))
+        s.add(CollectionRun(org_id=org, source="github", started_at=t + timedelta(days=1), status="PARTIAL",
+                            expectation="HISTORY", returned={"repositories_in_scope": 1, "merges_in_period": 78,
+                                                             "attributes": ["a"]}, signals=signals))
+        s.commit()
+
+
+WHY = "only the GRC repository is in scope for this audit period"
+
+
+def test_a_scope_only_partial_can_be_accepted_by_an_org_admin_and_becomes_the_baseline(client, bootstrap):
+    org = _org(client, bootstrap)
+    _seed_runs(org, ["repositories in scope fell from 3 to 1"])
+    r = client.post("/connectors/github/accept-scope", json={"reason": WHY}, headers=H(org))
+    assert r.status_code == 200
+    runs = _runs(org)
+    assert [x.status for x in runs] == ["COMPLETE", "PARTIAL", "COMPLETE"]       # inserted, nothing edited
+    assert runs[-1].returned["repositories_in_scope"] == 1 and WHY in runs[-1].signals[0]
+    from app.routers import connectors
+    with Session(db_module.engine) as s:
+        assert connectors._last_run(s, org, "github", "COMPLETE").id == runs[-1].id   # the next baseline
+        assert s.query(AuditEvent).filter_by(action="CONNECTOR_SCOPE_ACCEPTED").count() == 1
+
+
+def test_a_run_the_collector_itself_flagged_cannot_be_accepted(client, bootstrap):
+    org = _org(client, bootstrap)
+    _seed_runs(org, ["repositories in scope fell from 3 to 1", "the collector hit a rate limit"])
+    assert client.post("/connectors/github/accept-scope", json={"reason": WHY}, headers=H(org)).status_code == 409
+    assert [x.status for x in _runs(org)] == ["COMPLETE", "PARTIAL"]
+
+
+def test_acceptance_needs_a_reason_an_admin_and_a_partial_run(client, bootstrap):
+    org = _org(client, bootstrap)
+    assert client.post("/connectors/github/accept-scope", json={"reason": WHY}, headers=H(org)).status_code == 409
+    _seed_runs(org, ["repositories in scope fell from 3 to 1"])
+    assert client.post("/connectors/github/accept-scope", json={"reason": "ok fine"}, headers=H(org)).status_code == 422
+    assert client.post("/connectors/aws/accept-scope", json={"reason": WHY}, headers=H(org)).status_code == 404
+    assert client.post("/connectors/github/accept-scope", json={"reason": WHY},
+                       headers={"authorization": "user:nobody"}).status_code in (401, 403)
