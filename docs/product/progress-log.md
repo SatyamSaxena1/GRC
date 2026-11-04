@@ -27,6 +27,17 @@ step is in a tamper-evident log; the DPDP Act pack for India.
 
 ## Entries
 
+### 4 Nov 2026: Overdue vendor reviews show up in the daily list (PR 86, closes issue 83)
+- **Say:** "A vendor whose review is overdue, or was never done, now appears in the same daily list as expiring
+  evidence and breach deadlines, with a link straight to the Vendors page."
+- **Show:** add a vendor and leave it unreviewed: it shows in the notifications list. Record a review and it
+  disappears. Offboard a vendor and it never appears.
+- **Honest detail:** in chat the list is one counted line ("1 vendor review(s) overdue or never done"), never a
+  vendor's name, because the name says who you buy from. Reviews due within 30 days stay on the Vendors page and
+  in the Monday summary, so the daily list is not noisy.
+- **Proof:** tests cover listed, reviewed, offboarded, and the names-versus-count difference; the weekly report
+  and daily list share one helper so their numbers cannot disagree.
+
 ### 4 Nov 2026: Connect your team chat yourself, no server settings (PR 77)
 - **Say:** "Open Connections, paste your Discord or Slack webhook address, press Save, then Send a test
   message. From then on your alerts and the Monday summary go to your own channel. What you paste is stored
