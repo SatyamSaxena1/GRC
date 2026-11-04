@@ -30,18 +30,9 @@ def _naive(dt: datetime) -> datetime:
 def vendor_counts(db: Session, org: Organization, now: datetime) -> dict:
     """How many active vendors are overdue for review or due soon, by the same rules as the Vendors page. Counts
     only: a vendor's name says who the organisation buys from, so it never goes in a report."""
-    rows = db.query(Vendor).filter_by(org_id=org.id, status="ACTIVE").all()
-    reports: dict[str, list[VendorReport]] = {}
-    for r in db.query(VendorReport).filter_by(org_id=org.id):
-        reports.setdefault(r.vendor_id, []).append(r)
-    overdue = soon = 0
-    for v in rows:
-        attested = v.has_attestation or any(vendors.attests(r.report_type, r.valid_until, now.date())
-                                            for r in reports.get(v.id, []))
-        state = vendors.review(v.status, vendors.tier(v.data_access, v.criticality, attested),
-                               v.last_reviewed_at, now)["state"]
-        overdue += state in ("OVERDUE", "NEVER_REVIEWED")
-        soon += state == "DUE_SOON"
+    rows = vendors.review_states(db, org.id, now)
+    overdue = sum(r["state"] in ("OVERDUE", "NEVER_REVIEWED") for _, r in rows)
+    soon = sum(r["state"] == "DUE_SOON" for _, r in rows)
     return {"active": len(rows), "reviews_overdue": overdue, "reviews_due_soon": soon}
 
 

@@ -80,7 +80,9 @@ def _request_item(r: dict) -> dict:
     }
 
 
-def _attention_items(report: dict, checked_at: str) -> list[dict]:
+def _attention_items(report: dict, checked_at: str, *, names: bool = True) -> list[dict]:
+    """`names=False` is for chat delivery: a vendor's name says who the organisation buys from, so the digest
+    carries one counted line instead."""
     items = []
     for e in report["expired"]:
         items.append({"kind": "EVIDENCE_EXPIRED", "severity": "high", "at": checked_at,
@@ -106,6 +108,15 @@ def _attention_items(report: dict, checked_at: str) -> list[dict]:
         items.append({"kind": "DSR_DEADLINE", "severity": "high" if d["overdue"] else "medium",
                       "at": checked_at, "message": f"{d['title']} — due {d['due_at']}",
                       "link": "/dpdp/operations"})
+    vendor_rows = report.get("vendors", [])
+    if vendor_rows and not names:
+        items.append({"kind": "VENDOR_REVIEW", "severity": "medium", "at": checked_at,
+                      "message": f"{len(vendor_rows)} vendor review(s) overdue or never done",
+                      "link": "/vendors"})
+    elif vendor_rows:
+        for v in vendor_rows:
+            items.append({"kind": "VENDOR_REVIEW", "severity": "medium", "at": checked_at,
+                          "message": f"{v['title']}: {v['detail']}", "link": "/vendors"})
     return items
 
 
