@@ -27,6 +27,17 @@ step is in a tamper-evident log; the DPDP Act pack for India.
 
 ## Entries
 
+### 5 Nov 2026: Invite a person and they can actually sign in (issue 81, switched off until configured)
+- **Say:** "Invite someone and they get a one-time link to choose their own password. Nobody, including the
+  admin, ever sees or sets it. Deactivate them and their login is blocked too."
+- **Show:** Admin, Invite a team member: create a user; a one-time link appears once with a Copy button. Deactivate
+  the person on the team card and try to sign in.
+- **Honest detail:** it is off until the operator adds the three Auth0 settings, so today nothing changes on the
+  live site. The link is not stored anywhere and lasts seven days. If the sign-in service is down, the invite
+  fails cleanly with no half-created person.
+- **Proof:** tests with a stand-in sign-in service: off by default, random password, link shown once and absent
+  from the audit trail, existing login reused, clean failure, block and unblock, failed block recorded.
+
 ### 4 Nov 2026: Your own GitHub evidence, tried live, and a way to accept a smaller scope (PRs 90, 91, this one)
 - **Say:** "We connected a real GitHub token from the page. It collected 78 merges from the repository. It was
   held back as partial because a one-off earlier run had covered three repositories. A named admin can now accept

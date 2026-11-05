@@ -212,7 +212,7 @@ export const getPublicTrust = (token: string) => anon<TrustSummary>("GET", `/pub
 
 // An empty org_id means "my own organisation" — the backend fills it in for a signed-in org admin.
 export const createUser = (email: string, org_id: string, role: string) =>
-  request<{ id: string; role: string }>("POST", "/admin/users", { json: { email, org_id: org_id || null, role } });
+  request<{ id: string; role: string; password_link?: string }>("POST", "/admin/users", { json: { email, org_id: org_id || null, role } });
 
 export type TeamUser = { id: string; email: string; role: string; active: boolean };
 export const listTeam = () => request<TeamUser[]>("GET", "/admin/users");
