@@ -12,7 +12,7 @@ const STATUS_LABEL: Record<ConnectionView["status"], string> = {
 /** A source whose evidence the customer uploads from their own script (ADR-049, ADR-050). The upload token is
  *  shown once; only a fingerprint is kept on the server. */
 function UploadCard({ conn, source, title, blurb, permissions, permissionsWhere, script, command, keyOn, busy, run }: {
-  conn: ConnectionView; source: "aws" | "m365"; title: string; blurb: string; permissions: string; permissionsWhere: string;
+  conn: ConnectionView; source: "aws" | "m365" | "hrms"; title: string; blurb: string; permissions: string; permissionsWhere: string;
   script: string; command: string; keyOn: boolean; busy: boolean; run: (fn: () => Promise<unknown>) => Promise<void>;
 }) {
   const [token, setToken] = useState<string | null>(null);
@@ -34,7 +34,7 @@ function UploadCard({ conn, source, title, blurb, permissions, permissionsWhere,
       )}
       {conn.configured && (
         <ol style={{ fontSize: 13, margin: "8px 0 8px 18px" }}>
-          <li>{permissionsWhere} {permissions}.</li>
+          <li>{permissionsWhere}{permissions ? ` ${permissions}.` : ""}</li>
           <li>Download the script <span className="mono">app/collectors/{script}</span> from the project repository.</li>
           <li>Run it: <div className="mono">{command}</div></li>
           <li>Add <span className="mono">--dry-run</span> first to see the answers without uploading. Run it again whenever you want fresh evidence.</li>
@@ -80,6 +80,7 @@ export function ConnectionsPage() {
   const gh = state.data.connections.find((c) => c.kind === "GITHUB_CHANGE_CONTROL");
   const aws = state.data.connections.find((c) => c.kind === "AWS_PUSH");
   const m365 = state.data.connections.find((c) => c.kind === "M365_PUSH");
+  const hrms = state.data.connections.find((c) => c.kind === "HRMS_PUSH");
   const keyOn = state.data.key_configured;
   const repoList = ghRepos.split(/[\s,]+/).filter(Boolean);
 
@@ -193,6 +194,14 @@ export function ConnectionsPage() {
           permissionsWhere="In Microsoft Entra, create an app registration with a client secret and grant it:"
           script="m365_readonly.py"
           command={`python m365_readonly.py --url ${window.location.origin} --tenant YOUR_TENANT_ID --client-id YOUR_APP_ID --token YOUR_TOKEN`} />
+      )}
+      {hrms && (
+        <UploadCard conn={hrms} source="hrms" title="HR: leavers who still have access" keyOn={keyOn} busy={busy} run={run}
+          blurb="You run a small script on your own computer against two lists you export: the people who have left, and the accounts that are still active. It counts the leavers who still have an active account and sends us only that one number. No names or email addresses leave your computer."
+          permissions=""
+          permissionsWhere="Export two CSV files, each with an email column: leavers.csv from your HR system (people who left in the period) and accounts.csv from your directory (Entra, Google Workspace, Okta or similar: every account that is still active)."
+          script="hr_leavers.py"
+          command={`python hr_leavers.py --url ${window.location.origin} --leavers leavers.csv --accounts accounts.csv --token YOUR_TOKEN`} />
       )}
     </div>
   );
