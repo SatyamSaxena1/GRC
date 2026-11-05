@@ -27,6 +27,18 @@ step is in a tamper-evident log; the DPDP Act pack for India.
 
 ## Entries
 
+### 5 Nov 2026: Connect your own AWS account from the Connections page (issue 79, switched off until set up)
+- **Say:** "Create a read-only role in your AWS account that trusts ours, paste its address, and we check four things:
+  encryption, MFA on admins, a logging trail, and backups. We never hold a key of yours, and deleting the role ends
+  our access at once."
+- **Show:** Connections page, AWS card: Start, copy the trusted identity and external ID into the role, paste the
+  role address, Check access; then Collect evidence on the DPDP page.
+- **Honest detail:** it needs the operator to create one narrow AWS identity first (guide: aws-platform-identity), so
+  today nothing changes on the live site. A check the role may not run is left out and the run is marked incomplete,
+  never counted as a pass or a fail. One region per connection.
+- **Proof:** tests for each control failing on its own, a missing permission, bad role or region input, the external
+  ID, isolation between organisations, and that a sync uses the organisation's own role.
+
 ### 5 Nov 2026: Invite a person and they can actually sign in (issue 81, switched off until configured)
 - **Say:** "Invite someone and they get a one-time link to choose their own password. Nobody, including the
   admin, ever sees or sets it. Deactivate them and their login is blocked too."

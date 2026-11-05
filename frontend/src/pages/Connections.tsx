@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   ApiError, getConnections, removeChatWebhook, removeGithub, saveChatWebhook, saveGithub, testChatWebhook, testGithub,
-  type ConnectionView,
+  prepareAws, removeAws, saveAws, testAws, type ConnectionView,
 } from "../api/client";
 import { useApi } from "../lib/useApi";
 
@@ -16,6 +16,8 @@ export function ConnectionsPage() {
   const [url, setUrl] = useState("");
   const [ghToken, setGhToken] = useState("");
   const [ghRepos, setGhRepos] = useState("");
+  const [awsRole, setAwsRole] = useState("");
+  const [awsRegion, setAwsRegion] = useState("ap-south-1");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,6 +33,7 @@ export function ConnectionsPage() {
 
   const chat = state.data.connections.find((c) => c.kind === "CHAT_WEBHOOK") as ConnectionView;
   const gh = state.data.connections.find((c) => c.kind === "GITHUB_CHANGE_CONTROL");
+  const aws = state.data.connections.find((c) => c.kind === "AWS_READONLY");
   const keyOn = state.data.key_configured;
   const repoList = ghRepos.split(/[\s,]+/).filter(Boolean);
 
@@ -126,6 +129,59 @@ export function ConnectionsPage() {
               </>
             )}
           </div>
+        </div>
+      )}
+
+      {aws && (
+        <div className="card" id="aws" style={{ marginTop: 16 }}>
+          <strong>AWS: security settings evidence</strong>
+          <p className="stat-sub">
+            We check four things, read-only: encryption at rest, MFA on admin users, a logging trail, and backups. You
+            create a role in your AWS account that trusts ours. No access key is shared or stored; deleting the role
+            ends our access at once.
+          </p>
+          <p>
+            <strong>{STATUS_LABEL[aws.status]}</strong>
+            {aws.configured && <span className="muted"> {aws.hint}</span>}
+            {aws.last_tested_at && <span className="muted"> last tested {new Date(aws.last_tested_at).toLocaleString()}</span>}
+          </p>
+          {aws.status === "FAILED" && aws.last_error && <p className="error">{aws.last_error}</p>}
+
+          {!aws.configured && (
+            <button className="btn btn-primary" disabled={busy || !keyOn} onClick={() => run(() => prepareAws())}>
+              Start: get my setup details
+            </button>
+          )}
+          {aws.configured && aws.details && (
+            <>
+              <ol style={{ fontSize: 13, margin: "8px 0 8px 18px" }}>
+                <li>In AWS, create an IAM role of type "Another AWS account", with this trusted identity:
+                  <div className="mono">{aws.details.platform_principal}</div></li>
+                <li>Require this external ID:
+                  <div className="mono">{aws.details.external_id}</div></li>
+                <li>Attach read-only permissions (list in the setup guide, docs/operations/aws-platform-identity.md).</li>
+                <li>Paste the role ARN and region below.</li>
+              </ol>
+              <label htmlFor="aws-role">{aws.details.role_arn ? "Replace the role ARN" : "Role ARN"}</label>
+              <input id="aws-role" value={awsRole} disabled={!keyOn} onChange={(e) => setAwsRole(e.target.value)}
+                placeholder="arn:aws:iam::123456789012:role/grc-readonly" spellCheck={false} />
+              <label htmlFor="aws-region" style={{ marginTop: 8 }}>Region (where your databases and logging live)</label>
+              <input id="aws-region" value={awsRegion} disabled={!keyOn} onChange={(e) => setAwsRegion(e.target.value)} spellCheck={false} />
+              <div style={{ marginTop: 8 }}>
+                <button className="btn btn-primary" disabled={busy || !keyOn || awsRole.trim().length < 10}
+                  onClick={() => run(async () => { await saveAws(awsRole.trim(), awsRegion.trim()); setAwsRole(""); })}>
+                  {aws.details.role_arn ? "Replace" : "Save"}
+                </button>{" "}
+                {aws.details.role_arn && (
+                  <button className="btn" disabled={busy || !keyOn} onClick={() => run(() => testAws())}>Check access</button>
+                )}{" "}
+                <button className="btn btn-danger" disabled={busy}
+                  onClick={() => { if (window.confirm("Remove this connection? Evidence will stop being collected from this AWS account.")) void run(() => removeAws()); }}>
+                  Remove
+                </button>
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>

@@ -1,6 +1,6 @@
-# ADR-048: An organisation connects its own AWS account (proposal)
+# ADR-048: An organisation connects its own AWS account
 
-Status: **proposed**, for review. Builds on ADR-044 (connections) and ADR-045 (GitHub connection). Part of issue #79.
+Status: **accepted** (cross-account role chosen; operator creates the platform identity). Builds on ADR-044 (connections) and ADR-045 (GitHub connection). Part of issue #79.
 
 ## Context
 The AWS evidence source (`AWS_SNAPSHOT`: encryption at rest, privileged-access MFA, access logging, backups) is
@@ -38,3 +38,12 @@ decision: it makes the platform hold one AWS credential that can reach every con
 - A compromise of the platform's AWS identity would expose every connected customer's read-only data, so that
   identity must be narrowly scoped, rotated, and never reused for storage.
 - Microsoft 365 and HR follow the same pattern with their own fixed hosts.
+
+## As built
+- Connection kind `AWS_READONLY`; endpoints `POST /connections/aws/prepare` (generates the external ID), `PUT /connections/aws`
+  (role ARN and region), `POST /connections/aws/test` (assume the role), `DELETE /connections/aws`. Pasted access keys were
+  not built.
+- Platform identity settings are `AWS_PLATFORM_PRINCIPAL_ARN`, `PLATFORM_AWS_ACCESS_KEY_ID` and `PLATFORM_AWS_SECRET_ACCESS_KEY`,
+  deliberately separate from the storage keys. Setup guide: docs/operations/aws-platform-identity.md.
+- Collector: `app/collectors/aws_readonly.py`. A check that cannot run is omitted and the run is reported incomplete.
+- A saved role that cannot be read fails the sync (502); it never falls back to the platform-wide collector URL.
