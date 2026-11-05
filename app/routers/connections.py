@@ -48,7 +48,8 @@ def _state(db: Session, org_id: str) -> dict:
     return {"key_configured": connections.available(),
             "connections": [_view(_row(db, org_id)),
                             _view(_row(db, org_id, connections.KIND_GITHUB), connections.KIND_GITHUB),
-                            _view(_row(db, org_id, connections.KIND_AWS), connections.KIND_AWS)]}
+                            _view(_row(db, org_id, connections.KIND_AWS), connections.KIND_AWS),
+                            _view(_row(db, org_id, connections.KIND_M365), connections.KIND_M365)]}
 
 
 def _need_key() -> None:
@@ -183,14 +184,23 @@ def test_github(actor: Actor = Depends(current_actor), db: Session = Depends(get
                      detail={"kind": row.kind, "ok": ok, "reason": reason})
     db.commit()
     return _state(db, actor.org_id)
-@router.post("/aws/token")
-def make_aws_token(actor: Actor = Depends(current_actor), db: Session = Depends(get_session)):
-    """Create (or replace) this organisation's AWS upload token. It is returned once and only its hash is kept, so a
-    lost token is replaced, never read back. Replacing it ends the old one at once."""
+
+
+def _push_kind(source: str) -> str:
+    kind = connections.PUSH_KINDS.get(source)
+    if kind is None:
+        raise HTTPException(404, "that source does not take uploads")
+    return kind
+
+
+@router.post("/{source}/token")
+def make_upload_token(source: str, actor: Actor = Depends(current_actor), db: Session = Depends(get_session)):
+    """Create (or replace) this organisation's upload token for AWS or Microsoft 365. It is returned once and only its
+    hash is kept, so a lost token is replaced, never read back. Replacing it ends the old one at once."""
+    kind = _push_kind(source)
     _admin(actor)
     _need_key()
     token, digest = connections.new_push_token(actor.org_id)
-    kind = connections.KIND_AWS
     row = _row(db, actor.org_id, kind)
     replaced = row is not None
     if row is None:
@@ -206,10 +216,11 @@ def make_aws_token(actor: Actor = Depends(current_actor), db: Session = Depends(
     return JSONResponse({**_state(db, actor.org_id), "new_token": token}, headers={"Cache-Control": "no-store"})
 
 
-@router.delete("/aws")
-def remove_aws(actor: Actor = Depends(current_actor), db: Session = Depends(get_session)):
+@router.delete("/{source}")
+def remove_upload_connection(source: str, actor: Actor = Depends(current_actor), db: Session = Depends(get_session)):
+    kind = _push_kind(source)
     _admin(actor)
-    row = _row(db, actor.org_id, connections.KIND_AWS)
+    row = _row(db, actor.org_id, kind)
     if row is not None:
         audit_log.record(db, actor=actor.label(), request_id=actor.request_id, action="CONNECTION_REMOVED",
                          entity_type="connection", entity=row.id, org_id=actor.org_id, detail={"kind": row.kind})

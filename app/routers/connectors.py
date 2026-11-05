@@ -73,10 +73,11 @@ def _latest(db: Session, org_id: str, source: str) -> Evidence | None:
     )
 
 
-def _has_push_aws(db: Session, org_id: str) -> bool:
-    """Whether this organisation uploads AWS results from its own script (ADR-049)."""
-    return connections.available() and db.query(Connection).filter_by(
-        org_id=org_id, kind=connections.KIND_AWS).first() is not None
+def _has_push(db: Session, org_id: str, source: str) -> bool:
+    """Whether this organisation uploads this source's results from its own script (ADR-049)."""
+    kind = connections.PUSH_KINDS.get(source)
+    return bool(kind) and connections.available() and db.query(Connection).filter_by(
+        org_id=org_id, kind=kind).first() is not None
 
 
 def _has_own_github(db: Session, org_id: str) -> bool:
@@ -93,7 +94,7 @@ def connector_status(actor: Actor = Depends(current_actor), db: Session = Depend
             "source": source,
             "label": label,
             "configured": bool(os.environ.get(_env_key(source, "URL"))) or (source == "github" and _has_own_github(db, actor.org_id))
-            or (source == "aws" and _has_push_aws(db, actor.org_id)),
+            or _has_push(db, actor.org_id, source),
             "evidence_id": latest.id if (latest := _latest(db, actor.org_id, source)) else None,
             "last_synced_at": latest.created_at.isoformat() if latest else None,
             "status": latest.status if latest else "NEVER_SYNCED",
@@ -324,8 +325,8 @@ def sync_connector(
     if not actor.can_write:
         raise deny_read_only(actor, "collect evidence")
 
-    if source == "aws" and not os.environ.get(_env_key("aws", "URL")) and _has_push_aws(db, actor.org_id):
-        raise HTTPException(409, "AWS results arrive from your own script: run it (see the Connections page) to refresh")
+    if not os.environ.get(_env_key(source, "URL")) and _has_push(db, actor.org_id, source):
+        raise HTTPException(409, f"{SOURCES[source][0]} results arrive from your own script: run it (see the Connections page) to refresh")
     if source == "github" and _has_own_github(db, actor.org_id):
         # Reading a repository's review history takes minutes, longer than a web request may live (ADR-045).
         # Run it in the background; the run is recorded (COMPLETE or FAILED) when it ends, and the page shows it.

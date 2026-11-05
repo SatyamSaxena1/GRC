@@ -27,6 +27,19 @@ step is in a tamper-evident log; the DPDP Act pack for India.
 
 ## Entries
 
+### 5 Nov 2026: Send Microsoft 365 evidence from your own tenant (issue 79)
+- **Say:** "Run one small read-only script against your own Microsoft 365 tenant. It checks that every administrator
+  has multi-factor authentication registered and that the audit log is recording, and sends us two yes/no answers. We
+  hold no Microsoft credential of yours."
+- **Show:** Connections page, Microsoft 365 card: create the upload token, run the script with --dry-run, then for real;
+  the card shows when results arrived.
+- **Honest detail:** it shows MFA is registered, not enforced, and that the Entra audit log is active, not the Purview
+  setting. Evidence is as fresh as your last run. No Microsoft account or billing is needed on our side.
+- **Also fixed:** the AWS card on the Connections page was looking for an old connection name and would not have
+  appeared; it now does. The page now has a test that pins the list of connection kinds it expects.
+- **Proof:** tests for both Graph checks, a missing permission, a token for one source never working for another, and the
+  same token and size rules as AWS.
+
 ### 5 Nov 2026: Send AWS evidence from your own account (issue 79)
 - **Say:** "You run one small read-only script in your own AWS account. It checks four things (encryption, MFA on
   admins, a logging trail, backups) and sends us only four yes/no answers. We hold no AWS key of yours."
