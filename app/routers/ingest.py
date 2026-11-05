@@ -20,6 +20,7 @@ router = APIRouter(prefix="/ingest", tags=["ingest"])
 
 MAX_BODY_BYTES = 20_000
 MIN_SECONDS_BETWEEN = 30
+MAX_COUNT = 1_000_000
 
 
 def _deny() -> HTTPException:
@@ -33,8 +34,15 @@ def _clean(source: str, body: dict) -> dict:
     if not isinstance(attributes, dict) or not attributes:
         raise HTTPException(422, "send at least one attribute")
     unknown = sorted(set(attributes) - allowed)
-    if unknown or not all(isinstance(v, bool) for v in attributes.values()):
-        raise HTTPException(422, f"attributes must be yes/no values among: {', '.join(sorted(allowed))}")
+    if source in connections.COUNT_SOURCES:
+        # whole numbers, 0 or more; a bool is an int in Python but is not a count
+        well_formed = all(isinstance(v, int) and not isinstance(v, bool) and 0 <= v <= MAX_COUNT for v in attributes.values())
+        kind = f"whole numbers from 0 to {MAX_COUNT}"
+    else:
+        well_formed = all(isinstance(v, bool) for v in attributes.values())
+        kind = "yes/no values"
+    if unknown or not well_formed:
+        raise HTTPException(422, f"attributes must be {kind} among: {', '.join(sorted(allowed))}")
     declared = body.get("collection") if isinstance(body.get("collection"), dict) else {}
     errors = [str(e)[:200] for e in (declared.get("errors") or []) if isinstance(e, str)][:10]
     return {"attributes": attributes,

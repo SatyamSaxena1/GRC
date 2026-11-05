@@ -49,7 +49,8 @@ def _state(db: Session, org_id: str) -> dict:
             "connections": [_view(_row(db, org_id)),
                             _view(_row(db, org_id, connections.KIND_GITHUB), connections.KIND_GITHUB),
                             _view(_row(db, org_id, connections.KIND_AWS), connections.KIND_AWS),
-                            _view(_row(db, org_id, connections.KIND_M365), connections.KIND_M365)]}
+                            _view(_row(db, org_id, connections.KIND_M365), connections.KIND_M365),
+                            _view(_row(db, org_id, connections.KIND_HRMS), connections.KIND_HRMS)]}
 
 
 def _need_key() -> None:
