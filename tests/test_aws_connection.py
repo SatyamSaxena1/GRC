@@ -1,6 +1,6 @@
-"""Connections slice 3 (ADR-048): an organisation connects its own AWS account through a cross-account role. The server
-only reaches AWS through the SDK; the customer supplies a role ARN and region, never a URL; a check that cannot run is
-left out and reported, never read as a failure or a pass."""
+"""AWS by upload (ADR-049): the customer runs a read-only script in their own account and uploads four yes/no answers
+with a token. The platform holds no AWS identity and calls nothing in AWS. A check that cannot run is left out and
+reported, never read as a failure or a pass."""
 
 from __future__ import annotations
 
@@ -8,26 +8,19 @@ import json
 
 import pytest
 from cryptography.fernet import Fernet
-from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app import connections
 from app import db as db_module
 from app.collectors import aws_readonly
 from app.models import AuditEvent, Connection
-from app.routers import connectors
 
 H = lambda org: {"authorization": f"org:{org}"}  # noqa: E731
-ROLE = "arn:aws:iam::123456789012:role/grc-readonly"
-PRINCIPAL = "arn:aws:iam::999999999999:user/grc-platform"
 
 
 @pytest.fixture()
 def aws_env(monkeypatch):
     monkeypatch.setenv("CONNECTIONS_KEY", Fernet.generate_key().decode())
-    monkeypatch.setenv("AWS_PLATFORM_PRINCIPAL_ARN", PRINCIPAL)
-    monkeypatch.setenv("PLATFORM_AWS_ACCESS_KEY_ID", "AKIAPLATFORMEXAMPLE")
-    monkeypatch.setenv("PLATFORM_AWS_SECRET_ACCESS_KEY", "platform-secret-example")
 
 
 def _org(client, bootstrap):
@@ -132,116 +125,143 @@ def test_a_missing_permission_is_left_out_and_reported_never_read_as_false():
     assert out["attributes"]["backup_enabled"] is True              # the others still ran
 
 
-# --- input checks --------------------------------------------------------------------------------------------------
-@pytest.mark.parametrize("arn,region", [
-    ("https://evil.test/role", "ap-south-1"), ("arn:aws:iam::123:role/x", "ap-south-1"),
-    ("arn:aws:iam::123456789012:user/x", "ap-south-1"), (ROLE, "not a region"), (ROLE, "https://evil.test"),
+# --- the token ------------------------------------------------------------------------------------------------------
+def test_a_token_carries_the_org_and_only_its_hash_is_kept():
+    token, digest = connections.new_push_token("org-1")
+    org, secret = connections.split_push_token(token)
+    assert org == "org-1" and token.endswith(secret) and len(secret) >= 40
+    assert connections.push_token_matches(digest, secret) and not connections.push_token_matches(digest, secret + "x")
+    assert connections.split_push_token("nodot") is None and connections.split_push_token("a.short") is None
+
+
+def _make_token(client, org):
+    r = client.post("/connections/aws/token", headers=H(org))
+    assert r.status_code == 200 and r.headers["cache-control"] == "no-store"
+    return r.json()["new_token"], r.json()
+
+
+GOOD = {"attributes": {"encryption_at_rest": True, "privileged_access_mfa": True, "access_logging_enabled": True,
+                       "backup_enabled": False},
+        "collection": {"complete": True, "errors": [], "region": "ap-south-1"}}
+
+
+def _push(client, token, body=GOOD):
+    return client.post("/ingest/aws", json=body, headers={"authorization": f"Bearer {token}"})
+
+
+def test_the_token_is_shown_once_and_never_stored_or_returned_again(client, bootstrap, aws_env):
+    org = _org(client, bootstrap)
+    token, body = _make_token(client, org)
+    secret = token.split(".", 1)[1]
+    assert body["connections"][2]["configured"] and secret not in json.dumps(body["connections"])
+    assert secret not in client.get("/connections", headers=H(org)).text
+    with Session(db_module.engine) as s:
+        row = s.query(Connection).filter_by(org_id=org, kind="AWS_PUSH").one()
+        assert secret not in row.config_encrypted and secret not in row.hint
+        assert secret not in json.dumps([e.detail for e in s.query(AuditEvent)], default=str)
+
+
+def test_a_valid_upload_is_stored_as_aws_evidence_and_marks_the_connection_ok(client, bootstrap, aws_env):
+    org = _org(client, bootstrap)
+    token, _ = _make_token(client, org)
+    r = _push(client, token)
+    assert r.status_code == 202 and r.json()["complete"] is True
+    state = client.get("/connections", headers=H(org)).json()["connections"][2]
+    assert state["status"] == "OK" and state["last_tested_at"]
+    from app.models import Evidence
+    with Session(db_module.engine) as s:
+        ev = s.query(Evidence).filter_by(org_id=org, artefact_type="AWS_SNAPSHOT").one()
+        assert ev.uploaded_by == "upload:aws"
+
+
+@pytest.mark.parametrize("header", [None, "", "Bearer ", "Bearer nodot", "Bearer a.tooshort", "Basic xyz"])
+def test_missing_or_malformed_tokens_are_refused(client, bootstrap, aws_env, header):
+    _make_token(client, _org(client, bootstrap))
+    r = client.post("/ingest/aws", json=GOOD, headers={"authorization": header} if header is not None else {})
+    assert r.status_code == 401 and r.json()["detail"] == "invalid upload token"
+
+
+def test_a_wrong_secret_an_unknown_org_and_a_removed_connection_are_all_refused_the_same_way(client, bootstrap, aws_env):
+    org = _org(client, bootstrap)
+    token, _ = _make_token(client, org)
+    secret = token.split(".", 1)[1]
+    assert _push(client, f"{org}.{'x' * 40}").status_code == 401
+    assert _push(client, f"someone-else.{secret}").status_code == 401
+    client.delete("/connections/aws", headers=H(org))
+    assert _push(client, token).status_code == 401
+
+
+def test_replacing_the_token_ends_the_old_one_at_once(client, bootstrap, aws_env):
+    org = _org(client, bootstrap)
+    old, _ = _make_token(client, org)
+    new, _ = _make_token(client, org)
+    assert old != new and _push(client, old).status_code == 401 and _push(client, new).status_code == 202
+
+
+def test_one_organisations_token_cannot_write_to_another(client, bootstrap, aws_env):
+    a = _org(client, bootstrap)
+    b = client.post("/admin/organizations", json={"name": "Other", "frameworks": ["SOC-2"]}).json()["id"]
+    token_a, _ = _make_token(client, a)
+    secret_a = token_a.split(".", 1)[1]
+    assert _push(client, f"{b}.{secret_a}").status_code == 401
+
+
+@pytest.mark.parametrize("body", [
+    {}, {"attributes": {}}, {"attributes": {"encryption_at_rest": "yes"}}, {"attributes": {"made_up": True}},
+    {"attributes": {"encryption_at_rest": 1}},
 ])
-def test_bad_role_or_region_is_refused(arn, region):
-    with pytest.raises(ValueError):
-        connections.validate_aws(arn, region)
+def test_only_the_four_yes_no_attributes_are_accepted(client, bootstrap, aws_env, body):
+    token, _ = _make_token(client, _org(client, bootstrap))
+    assert _push(client, token, body).status_code == 422
 
 
-# --- the page's API ------------------------------------------------------------------------------------------------
-def test_prepare_gives_a_stable_external_id_and_the_principal_to_trust(client, bootstrap, aws_env):
+def test_a_run_with_errors_is_marked_incomplete_and_extra_fields_are_dropped(client, bootstrap, aws_env):
     org = _org(client, bootstrap)
-    a = client.post("/connections/aws/prepare", headers=H(org)).json()["connections"][2]
-    b = client.post("/connections/aws/prepare", headers=H(org)).json()["connections"][2]
-    assert a["details"]["external_id"].startswith("grc-") and a["details"]["external_id"] == b["details"]["external_id"]
-    assert a["details"]["platform_principal"] == PRINCIPAL and a["hint"] == "waiting for the role"
-
-
-def test_without_a_platform_identity_prepare_says_so(client, bootstrap, aws_env, monkeypatch):
-    monkeypatch.delenv("AWS_PLATFORM_PRINCIPAL_ARN")
-    assert client.post("/connections/aws/prepare", headers=H(_org(client, bootstrap))).status_code == 503
-
-
-def test_saving_the_role_keeps_the_external_id_and_is_audited_without_secrets(client, bootstrap, aws_env):
-    org = _org(client, bootstrap)
-    ext = client.post("/connections/aws/prepare", headers=H(org)).json()["connections"][2]["details"]["external_id"]
-    r = client.put("/connections/aws", json={"role_arn": ROLE, "region": "ap-south-1"}, headers=H(org))
-    d = r.json()["connections"][2]["details"]
-    assert r.status_code == 200 and d["external_id"] == ext and d["role_arn"] == ROLE
+    token, _ = _make_token(client, org)
+    body = {"attributes": {"backup_enabled": True},
+            "collection": {"complete": True, "errors": ["access_logging_enabled could not be checked (AccessDenied)"],
+                           "region": "ap-south-1", "secret_field": "x"},
+            "script": "rm -rf /"}
+    r = _push(client, token, body)
+    assert r.status_code == 202 and r.json()["complete"] is False
+    from app.models import CollectionRun
     with Session(db_module.engine) as s:
-        row = s.query(Connection).filter_by(org_id=org, kind="AWS_READONLY").one()
-        assert ROLE not in row.config_encrypted and "platform-secret-example" not in json.dumps(
-            [e.detail for e in s.query(AuditEvent)], default=str)
+        run = s.query(CollectionRun).filter_by(org_id=org, source="aws").one()
+        assert run.status == "PARTIAL" and "rm -rf" not in json.dumps(run.returned, default=str)
 
 
-def test_the_test_button_reports_assume_role_failures_without_leaking(client, bootstrap, aws_env, monkeypatch):
+def test_uploads_are_rate_limited_and_size_capped(client, bootstrap, aws_env):
+    token, _ = _make_token(client, _org(client, bootstrap))
+    assert _push(client, token).status_code == 202
+    assert _push(client, token).status_code == 429
+    big = {"attributes": {"backup_enabled": True}, "pad": "x" * 30_000}
+    assert client.post("/ingest/aws", json=big, headers={"authorization": f"Bearer {token}"}).status_code == 413
+
+
+def test_the_feature_is_off_without_a_key(client, bootstrap, monkeypatch):
+    monkeypatch.delenv("CONNECTIONS_KEY", raising=False)
+    assert client.post("/connections/aws/token", headers=H(_org(client, bootstrap))).status_code == 503
+
+
+def test_only_org_admins_can_make_or_remove_the_token(client, bootstrap, aws_env):
     org = _org(client, bootstrap)
-    client.post("/connections/aws/prepare", headers=H(org))
-    client.put("/connections/aws", json={"role_arn": ROLE, "region": "ap-south-1"}, headers=H(org))
-
-    class Boto:
-        @staticmethod
-        def client(*a, **k):
-            class STS:
-                def assume_role(self, **kw):
-                    assert kw["ExternalId"].startswith("grc-") and kw["RoleArn"] == ROLE
-                    raise Denied()
-            return STS()
-
-    import sys, types
-    monkeypatch.setitem(sys.modules, "boto3", types.SimpleNamespace(client=Boto.client, Session=lambda **k: None))
-    one = client.post("/connections/aws/test", headers=H(org)).json()["connections"][2]
-    assert one["status"] == "FAILED" and "AccessDenied" in one["last_error"]
-    assert "platform-secret-example" not in json.dumps(one)
-
-
-def test_only_org_admins_and_each_org_sees_only_its_own(client, bootstrap, aws_env):
-    org = _org(client, bootstrap)
-    other = client.post("/admin/organizations", json={"name": "Other", "frameworks": ["SOC-2"]}).json()["id"]
-    client.post("/connections/aws/prepare", headers=H(org))
-    assert client.get("/connections", headers=H(other)).json()["connections"][2]["configured"] is False
-    assert client.post("/connections/aws/prepare", headers={"authorization": "user:nobody"}).status_code in (401, 403)
-
-
-def test_removing_deletes_the_row(client, bootstrap, aws_env):
-    org = _org(client, bootstrap)
-    client.post("/connections/aws/prepare", headers=H(org))
+    assert client.post("/connections/aws/token", headers={"authorization": "user:nobody"}).status_code in (401, 403)
+    _make_token(client, org)
     assert client.delete("/connections/aws", headers=H(org)).json()["connections"][2]["configured"] is False
-
-
-# --- the sync uses the organisation's own role ---------------------------------------------------------------------
-def test_a_sync_collects_through_the_orgs_own_role(client, bootstrap, aws_env, monkeypatch):
-    org = _org(client, bootstrap)
-    client.post("/connections/aws/prepare", headers=H(org))
-    client.put("/connections/aws", json={"role_arn": ROLE, "region": "ap-south-1"}, headers=H(org))
-    monkeypatch.delenv("DPDP_AWS_COLLECTOR_URL", raising=False)
-    seen = []
-    monkeypatch.setattr(connections, "aws_assume", lambda cfg: seen.append(cfg) or FakeSession())
     with Session(db_module.engine) as s:
-        payload = connectors._pull("aws", s, org)
-    assert seen[0]["role_arn"] == ROLE and payload["attributes"]["backup_enabled"] is True
-    assert payload["source"] == "aws"
+        assert s.query(AuditEvent).filter_by(action="CONNECTION_REMOVED").count() == 1
 
 
-def test_a_prepared_but_unfinished_connection_is_not_a_collector(client, bootstrap, aws_env, monkeypatch):
+def test_the_connect_button_explains_that_results_arrive_from_the_script(client, bootstrap, aws_env, monkeypatch):
     org = _org(client, bootstrap)
-    client.post("/connections/aws/prepare", headers=H(org))
     monkeypatch.delenv("DPDP_AWS_COLLECTOR_URL", raising=False)
-    with Session(db_module.engine) as s, pytest.raises(HTTPException) as e:
-        connectors._pull("aws", s, org)
-    assert e.value.status_code == 409
+    _make_token(client, org)
+    r = client.post("/connectors/aws/sync", headers=H(org))
+    assert r.status_code == 409 and "own script" in r.json()["detail"]
 
 
-def test_an_unreadable_connection_fails_closed_and_never_uses_the_shared_collector(client, bootstrap, aws_env, monkeypatch):
-    org = _org(client, bootstrap)
-    client.post("/connections/aws/prepare", headers=H(org))
-    monkeypatch.setenv("CONNECTIONS_KEY", Fernet.generate_key().decode())       # the key was replaced
-    monkeypatch.setenv("DPDP_AWS_COLLECTOR_URL", "http://127.0.0.1:9/should-not-be-called")
-    with Session(db_module.engine) as s, pytest.raises(HTTPException) as e:
-        connectors._pull("aws", s, org)
-    assert e.value.status_code == 502 and "unreadable" in e.value.detail
-
-
-def test_a_partial_aws_run_is_not_complete(client, bootstrap, aws_env, monkeypatch):
-    org = _org(client, bootstrap)
-    client.post("/connections/aws/prepare", headers=H(org))
-    client.put("/connections/aws", json={"role_arn": ROLE, "region": "ap-south-1"}, headers=H(org))
-    monkeypatch.delenv("DPDP_AWS_COLLECTOR_URL", raising=False)
-    monkeypatch.setattr(connections, "aws_assume", lambda cfg: FakeSession(deny={"cloudtrail"}))
-    with Session(db_module.engine) as s:
-        snapshot = connectors._pull("aws", s, org)
-    assert snapshot["declared"]["complete"] is False
+def test_the_script_dry_run_prints_the_answers_and_uploads_nothing(monkeypatch, capsys):
+    import sys, types
+    monkeypatch.setitem(sys.modules, "boto3", types.SimpleNamespace(Session=lambda: FakeSession()))
+    assert aws_readonly.main(["--url", "https://example.test", "--region", "ap-south-1", "--dry-run"]) == 0
+    assert '"backup_enabled": true' in capsys.readouterr().out

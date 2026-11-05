@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   ApiError, getConnections, removeChatWebhook, removeGithub, saveChatWebhook, saveGithub, testChatWebhook, testGithub,
-  prepareAws, removeAws, saveAws, testAws, type ConnectionView,
+  makeAwsToken, removeAws, type ConnectionView,
 } from "../api/client";
 import { useApi } from "../lib/useApi";
 
@@ -16,8 +16,7 @@ export function ConnectionsPage() {
   const [url, setUrl] = useState("");
   const [ghToken, setGhToken] = useState("");
   const [ghRepos, setGhRepos] = useState("");
-  const [awsRole, setAwsRole] = useState("");
-  const [awsRegion, setAwsRegion] = useState("ap-south-1");
+  const [awsToken, setAwsToken] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -136,52 +135,48 @@ export function ConnectionsPage() {
         <div className="card" id="aws" style={{ marginTop: 16 }}>
           <strong>AWS: security settings evidence</strong>
           <p className="stat-sub">
-            We check four things, read-only: encryption at rest, MFA on admin users, a logging trail, and backups. You
-            create a role in your AWS account that trusts ours. No access key is shared or stored; deleting the role
-            ends our access at once.
+            You run a small read-only script in your own AWS account. It checks four things (encryption at rest, MFA on
+            admin users, a logging trail, backups) and sends us only four yes/no answers. We hold no AWS key of yours and
+            call nothing in your account.
           </p>
           <p>
             <strong>{STATUS_LABEL[aws.status]}</strong>
             {aws.configured && <span className="muted"> {aws.hint}</span>}
-            {aws.last_tested_at && <span className="muted"> last tested {new Date(aws.last_tested_at).toLocaleString()}</span>}
+            {aws.last_tested_at && <span className="muted"> last received {new Date(aws.last_tested_at).toLocaleString()}</span>}
           </p>
-          {aws.status === "FAILED" && aws.last_error && <p className="error">{aws.last_error}</p>}
 
-          {!aws.configured && (
-            <button className="btn btn-primary" disabled={busy || !keyOn} onClick={() => run(() => prepareAws())}>
-              Start: get my setup details
-            </button>
+          {awsToken && (
+            <div className="alert alert-info">
+              <p>Copy this upload token now. It is shown once and only a fingerprint is kept. Making a new one ends this one.</p>
+              <input readOnly value={awsToken} aria-label="Upload token" onFocus={(e) => e.currentTarget.select()} />
+              <button className="btn btn-sm" onClick={() => void navigator.clipboard?.writeText(awsToken)}>Copy token</button>
+            </div>
           )}
-          {aws.configured && aws.details && (
-            <>
-              <ol style={{ fontSize: 13, margin: "8px 0 8px 18px" }}>
-                <li>In AWS, create an IAM role of type "Another AWS account", with this trusted identity:
-                  <div className="mono">{aws.details.platform_principal}</div></li>
-                <li>Require this external ID:
-                  <div className="mono">{aws.details.external_id}</div></li>
-                <li>Attach read-only permissions (list in the setup guide, docs/operations/aws-platform-identity.md).</li>
-                <li>Paste the role ARN and region below.</li>
-              </ol>
-              <label htmlFor="aws-role">{aws.details.role_arn ? "Replace the role ARN" : "Role ARN"}</label>
-              <input id="aws-role" value={awsRole} disabled={!keyOn} onChange={(e) => setAwsRole(e.target.value)}
-                placeholder="arn:aws:iam::123456789012:role/grc-readonly" spellCheck={false} />
-              <label htmlFor="aws-region" style={{ marginTop: 8 }}>Region (where your databases and logging live)</label>
-              <input id="aws-region" value={awsRegion} disabled={!keyOn} onChange={(e) => setAwsRegion(e.target.value)} spellCheck={false} />
-              <div style={{ marginTop: 8 }}>
-                <button className="btn btn-primary" disabled={busy || !keyOn || awsRole.trim().length < 10}
-                  onClick={() => run(async () => { await saveAws(awsRole.trim(), awsRegion.trim()); setAwsRole(""); })}>
-                  {aws.details.role_arn ? "Replace" : "Save"}
-                </button>{" "}
-                {aws.details.role_arn && (
-                  <button className="btn" disabled={busy || !keyOn} onClick={() => run(() => testAws())}>Check access</button>
-                )}{" "}
-                <button className="btn btn-danger" disabled={busy}
-                  onClick={() => { if (window.confirm("Remove this connection? Evidence will stop being collected from this AWS account.")) void run(() => removeAws()); }}>
-                  Remove
-                </button>
-              </div>
-            </>
+          {aws.configured && (
+            <ol style={{ fontSize: 13, margin: "8px 0 8px 18px" }}>
+              <li>In AWS, give the user or role that will run the script these read-only permissions: s3:ListAllMyBuckets,
+                s3:GetEncryptionConfiguration, ec2:GetEbsEncryptionByDefault, rds:DescribeDBInstances, iam:GetAccountSummary,
+                iam:ListEntitiesForPolicy, iam:GetGroup, iam:ListMFADevices, cloudtrail:DescribeTrails,
+                cloudtrail:GetTrailStatus, backup:ListBackupPlans.</li>
+              <li>Download the script: <span className="mono">app/collectors/aws_readonly.py</span> from the project repository
+                (needs Python and boto3).</li>
+              <li>Run it where your AWS credentials are set:
+                <div className="mono">python aws_readonly.py --url {window.location.origin} --region ap-south-1 --token YOUR_TOKEN</div></li>
+              <li>Add <span className="mono">--dry-run</span> first to see the answers without uploading. Run it again whenever you want fresh evidence.</li>
+            </ol>
           )}
+          <div style={{ marginTop: 8 }}>
+            <button className="btn btn-primary" disabled={busy || !keyOn}
+              onClick={() => run(async () => { const r = await makeAwsToken(); setAwsToken(r.new_token); })}>
+              {aws.configured ? "Make a new token" : "Create my upload token"}
+            </button>{" "}
+            {aws.configured && (
+              <button className="btn btn-danger" disabled={busy}
+                onClick={() => { if (window.confirm("Remove this connection? Uploads with this token will stop working.")) void run(async () => { await removeAws(); setAwsToken(null); }); }}>
+                Remove
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>

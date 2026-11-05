@@ -27,17 +27,17 @@ step is in a tamper-evident log; the DPDP Act pack for India.
 
 ## Entries
 
-### 5 Nov 2026: Connect your own AWS account from the Connections page (issue 79, switched off until set up)
-- **Say:** "Create a read-only role in your AWS account that trusts ours, paste its address, and we check four things:
-  encryption, MFA on admins, a logging trail, and backups. We never hold a key of yours, and deleting the role ends
-  our access at once."
-- **Show:** Connections page, AWS card: Start, copy the trusted identity and external ID into the role, paste the
-  role address, Check access; then Collect evidence on the DPDP page.
-- **Honest detail:** it needs the operator to create one narrow AWS identity first (guide: aws-platform-identity), so
-  today nothing changes on the live site. A check the role may not run is left out and the run is marked incomplete,
-  never counted as a pass or a fail. One region per connection.
-- **Proof:** tests for each control failing on its own, a missing permission, bad role or region input, the external
-  ID, isolation between organisations, and that a sync uses the organisation's own role.
+### 5 Nov 2026: Send AWS evidence from your own account (issue 79)
+- **Say:** "You run one small read-only script in your own AWS account. It checks four things (encryption, MFA on
+  admins, a logging trail, backups) and sends us only four yes/no answers. We hold no AWS key of yours."
+- **Show:** Connections page, AWS card: create the upload token (shown once), run the script with --dry-run, then
+  for real; the card shows when results arrived and the DPDP page shows the AWS evidence.
+- **Honest detail:** evidence is as fresh as your last run; schedule the script if you want it regular. A check the
+  permissions do not allow is left out and the run is marked incomplete, never a pass or a fail. Replacing the
+  token ends the old one at once. The first design (we assume a role in your account) was dropped because it needed
+  an AWS account with billing on our side.
+- **Proof:** tests for the token (shown once, only its hash kept, one organisation cannot write to another), refusal of
+  anything but four yes/no answers, rate and size limits, and each control failing on its own.
 
 ### 5 Nov 2026: Invite a person and they can actually sign in (issue 81, switched off until configured)
 - **Say:** "Invite someone and they get a one-time link to choose their own password. Nobody, including the

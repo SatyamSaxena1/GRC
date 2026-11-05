@@ -516,8 +516,7 @@ def sync_all_connectors(db: Session, org_id: str, sources: set[str] | None = Non
         if sources is not None and source not in sources:
             continue
         if not os.environ.get(connectors._env_key(source, "URL")) and not (
-                (source == "github" and connectors._has_own_github(db, org_id))
-                or (source == "aws" and connectors._has_own_aws(db, org_id))):
+                source == "github" and connectors._has_own_github(db, org_id)):
             continue
         if source in na_sources:
             continue
