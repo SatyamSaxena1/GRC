@@ -243,3 +243,38 @@ def test_acceptance_needs_a_reason_an_admin_and_a_partial_run(client, bootstrap)
     assert client.post("/connectors/aws/accept-scope", json={"reason": WHY}, headers=H(org)).status_code == 404
     assert client.post("/connectors/github/accept-scope", json={"reason": WHY},
                        headers={"authorization": "user:nobody"}).status_code in (401, 403)
+
+
+# --- a flaky GitHub answer must not kill a long collection -------------------------------------------------------
+def test_the_github_session_retries_transient_errors_and_then_gives_up_cleanly():
+    import threading
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    hits = {"n": 0, "fail": 2}
+
+    class H(BaseHTTPRequestHandler):
+        def do_GET(self):
+            hits["n"] += 1
+            code = 502 if hits["n"] <= hits["fail"] else 200
+            self.send_response(code)
+            self.send_header("Content-Length", "2")
+            self.end_headers()
+            self.wfile.write(b"{}")
+
+        def log_message(self, *a):
+            pass
+
+    srv = HTTPServer(("127.0.0.1", 0), H)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    try:
+        s = connections.github_session("ghp_AbCdEfGh1234secretTOKENvalue")
+        assert s.get_adapter("https://api.github.com/").max_retries.status_forcelist == (500, 502, 503, 504)
+        fast = connections.requests.adapters.HTTPAdapter(max_retries=connections.retrying_adapter().max_retries.new(backoff_factor=0))
+        s.mount("http://", fast)
+        assert s.get(f"http://127.0.0.1:{srv.server_port}/x", timeout=5).status_code == 200   # 2 x 502, then OK
+        assert hits["n"] == 3
+        hits.update(n=0, fail=99)                                                              # never recovers
+        assert s.get(f"http://127.0.0.1:{srv.server_port}/x", timeout=5).status_code == 502   # returned, not raised
+        assert hits["n"] == 5                                                                  # 1 try + 4 retries
+    finally:
+        srv.shutdown()
