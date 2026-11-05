@@ -15,11 +15,13 @@
 #
 # daily-report exits 1 whenever something needs a human (app/monitor.py,
 # ADR-006) — a red run there can be the alert working, not a broken job.
+# The 6-hourly connector sync was retired on 2026-11-05: customers now connect GitHub themselves on the
+# Connections page (ADR-045) and collect from there. The sync-connectors job stays as a manual button for the
+# platform-wide collectors (DPDP_<SOURCE>_COLLECTOR_URL) and needs the storage secrets above to be current.
 name: DPDP monitor
 
 on:
   schedule:
-    - cron: "0 */6 * * *"   # sync connectors, every 6 hours (UTC)
     - cron: "30 1 * * *"    # daily attention report, 07:00 IST
     - cron: "45 1 * * 1"    # weekly compliance report to the webhook, Mondays 07:15 IST (ADR-041)
   workflow_dispatch:        # manual "Run workflow" button: runs ONE job, chosen below, never all of them
