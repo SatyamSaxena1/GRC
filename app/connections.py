@@ -13,6 +13,8 @@ import re
 from urllib.parse import urlparse
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 from cryptography.fernet import Fernet, InvalidToken, MultiFernet
 
 KIND_CHAT = "CHAT_WEBHOOK"
@@ -128,8 +130,18 @@ def github_hint(token: str, repos: list[str]) -> str:
     return f"{len(repos)} repositor{'y' if len(repos) == 1 else 'ies'}, token ...{token[-4:]}"
 
 
+def retrying_adapter() -> HTTPAdapter:
+    """One flaky GitHub answer (a 502 or a dropped connection) must not throw away a multi-minute collection of
+    hundreds of calls. Retries 5xx and connection errors a few times with a growing pause, honouring Retry-After;
+    after the last attempt the response is returned as is, so the collector's own error handling reports it."""
+    return HTTPAdapter(max_retries=Retry(total=4, backoff_factor=1.0, status_forcelist=(500, 502, 503, 504),
+                                         allowed_methods=None, respect_retry_after_header=True,
+                                         raise_on_status=False))
+
+
 def github_session(token: str) -> requests.Session:
     s = requests.Session()
+    s.mount("https://", retrying_adapter())
     s.trust_env = False
     s.headers.update({"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28",
                       "Authorization": f"Bearer {token}"})
