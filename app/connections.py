@@ -20,6 +20,9 @@ from cryptography.fernet import Fernet, InvalidToken, MultiFernet
 KIND_CHAT = "CHAT_WEBHOOK"
 KIND_GITHUB = "GITHUB_CHANGE_CONTROL"
 KIND_AWS = "AWS_PUSH"
+KIND_M365 = "M365_PUSH"
+# Sources whose evidence the customer uploads from their own script (ADR-049, ADR-050): source -> connection kind.
+PUSH_KINDS = {"aws": KIND_AWS, "m365": KIND_M365}
 
 
 def _keys() -> list[str]:

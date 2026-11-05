@@ -132,7 +132,7 @@ export const closeEngagement = (engagementId: string) =>
 
 /** Connections an organisation sets up itself (ADR-044). The address is write-only: only a hint comes back. */
 export type ConnectionView = {
-  kind: "CHAT_WEBHOOK" | "GITHUB_CHANGE_CONTROL" | "AWS_READONLY"; configured: boolean; hint: string; status: "NONE" | "UNTESTED" | "OK" | "FAILED";
+  kind: "CHAT_WEBHOOK" | "GITHUB_CHANGE_CONTROL" | "AWS_PUSH" | "M365_PUSH"; configured: boolean; hint: string; status: "NONE" | "UNTESTED" | "OK" | "FAILED";
   last_tested_at: string | null; last_error: string;
 };
 export type ConnectionsState = { key_configured: boolean; connections: ConnectionView[] };
@@ -143,8 +143,9 @@ export const removeChatWebhook = () => request<ConnectionsState>("DELETE", "/con
 export const saveGithub = (token: string, repos: string[]) => request<ConnectionsState>("PUT", "/connections/github", { json: { token, repos } });
 export const testGithub = () => request<ConnectionsState>("POST", "/connections/github/test");
 export const removeGithub = () => request<ConnectionsState>("DELETE", "/connections/github");
-export const makeAwsToken = () => request<ConnectionsState & { new_token: string }>("POST", "/connections/aws/token");
-export const removeAws = () => request<ConnectionsState>("DELETE", "/connections/aws");
+export const makeUploadToken = (source: "aws" | "m365") =>
+  request<ConnectionsState & { new_token: string }>("POST", `/connections/${source}/token`);
+export const removeUpload = (source: "aws" | "m365") => request<ConnectionsState>("DELETE", `/connections/${source}`);
 
 /** The vendor register (ADR-042): tier and review status come from fixed rules on the server. */
 export type VendorReport = {
