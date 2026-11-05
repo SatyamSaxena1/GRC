@@ -132,8 +132,10 @@ export const closeEngagement = (engagementId: string) =>
 
 /** Connections an organisation sets up itself (ADR-044). The address is write-only: only a hint comes back. */
 export type ConnectionView = {
-  kind: "CHAT_WEBHOOK" | "GITHUB_CHANGE_CONTROL"; configured: boolean; hint: string; status: "NONE" | "UNTESTED" | "OK" | "FAILED";
+  kind: "CHAT_WEBHOOK" | "GITHUB_CHANGE_CONTROL" | "AWS_READONLY"; configured: boolean; hint: string; status: "NONE" | "UNTESTED" | "OK" | "FAILED";
   last_tested_at: string | null; last_error: string;
+  /** AWS only: what the customer needs for their role. None of it is secret (ADR-048). */
+  details?: { platform_principal: string; external_id: string; role_arn: string; region: string };
 };
 export type ConnectionsState = { key_configured: boolean; connections: ConnectionView[] };
 export const getConnections = () => request<ConnectionsState>("GET", "/connections");
@@ -143,6 +145,10 @@ export const removeChatWebhook = () => request<ConnectionsState>("DELETE", "/con
 export const saveGithub = (token: string, repos: string[]) => request<ConnectionsState>("PUT", "/connections/github", { json: { token, repos } });
 export const testGithub = () => request<ConnectionsState>("POST", "/connections/github/test");
 export const removeGithub = () => request<ConnectionsState>("DELETE", "/connections/github");
+export const prepareAws = () => request<ConnectionsState>("POST", "/connections/aws/prepare");
+export const saveAws = (role_arn: string, region: string) => request<ConnectionsState>("PUT", "/connections/aws", { json: { role_arn, region } });
+export const testAws = () => request<ConnectionsState>("POST", "/connections/aws/test");
+export const removeAws = () => request<ConnectionsState>("DELETE", "/connections/aws");
 
 /** The vendor register (ADR-042): tier and review status come from fixed rules on the server. */
 export type VendorReport = {

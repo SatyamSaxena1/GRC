@@ -73,6 +73,14 @@ def _latest(db: Session, org_id: str, source: str) -> Evidence | None:
     )
 
 
+def _has_own_aws(db: Session, org_id: str) -> bool:
+    """For listings: an unreadable saved role counts as present, so the page shows it and the sync reports why."""
+    try:
+        return org_aws_config(db, org_id) is not None
+    except HTTPException:
+        return True
+
+
 def _has_own_github(db: Session, org_id: str) -> bool:
     return connections.available() and db.query(Connection).filter_by(
         org_id=org_id, kind=connections.KIND_GITHUB).first() is not None
@@ -86,7 +94,8 @@ def connector_status(actor: Actor = Depends(current_actor), db: Session = Depend
         {
             "source": source,
             "label": label,
-            "configured": bool(os.environ.get(_env_key(source, "URL"))) or (source == "github" and _has_own_github(db, actor.org_id)),
+            "configured": bool(os.environ.get(_env_key(source, "URL"))) or (source == "github" and _has_own_github(db, actor.org_id))
+            or (source == "aws" and _has_own_aws(db, actor.org_id)),
             "evidence_id": latest.id if (latest := _latest(db, actor.org_id, source)) else None,
             "last_synced_at": latest.created_at.isoformat() if latest else None,
             "status": latest.status if latest else "NEVER_SYNCED",
@@ -152,6 +161,30 @@ def org_github_config(db: Session, org_id: str) -> tuple[str, list[str]] | None:
         raise HTTPException(502, f"github connection unreadable: {exc}") from None
 
 
+def org_aws_config(db: Session, org_id: str) -> dict | None:
+    """The organisation's AWS role (ADR-048), or None until it has pasted one. 502 if it can no longer be read."""
+    if not connections.available():
+        return None
+    row = db.query(Connection).filter_by(org_id=org_id, kind=connections.KIND_AWS).one_or_none()
+    if row is None:
+        return None
+    try:
+        cfg = connections.unpack_aws(connections.decrypt(row.config_encrypted))
+    except ValueError as exc:
+        raise HTTPException(502, f"aws connection unreadable: {exc}") from None
+    return cfg if cfg["role_arn"] else None
+
+
+def _collect_aws(cfg: dict) -> dict:
+    from app.collectors import aws_readonly
+
+    try:
+        session = connections.aws_assume(cfg)
+    except ValueError as exc:
+        raise requests.RequestException(str(exc)) from None
+    return aws_readonly.collect(session, cfg["region"])
+
+
 def _collect_github(token: str, repos: list[str], days: int = 90) -> dict:
     """Run the read-only change-control collector in-process against api.github.com with the org's own token."""
     session = connections.github_session(token)
@@ -164,13 +197,16 @@ def _collect_github(token: str, repos: list[str], days: int = 90) -> dict:
 
 def _pull(source: str, db: Session | None = None, org_id: str | None = None) -> dict:
     own = org_github_config(db, org_id) if (source == "github" and db is not None and org_id) else None
+    own_aws = org_aws_config(db, org_id) if (source == "aws" and db is not None and org_id) else None
     url = os.environ.get(_env_key(source, "URL"))
-    if not url and own is None:
+    if not url and own is None and own_aws is None:
         raise HTTPException(409, f"{source} collector is not configured")
     token = os.environ.get(_env_key(source, "TOKEN"))
     try:
         if own is not None:
             payload = _collect_github(*own)
+        elif own_aws is not None:
+            payload = _collect_aws(own_aws)
         else:
             response = requests.get(
                 url,
@@ -191,7 +227,7 @@ def _pull(source: str, db: Session | None = None, org_id: str | None = None) -> 
     except (requests.RequestException, ValueError) as exc:
         raise HTTPException(502, f"{source} collector failed: {exc}") from exc
     except Exception as exc:  # noqa: BLE001 - the class only: nothing from an own-token run may carry the token
-        if own is None:
+        if own is None and own_aws is None:
             raise
         raise HTTPException(502, f"{source} collector failed ({type(exc).__name__})") from None
 
@@ -311,7 +347,7 @@ def sync_connector(
     if not actor.can_write:
         raise deny_read_only(actor, "collect evidence")
 
-    if source == "github" and _has_own_github(db, actor.org_id):
+    if (source == "github" and _has_own_github(db, actor.org_id)) or (source == "aws" and _has_own_aws(db, actor.org_id)):
         # Reading a repository's review history takes minutes, longer than a web request may live (ADR-045).
         # Run it in the background; the run is recorded (COMPLETE or FAILED) when it ends, and the page shows it.
         background.add_task(_sync_in_background, actor.org_id, actor.label(), actor.request_id, source)
