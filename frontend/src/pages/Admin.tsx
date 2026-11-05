@@ -221,6 +221,16 @@ function InviteUserCard({ orgId, onCreated }: { orgId: string; onCreated: () => 
           {busy ? "Creating…" : "Create user"}
         </button>
         {result && <p className="mono">user id: {result.id}</p>}
+        {result?.password_link && (
+          <div className="alert alert-info">
+            <p>
+              Send this one-time link to the person so they can choose their own password. It is shown once, is not
+              stored anywhere, and stops working after seven days. You never see or set their password.
+            </p>
+            <input readOnly value={result.password_link} onFocus={(e) => e.currentTarget.select()} aria-label="One-time password link" />
+            <button className="btn btn-sm" onClick={() => void navigator.clipboard?.writeText(result.password_link ?? "")}>Copy link</button>
+          </div>
+        )}
       </div>
     </div>
   );
