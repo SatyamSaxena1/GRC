@@ -87,3 +87,47 @@ def collect(session, region: str) -> dict:
             errors.append(f"{name} could not be checked ({code or type(exc).__name__})")
     return {"attributes": attributes,
             "collection": {"complete": not errors, "errors": errors, "region": region}}
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Run the four checks in the customer's own account and upload the answers. Standard library plus boto3 only,
+    so this one file can be downloaded and run on its own:
+
+        python aws_readonly.py --url https://grc.example.com --token "$GRC_UPLOAD_TOKEN" --region ap-south-1
+    """
+    import argparse
+    import json
+    import os
+    import urllib.error
+    import urllib.request
+
+    parser = argparse.ArgumentParser(description="Read-only AWS checks, uploaded as four yes/no answers.")
+    parser.add_argument("--url", required=True, help="your GRC address, e.g. https://grc.blinkedit.me")
+    parser.add_argument("--region", required=True, help="the region where your databases and logging trail live")
+    parser.add_argument("--token", default=os.environ.get("GRC_UPLOAD_TOKEN", ""), help="or set GRC_UPLOAD_TOKEN")
+    parser.add_argument("--dry-run", action="store_true", help="print the answers, upload nothing")
+    args = parser.parse_args(argv)
+
+    import boto3  # imported here so the checks above stay testable without it
+
+    result = collect(boto3.Session(), args.region)
+    print(json.dumps(result, indent=2))
+    if args.dry_run:
+        return 0
+    if not args.token:
+        print("no upload token: pass --token or set GRC_UPLOAD_TOKEN")
+        return 2
+    request = urllib.request.Request(args.url.rstrip("/") + "/ingest/aws", data=json.dumps(result).encode(),
+                                     method="POST", headers={"Content-Type": "application/json",
+                                                             "Authorization": f"Bearer {args.token}"})
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            print(f"uploaded: HTTP {response.status}")
+    except urllib.error.HTTPError as exc:
+        print(f"upload refused: HTTP {exc.code}")
+        return 1
+    return 0 if result["collection"]["complete"] else 3
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

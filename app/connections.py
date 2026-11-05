@@ -19,7 +19,7 @@ from cryptography.fernet import Fernet, InvalidToken, MultiFernet
 
 KIND_CHAT = "CHAT_WEBHOOK"
 KIND_GITHUB = "GITHUB_CHANGE_CONTROL"
-KIND_AWS = "AWS_READONLY"
+KIND_AWS = "AWS_PUSH"
 
 
 def _keys() -> list[str]:
@@ -164,65 +164,28 @@ def github_test(token: str, repos: list[str], timeout: float = 10.0) -> tuple[bo
         if r.status_code != 200:
             return False, f"GitHub answered HTTP {r.status_code} for {repo}"
     return True, ""
+# ---- AWS by upload (ADR-049). The platform holds no AWS identity and calls nothing in AWS. The customer runs a small
+# read-only script in their own account; it posts four yes/no answers to us with an upload token. The token carries
+# the organisation id (not secret) so the right tenant can be selected before anything is read; only its SHA-256 is kept.
+import hashlib
+import hmac
+import secrets as _secrets
 
 
-# ---- AWS read-only (ADR-048). The customer gives a role ARN and a region, never a URL; the server reaches AWS only
-# through the SDK's own endpoints. The external ID is generated here and is not a secret (AWS's own guidance):
-# it exists so nobody else can trick the platform into assuming this customer's role.
-_ROLE_ARN = re.compile(r"^arn:aws:iam::\d{12}:role/[A-Za-z0-9+=,.@_/-]{1,512}$")
-_REGION = re.compile(r"^[a-z]{2}(-[a-z]+)+-\d$")
+def new_push_token(org_id: str) -> tuple[str, str]:
+    """(the token to show once, the hash to keep)."""
+    secret = _secrets.token_urlsafe(32)
+    return f"{org_id}.{secret}", hashlib.sha256(secret.encode()).hexdigest()
 
 
-def new_external_id() -> str:
-    import secrets as _s
-    return "grc-" + _s.token_urlsafe(24)
+def split_push_token(raw: str) -> tuple[str, str] | None:
+    org_id, _, secret = (raw or "").partition(".")
+    return (org_id, secret) if org_id and len(secret) >= 20 else None
 
 
-def validate_aws(role_arn: str, region: str) -> tuple[str, str]:
-    role_arn, region = (role_arn or "").strip(), (region or "").strip().lower()
-    if not _ROLE_ARN.match(role_arn):
-        raise ValueError("the role must look like arn:aws:iam::123456789012:role/name")
-    if not _REGION.match(region):
-        raise ValueError("the region must look like ap-south-1")
-    return role_arn, region
+def push_token_matches(stored_hash: str, secret: str) -> bool:
+    return hmac.compare_digest(stored_hash, hashlib.sha256(secret.encode()).hexdigest())
 
 
-def pack_aws(external_id: str, role_arn: str = "", region: str = "") -> str:
-    return json.dumps({"external_id": external_id, "role_arn": role_arn, "region": region}, separators=(",", ":"))
-
-
-def unpack_aws(plain: str) -> dict:
-    d = json.loads(plain)
-    return {"external_id": d["external_id"], "role_arn": d.get("role_arn", ""), "region": d.get("region", "")}
-
-
-def aws_hint(cfg: dict) -> str:
-    if not cfg["role_arn"]:
-        return "waiting for the role"
-    account = cfg["role_arn"].split(":")[4]
-    return f"account ...{account[-4:]}, {cfg['region']}"
-
-
-def platform_principal() -> str:
-    """The AWS identity customers must trust in their role's trust policy (set by the operator)."""
-    return os.environ.get("AWS_PLATFORM_PRINCIPAL_ARN", "")
-
-
-def aws_assume(cfg: dict):
-    """A boto3 session acting as the customer's role, using the platform's own identity (never the storage keys).
-    Raises ValueError with a short reason."""
-    import boto3
-
-    key, secret = os.environ.get("PLATFORM_AWS_ACCESS_KEY_ID", ""), os.environ.get("PLATFORM_AWS_SECRET_ACCESS_KEY", "")
-    if not (key and secret and platform_principal()):
-        raise ValueError("this server has no AWS identity configured for connecting customer accounts")
-    try:
-        sts = boto3.client("sts", aws_access_key_id=key, aws_secret_access_key=secret, region_name=cfg["region"])
-        creds = sts.assume_role(RoleArn=cfg["role_arn"], RoleSessionName="grc-evidence", ExternalId=cfg["external_id"],
-                                DurationSeconds=900)["Credentials"]
-    except Exception as exc:  # noqa: BLE001
-        code = getattr(exc, "response", {}).get("Error", {}).get("Code") if hasattr(exc, "response") else None
-        raise ValueError(f"AWS would not let us assume the role ({code or type(exc).__name__}); check the role's trust "
-                         "policy and external ID") from None
-    return boto3.Session(aws_access_key_id=creds["AccessKeyId"], aws_secret_access_key=creds["SecretAccessKey"],
-                         aws_session_token=creds["SessionToken"])
+def push_hint(token: str) -> str:
+    return f"upload token ...{token[-4:]}"
