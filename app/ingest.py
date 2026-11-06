@@ -7,6 +7,7 @@ the two.
 from __future__ import annotations
 
 import logging
+import os
 
 from app.ai.explain import explain_cross_framework_gap as _explain_cross_framework_gap
 from app.ai.extraction import extract_attributes as _extract_attributes
@@ -33,9 +34,20 @@ def _gateway():
 
 def _tool_gateway() -> LMStudioGateway:
     """Separate from _gateway(): extraction/OCR stay on Ollama, tool-calling
-    features (only explain_cross_framework_gap today) go through LM Studio's
-    qwen3.8-27b, the model actually trained for tool use."""
-    return LMStudioGateway()
+    features (the explain-why and Ask AI helpers) go through the LM Studio-style server.
+
+    Optional fallback (ADR-053): with LLM_FALLBACK_BASE_URL set (and LLM_FALLBACK_MODEL / LLM_FALLBACK_API_KEY), a
+    second OpenAI-style server, for example a hosted one, answers when the first is not reachable. It is chosen per
+    request, only when the primary is down; a call that fails mid-way on a reachable primary is not retried elsewhere.
+    The answer's audit record names whichever model actually answered."""
+    primary = LMStudioGateway()
+    base = os.environ.get("LLM_FALLBACK_BASE_URL", "").strip().rstrip("/")
+    if not base or primary.available():
+        return primary
+    backup = LMStudioGateway(model=os.environ.get("LLM_FALLBACK_MODEL", "").strip(), base_url=base,
+                             api_key=os.environ.get("LLM_FALLBACK_API_KEY", "").strip(),
+                             reasoning_effort=os.environ.get("LLM_FALLBACK_REASONING_EFFORT", "").strip())
+    return backup if backup.available() else primary
 
 
 def current_model_name() -> str:

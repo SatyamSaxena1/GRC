@@ -32,8 +32,9 @@ TIMEOUT_S = float(os.environ.get("LMSTUDIO_TIMEOUT_S", "120"))
 REASONING_EFFORT = os.environ.get("LLM_REASONING_EFFORT", "none")
 
 
-def _headers() -> dict[str, str]:
-    return {"Authorization": f"Bearer {API_KEY}"} if API_KEY else {}
+def _headers(api_key: str | None = None) -> dict[str, str]:
+    key = API_KEY if api_key is None else api_key
+    return {"Authorization": f"Bearer {key}"} if key else {}
 MAX_RETRIES = 1
 
 
@@ -44,14 +45,17 @@ class LMStudioGateway:
 
     provider = "lmstudio"
 
-    def __init__(self, model: str = MODEL, base_url: str = BASE_URL):
+    def __init__(self, model: str = MODEL, base_url: str = BASE_URL, api_key: str | None = None,
+                 reasoning_effort: str | None = None):
         self.model = model
         self.base_url = base_url
+        self.api_key = api_key                      # None: the module's key (LMSTUDIO_API_KEY / LLM_API_KEY)
+        self.reasoning_effort = REASONING_EFFORT if reasoning_effort is None else reasoning_effort
         self.last_latency_ms = 0
 
     def available(self) -> bool:
         try:
-            resp = requests.get(f"{self.base_url}/v1/models", headers=_headers(), timeout=5)
+            resp = requests.get(f"{self.base_url}/v1/models", headers=_headers(self.api_key), timeout=5)
             resp.raise_for_status()
             names = {m["id"] for m in resp.json().get("data", [])}
             return bool(self.model) and self.model in names
@@ -125,10 +129,10 @@ class LMStudioGateway:
         for attempt in range(MAX_RETRIES + 1):
             try:
                 body = {"temperature": 0, **payload}
-                if REASONING_EFFORT:
-                    body["reasoning_effort"] = REASONING_EFFORT
+                if self.reasoning_effort:
+                    body["reasoning_effort"] = self.reasoning_effort
                 resp = requests.post(f"{self.base_url}/v1/chat/completions", json=body,
-                                     headers=_headers(), timeout=TIMEOUT_S)
+                                     headers=_headers(self.api_key), timeout=TIMEOUT_S)
                 resp.raise_for_status()
                 message = resp.json()["choices"][0]["message"]
                 self.last_latency_ms = int((time.monotonic() - start) * 1000)
