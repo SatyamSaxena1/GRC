@@ -36,7 +36,7 @@ function UploadCard({ conn, source, title, blurb, permissions, permissionsWhere,
         <ol style={{ fontSize: 13, margin: "8px 0 8px 18px" }}>
           <li>{permissionsWhere}{permissions ? ` ${permissions}.` : ""}</li>
           <li>Download the script <span className="mono">app/collectors/{script}</span> from the project repository.</li>
-          <li>Run it: <div className="mono">{command}</div></li>
+          <li>Run it (the token goes in the environment, not on the command line, so it is not left in your shell history or process list): <div className="mono" style={{ whiteSpace: "pre-wrap" }}>{command}</div></li>
           <li>Add <span className="mono">--dry-run</span> first to see the answers without uploading. Run it again whenever you want fresh evidence.</li>
         </ol>
       )}
@@ -182,10 +182,10 @@ export function ConnectionsPage() {
       {aws && (
         <UploadCard conn={aws} source="aws" title="AWS: security settings evidence" keyOn={keyOn} busy={busy} run={run}
           blurb="You run a small read-only script in your own AWS account. It checks four things (encryption at rest, MFA on admin users, a logging trail, backups) and sends us only four yes/no answers. We hold no AWS key of yours and call nothing in your account."
-          permissions="s3:ListAllMyBuckets, s3:GetEncryptionConfiguration, ec2:GetEbsEncryptionByDefault, rds:DescribeDBInstances, iam:GetAccountSummary, iam:ListEntitiesForPolicy, iam:GetGroup, iam:ListMFADevices, cloudtrail:DescribeTrails, cloudtrail:GetTrailStatus, backup:ListBackupPlans"
+          permissions="s3:ListAllMyBuckets, s3:GetEncryptionConfiguration, ec2:GetEbsEncryptionByDefault, ec2:DescribeVolumes, rds:DescribeDBInstances, iam:GetAccountSummary, iam:ListEntitiesForPolicy, iam:GetGroup, iam:ListMFADevices, cloudtrail:DescribeTrails, cloudtrail:GetTrailStatus, backup:ListBackupPlans, backup:ListBackupSelections"
           permissionsWhere="In AWS, give the user or role that will run the script these read-only permissions:"
           script="aws_readonly.py"
-          command={`python aws_readonly.py --url ${window.location.origin} --region ap-south-1 --token YOUR_TOKEN`} />
+          command={`export GRC_UPLOAD_TOKEN=YOUR_TOKEN\npython aws_readonly.py --url ${window.location.origin} --region ap-south-1`} />
       )}
       {m365 && (
         <UploadCard conn={m365} source="m365" title="Microsoft 365: security settings evidence" keyOn={keyOn} busy={busy} run={run}
@@ -193,7 +193,7 @@ export function ConnectionsPage() {
           permissions="Microsoft Graph application permission AuditLog.Read.All (admin consent), on an app registration you create"
           permissionsWhere="In Microsoft Entra, create an app registration with a client secret and grant it:"
           script="m365_readonly.py"
-          command={`python m365_readonly.py --url ${window.location.origin} --tenant YOUR_TENANT_ID --client-id YOUR_APP_ID --token YOUR_TOKEN`} />
+          command={`export GRC_UPLOAD_TOKEN=YOUR_TOKEN\npython m365_readonly.py --url ${window.location.origin} --tenant YOUR_TENANT_ID --client-id YOUR_APP_ID`} />
       )}
       {hrms && (
         <UploadCard conn={hrms} source="hrms" title="HR: leavers who still have access" keyOn={keyOn} busy={busy} run={run}
@@ -201,7 +201,7 @@ export function ConnectionsPage() {
           permissions=""
           permissionsWhere="Export two CSV files, each with an email column: leavers.csv from your HR system (people who left in the period) and accounts.csv from your directory (Entra, Google Workspace, Okta or similar: every account that is still active)."
           script="hr_leavers.py"
-          command={`python hr_leavers.py --url ${window.location.origin} --leavers leavers.csv --accounts accounts.csv --token YOUR_TOKEN`} />
+          command={`export GRC_UPLOAD_TOKEN=YOUR_TOKEN\npython hr_leavers.py --url ${window.location.origin} --leavers leavers.csv --accounts accounts.csv`} />
       )}
     </div>
   );

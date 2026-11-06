@@ -1,6 +1,9 @@
 # ADR-044: Connections an organisation sets up itself
 
-Status: accepted (slice 1: chat webhook)
+Status: accepted. Slice 1 (chat webhook) built as written. **Later slices took a different route:** GitHub is connected
+by a token and fixed host (ADR-045), AWS, Microsoft 365 and HR by customer-run scripts that upload answers (ADR-049, 050,
+051), and scheduled jobs stayed with cron (ADR-006). The general outbound-address resolver described below was never
+needed and was not built.
 
 ## Context
 Everything the product talks to outward (the alert webhook, each evidence collector's URL and key) is a

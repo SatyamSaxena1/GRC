@@ -1,7 +1,7 @@
-"""Read-only AWS checks for the four attributes the AWS evidence source needs (ADR-048).
+"""Read-only AWS checks for the four attributes the AWS evidence source needs (ADR-049), run on the customer's own computer.
 
-Every check is a documented read call through the AWS SDK with a role the customer created and can revoke. Counts and
-yes/no answers only: no resource names are kept. A check that cannot run (a permission the role lacks, a service
+Every check is a documented read call through the AWS SDK with the credentials and permissions the customer chose. Only
+yes/no answers are uploaded: no resource names are kept. A check that cannot run (a permission the role lacks, a service
 error) is *left out* of the result and reported in `collection`, never reported as false, so a missing permission
 can never read as a failing control or, worse, a passing one.
 
@@ -14,6 +14,14 @@ from __future__ import annotations
 from typing import Any, Callable
 
 ADMIN_POLICY = "arn:aws:iam::aws:policy/AdministratorAccess"
+
+
+class Unknown(Exception):
+    """A check that ran but could not reach an answer. Reported as unknown, never as a pass or a failure."""
+
+    def __init__(self, code: str):
+        super().__init__(code)
+        self.code = code
 
 
 def _s3_encrypted(session, region) -> bool:
@@ -32,6 +40,10 @@ def _encryption_at_rest(session, region) -> bool:
     ec2, rds = session.client("ec2", region_name=region), session.client("rds", region_name=region)
     if not ec2.get_ebs_encryption_by_default().get("EbsEncryptionByDefault"):
         return False
+    # The default only covers NEW volumes: any existing unencrypted volume in this region still fails the check.
+    for page in ec2.get_paginator("describe_volumes").paginate(Filters=[{"Name": "encrypted", "Values": ["false"]}]):
+        if page.get("Volumes"):
+            return False
     for page in rds.get_paginator("describe_db_instances").paginate():
         if not all(db.get("StorageEncrypted") for db in page.get("DBInstances", [])):
             return False
@@ -46,8 +58,12 @@ def _privileged_access_mfa(session, region) -> bool:
     for page in iam.get_paginator("list_entities_for_policy").paginate(PolicyArn=ADMIN_POLICY):
         admins |= {u["UserName"] for u in page.get("PolicyUsers", [])}
         for g in page.get("PolicyGroups", []):
-            members = iam.get_group(GroupName=g["GroupName"]).get("Users", [])
-            admins |= {u["UserName"] for u in members}
+            for members in iam.get_paginator("get_group").paginate(GroupName=g["GroupName"]):   # groups can hold over 100
+                admins |= {u["UserName"] for u in members.get("Users", [])}
+    if not admins:
+        # Nobody was examined, so "all of them have MFA" would be vacuously true. Administrators who sign in through single
+        # sign-on or hold the access another way are outside this check: report it as unknown, never as a pass.
+        raise Unknown("NoAdministratorUsersFound")
     return all(iam.list_mfa_devices(UserName=name).get("MFADevices") for name in admins)
 
 
@@ -60,8 +76,12 @@ def _access_logging(session, region) -> bool:
 
 
 def _backup(session, region) -> bool:
-    if session.client("backup", region_name=region).list_backup_plans().get("BackupPlansList"):
-        return True
+    backup = session.client("backup", region_name=region)
+    for page in backup.get_paginator("list_backup_plans").paginate():
+        for plan in page.get("BackupPlansList", []):
+            # A plan that selects no resources protects nothing, so only a plan with at least one selection counts.
+            if backup.list_backup_selections(BackupPlanId=plan["BackupPlanId"]).get("BackupSelectionsList"):
+                return True
     rds = session.client("rds", region_name=region)
     dbs = [db for page in rds.get_paginator("describe_db_instances").paginate() for db in page.get("DBInstances", [])]
     return bool(dbs) and all((db.get("BackupRetentionPeriod") or 0) > 0 for db in dbs)
@@ -83,10 +103,30 @@ def collect(session, region: str) -> dict:
         try:
             attributes[name] = bool(check(session, region))
         except Exception as exc:  # noqa: BLE001 - the class and a short code only, never a message that may name resources
-            code = getattr(exc, "response", {}).get("Error", {}).get("Code") if hasattr(exc, "response") else None
+            code = getattr(exc, "code", None) or (
+                getattr(exc, "response", {}).get("Error", {}).get("Code") if hasattr(exc, "response") else None)
             errors.append(f"{name} could not be checked ({code or type(exc).__name__})")
     return {"attributes": attributes,
             "collection": {"complete": not errors, "errors": errors, "region": region}}
+
+
+def _url_ok(url: str) -> bool:
+    """The upload token travels in a header, so it is only sent over https (or to this computer, for testing)."""
+    from urllib.parse import urlparse
+
+    parsed = urlparse(url)
+    return parsed.scheme == "https" or (parsed.scheme == "http" and parsed.hostname in ("localhost", "127.0.0.1", "::1"))
+
+
+def _post(request):
+    """POST without following redirects: a redirect would carry the token to another address."""
+    import urllib.request
+
+    class _Stop(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self, *args, **kwargs):
+            return None
+
+    return urllib.request.build_opener(_Stop).open(request, timeout=30)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -115,17 +155,23 @@ def main(argv: list[str] | None = None) -> int:
     if args.dry_run:
         return 0
     if not args.token:
-        print("no upload token: pass --token or set GRC_UPLOAD_TOKEN")
+        print("no upload token: set GRC_UPLOAD_TOKEN (or pass --token)")
+        return 2
+    if not _url_ok(args.url):
+        print("the --url must start with https:// so the token is not sent in clear")
         return 2
     request = urllib.request.Request(args.url.rstrip("/") + "/ingest/aws", data=json.dumps(result).encode(),
                                      method="POST", headers={"Content-Type": "application/json",
                                                              "Authorization": f"Bearer {args.token}"})
     try:
-        with urllib.request.urlopen(request, timeout=30) as response:
+        with _post(request) as response:
             print(f"uploaded: HTTP {response.status}")
     except urllib.error.HTTPError as exc:
         print(f"upload refused: HTTP {exc.code}")
         return 1
+    except (urllib.error.URLError, OSError) as exc:
+        print(f"could not reach the server: {type(exc).__name__}")
+        return 4
     return 0 if result["collection"]["complete"] else 3
 
 

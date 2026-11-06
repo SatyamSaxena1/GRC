@@ -13,7 +13,7 @@ on screen, and where the proof is. Add to the top. Say only what the live site d
 | Firm admin could not open a client | **Fixed** (PR 51) |
 | Users page: see team, change roles, switch someone off | **Done** (PR 52, ADR-036) |
 | Controls page fed by every source, not only GitHub | **Done** (PR 56, ADR-037): 3 controls became 11 |
-| In-app connector setup | **Started** (PR 77, ADR-044): team chat (Discord/Slack) done; evidence collectors still open |
+| In-app connector setup | **Done** (PR 77, 90, 98, 99, 100; ADR-044, 045, 049, 050, 051): chat, GitHub by token; AWS, Microsoft 365 and HR by customer-run scripts |
 | Fuller framework catalogue | Open |
 | Policy templates | **Started** (PR 58, ADR-038): three templates whose figures come from the rules |
 | Trust page | **Done** (PR 60/61, ADR-039): opt-in, counts only, revocable |

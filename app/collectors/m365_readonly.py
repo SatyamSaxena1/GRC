@@ -60,6 +60,25 @@ def collect(get: Callable[[str], dict]) -> dict:
     return {"attributes": attributes, "collection": {"complete": not errors, "errors": errors, "region": "m365"}}
 
 
+def _url_ok(url: str) -> bool:
+    """The upload token travels in a header, so it is only sent over https (or to this computer, for testing)."""
+    from urllib.parse import urlparse
+
+    parsed = urlparse(url)
+    return parsed.scheme == "https" or (parsed.scheme == "http" and parsed.hostname in ("localhost", "127.0.0.1", "::1"))
+
+
+def _post(request):
+    """POST without following redirects: a redirect would carry the token to another address."""
+    import urllib.request
+
+    class _Stop(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self, *args, **kwargs):
+            return None
+
+    return urllib.request.build_opener(_Stop).open(request, timeout=30)
+
+
 def main(argv: list[str] | None = None) -> int:
     import argparse
     import json
@@ -108,16 +127,22 @@ def main(argv: list[str] | None = None) -> int:
     if args.dry_run:
         return 0
     if not args.token:
-        print("no upload token: pass --token or set GRC_UPLOAD_TOKEN")
+        print("no upload token: set GRC_UPLOAD_TOKEN (or pass --token)")
+        return 2
+    if not _url_ok(args.url):
+        print("the --url must start with https:// so the token is not sent in clear")
         return 2
     upload = urllib.request.Request(args.url.rstrip("/") + "/ingest/m365", data=json.dumps(result).encode(), method="POST",
                                     headers={"Content-Type": "application/json", "Authorization": f"Bearer {args.token}"})
     try:
-        with urllib.request.urlopen(upload, timeout=30) as response:
+        with _post(upload) as response:
             print(f"uploaded: HTTP {response.status}")
     except urllib.error.HTTPError as exc:
         print(f"upload refused: HTTP {exc.code}")
         return 1
+    except (urllib.error.URLError, OSError) as exc:
+        print(f"could not reach the server: {type(exc).__name__}")
+        return 4
     return 0 if result["collection"]["complete"] else 3
 
 

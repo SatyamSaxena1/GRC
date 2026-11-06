@@ -36,6 +36,16 @@ class Paginator:
         return iter(self.pages)
 
 
+class GroupPaginator:
+    """get_group pages: a group's members arrive over several pages."""
+
+    def __init__(self, groups):
+        self.groups = groups
+
+    def paginate(self, GroupName):
+        return iter([{"Users": [{"UserName": u} for u in page]} for page in self.groups[GroupName]])
+
+
 class Denied(Exception):
     response = {"Error": {"Code": "AccessDenied"}}
 
@@ -48,7 +58,8 @@ class FakeSession:
                       "buckets": [{"Name": "b1"}], "bucket_enc_missing": False, "root_mfa": True,
                       "admin_users": ["alice"], "mfa": {"alice": [{"SerialNumber": "x"}]},
                       "trails": [{"TrailARN": "t", "IsMultiRegionTrail": True}], "logging": True,
-                      "backup_plans": [{"BackupPlanId": "p"}], "deny": set(), **world}
+                      "backup_plans": [{"BackupPlanId": "p"}], "backup_selections": [{"SelectionId": "s"}],
+                      "unencrypted_volumes": [], "admin_groups": {}, "deny": set(), **world}
 
     def client(self, name, region_name=None):
         if name in self.world["deny"]:
@@ -64,7 +75,14 @@ class FakeSession:
                 if op == "describe_db_instances":
                     return Paginator([{"DBInstances": w["rds"]}])
                 if op == "list_entities_for_policy":
-                    return Paginator([{"PolicyUsers": [{"UserName": u} for u in w["admin_users"]], "PolicyGroups": []}])
+                    return Paginator([{"PolicyUsers": [{"UserName": u} for u in w["admin_users"]],
+                                       "PolicyGroups": [{"GroupName": g} for g in w["admin_groups"]]}])
+                if op == "describe_volumes":
+                    return Paginator([{"Volumes": w["unencrypted_volumes"]}])
+                if op == "get_group":
+                    return GroupPaginator(w["admin_groups"])
+                if op == "list_backup_plans":
+                    return Paginator([{"BackupPlansList": w["backup_plans"]}])
                 raise AssertionError(op)
 
             def list_buckets(self):
@@ -87,8 +105,8 @@ class FakeSession:
             def get_trail_status(self, Name):
                 return {"IsLogging": w["logging"]}
 
-            def list_backup_plans(self):
-                return {"BackupPlansList": w["backup_plans"]}
+            def list_backup_selections(self, BackupPlanId):
+                return {"BackupSelectionsList": w["backup_selections"]}
 
         return C()
 
@@ -110,6 +128,8 @@ def test_a_healthy_account_passes_all_four_and_is_complete():
     ({"logging": False}, "access_logging_enabled"),
     ({"trails": [{"TrailARN": "t", "IsMultiRegionTrail": False}]}, "access_logging_enabled"),
     ({"backup_plans": [], "rds": [{"StorageEncrypted": True, "BackupRetentionPeriod": 0}]}, "backup_enabled"),
+    ({"unencrypted_volumes": [{"VolumeId": "v-1"}]}, "encryption_at_rest"),                      # default is on, an old volume is not
+    ({"backup_selections": [], "rds": [{"StorageEncrypted": True, "BackupRetentionPeriod": 0}]}, "backup_enabled"),  # an empty plan
 ])
 def test_each_control_can_fail_on_its_own(world, attribute):
     out = aws_readonly.collect(FakeSession(**world), "ap-south-1")
@@ -265,3 +285,67 @@ def test_the_script_dry_run_prints_the_answers_and_uploads_nothing(monkeypatch, 
     monkeypatch.setitem(sys.modules, "boto3", types.SimpleNamespace(Session=lambda: FakeSession()))
     assert aws_readonly.main(["--url", "https://example.test", "--region", "ap-south-1", "--dry-run"]) == 0
     assert '"backup_enabled": true' in capsys.readouterr().out
+
+
+def test_no_administrators_found_is_unknown_not_a_pass():
+    out = aws_readonly.collect(FakeSession(admin_users=[]), "ap-south-1")
+    assert "privileged_access_mfa" not in out["attributes"] and out["collection"]["complete"] is False
+    assert any("privileged_access_mfa" in e and "NoAdministratorUsersFound" in e for e in out["collection"]["errors"])
+
+
+def test_admin_group_members_on_a_later_page_are_checked_too():
+    world = {"admin_users": [], "admin_groups": {"admins": [["alice"], ["bob"]]},          # bob is on page two and has no MFA
+             "mfa": {"alice": [{"SerialNumber": "x"}]}}
+    assert aws_readonly.collect(FakeSession(**world), "ap-south-1")["attributes"]["privileged_access_mfa"] is False
+    world["mfa"]["bob"] = [{"SerialNumber": "y"}]
+    assert aws_readonly.collect(FakeSession(**world), "ap-south-1")["attributes"]["privileged_access_mfa"] is True
+
+
+def test_the_scripts_refuse_a_clear_text_address_and_report_an_unreachable_server(capsys, monkeypatch):
+    import sys, types
+    monkeypatch.setitem(sys.modules, "boto3", types.SimpleNamespace(Session=lambda: FakeSession()))
+    base = ["--region", "ap-south-1", "--token", "x" * 30]
+    assert aws_readonly.main(["--url", "http://example.test"] + base) == 2
+    assert "https://" in capsys.readouterr().out
+    assert aws_readonly._url_ok("https://grc.example.test") and aws_readonly._url_ok("http://localhost:8000")
+    assert not aws_readonly._url_ok("http://grc.example.test") and not aws_readonly._url_ok("ftp://x")
+    assert aws_readonly.main(["--url", "https://127.0.0.1:9"] + base) == 4                    # nothing listens there
+    assert "could not reach" in capsys.readouterr().out
+
+
+# --- the ingest reads nothing for a caller who is not allowed, and caps what it does read ------------------------------
+def test_a_chunked_body_with_no_content_length_is_still_capped(client, bootstrap, aws_env):
+    token, _ = _make_token(client, _org(client, bootstrap))
+
+    def chunks():
+        for _ in range(10):                      # 10 x 5 KB, sent as a stream: no Content-Length header at all
+            yield b" " * 5000
+
+    r = client.post("/ingest/aws", content=chunks(), headers={"authorization": f"Bearer {token}",
+                                                              "content-type": "application/json"})
+    assert r.status_code == 413
+
+
+def test_an_unauthenticated_caller_is_refused_before_the_body_is_read(client, bootstrap, aws_env):
+    _make_token(client, _org(client, bootstrap))
+    read = []
+
+    def chunks():
+        for _ in range(10):
+            read.append(1)
+            yield b" " * 5000
+
+    r = client.post("/ingest/aws", content=chunks(), headers={"authorization": "Bearer nobody.nothingnothingnothingnothing"})
+    assert r.status_code == 401
+    assert len(read) < 10                        # the server stopped before consuming the stream
+
+
+def test_an_upload_that_does_not_say_whether_it_is_complete_is_not_complete(client, bootstrap, aws_env):
+    org = _org(client, bootstrap)
+    token, _ = _make_token(client, org)
+    r = _push(client, token, body={"attributes": {"backup_enabled": True}})                 # no "collection" at all
+    assert r.status_code == 202 and r.json()["complete"] is False
+    r2 = client.post("/ingest/aws", json={"attributes": {"backup_enabled": True}, "collection": {"complete": "yes"}},
+                     headers={"authorization": f"Bearer {token}"})
+    assert r2.status_code in (202, 429)
+    assert not isinstance(r2.json().get("complete", False), str)

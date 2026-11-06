@@ -124,3 +124,10 @@ def test_the_collect_button_explains_that_results_come_from_the_script(client, b
     _token(client, org)
     r = client.post("/connectors/hrms/sync", headers=H(org))
     assert r.status_code == 409 and "own script" in r.json()["detail"]
+
+
+def test_rows_with_no_usable_email_are_reported_not_silently_dropped():
+    out = hr_leavers.build(["a@x.com", "", "not-an-email"], ["a@x.com", "b@x.com", " "])
+    assert out["collection"]["complete"] is False
+    assert any("leavers" in e and "2 row" in e for e in out["collection"]["errors"])
+    assert any("accounts" in e and "1 row" in e for e in out["collection"]["errors"])
