@@ -13,10 +13,19 @@ import re
 from urllib.parse import urlparse
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 from cryptography.fernet import Fernet, InvalidToken, MultiFernet
 
 KIND_CHAT = "CHAT_WEBHOOK"
 KIND_GITHUB = "GITHUB_CHANGE_CONTROL"
+KIND_AWS = "AWS_PUSH"
+KIND_M365 = "M365_PUSH"
+KIND_HRMS = "HRMS_PUSH"
+# Sources whose evidence the customer uploads from their own script (ADR-049, ADR-050): source -> connection kind.
+PUSH_KINDS = {"aws": KIND_AWS, "m365": KIND_M365, "hrms": KIND_HRMS}
+# Sources whose uploaded answers are counts (whole numbers, 0 or more) rather than yes/no.
+COUNT_SOURCES = {"hrms"}
 
 
 def _keys() -> list[str]:
@@ -128,8 +137,18 @@ def github_hint(token: str, repos: list[str]) -> str:
     return f"{len(repos)} repositor{'y' if len(repos) == 1 else 'ies'}, token ...{token[-4:]}"
 
 
+def retrying_adapter() -> HTTPAdapter:
+    """One flaky GitHub answer (a 502 or a dropped connection) must not throw away a multi-minute collection of
+    hundreds of calls. Retries 5xx and connection errors a few times with a growing pause, honouring Retry-After;
+    after the last attempt the response is returned as is, so the collector's own error handling reports it."""
+    return HTTPAdapter(max_retries=Retry(total=4, backoff_factor=1.0, status_forcelist=(500, 502, 503, 504),
+                                         allowed_methods=None, respect_retry_after_header=True,
+                                         raise_on_status=False))
+
+
 def github_session(token: str) -> requests.Session:
     s = requests.Session()
+    s.mount("https://", retrying_adapter())
     s.trust_env = False
     s.headers.update({"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28",
                       "Authorization": f"Bearer {token}"})
@@ -151,3 +170,28 @@ def github_test(token: str, repos: list[str], timeout: float = 10.0) -> tuple[bo
         if r.status_code != 200:
             return False, f"GitHub answered HTTP {r.status_code} for {repo}"
     return True, ""
+# ---- AWS by upload (ADR-049). The platform holds no AWS identity and calls nothing in AWS. The customer runs a small
+# read-only script in their own account; it posts four yes/no answers to us with an upload token. The token carries
+# the organisation id (not secret) so the right tenant can be selected before anything is read; only its SHA-256 is kept.
+import hashlib
+import hmac
+import secrets as _secrets
+
+
+def new_push_token(org_id: str) -> tuple[str, str]:
+    """(the token to show once, the hash to keep)."""
+    secret = _secrets.token_urlsafe(32)
+    return f"{org_id}.{secret}", hashlib.sha256(secret.encode()).hexdigest()
+
+
+def split_push_token(raw: str) -> tuple[str, str] | None:
+    org_id, _, secret = (raw or "").partition(".")
+    return (org_id, secret) if org_id and len(secret) >= 20 else None
+
+
+def push_token_matches(stored_hash: str, secret: str) -> bool:
+    return hmac.compare_digest(stored_hash, hashlib.sha256(secret.encode()).hexdigest())
+
+
+def push_hint(token: str) -> str:
+    return f"upload token ...{token[-4:]}"

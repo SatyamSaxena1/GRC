@@ -221,6 +221,26 @@ function InviteUserCard({ orgId, onCreated }: { orgId: string; onCreated: () => 
           {busy ? "Creating…" : "Create user"}
         </button>
         {result && <p className="mono">user id: {result.id}</p>}
+        {result?.emailed && (
+          <div className="alert alert-info">
+            We emailed them a welcome message with first steps for their role. If a sign-in link was needed, it is in that
+            email and stops working after seven days. You never see it. They can reply to that email to reach a person.
+          </div>
+        )}
+        {result?.email_error && !result.password_link && (
+          <div className="alert alert-error">We could not send their welcome email ({result.email_error}). They can still sign in.</div>
+        )}
+        {result?.password_link && (
+          <div className="alert alert-info">
+            {result.email_error && <p className="error">We could not email it ({result.email_error}), so here it is instead.</p>}
+            <p>
+              Send this one-time link to the person so they can choose their own password. It is shown once, is not
+              stored anywhere, and stops working after seven days. You never see or set their password.
+            </p>
+            <input readOnly value={result.password_link} onFocus={(e) => e.currentTarget.select()} aria-label="One-time password link" />
+            <button className="btn btn-sm" onClick={() => void navigator.clipboard?.writeText(result.password_link ?? "")}>Copy link</button>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -132,7 +132,7 @@ export const closeEngagement = (engagementId: string) =>
 
 /** Connections an organisation sets up itself (ADR-044). The address is write-only: only a hint comes back. */
 export type ConnectionView = {
-  kind: "CHAT_WEBHOOK" | "GITHUB_CHANGE_CONTROL"; configured: boolean; hint: string; status: "NONE" | "UNTESTED" | "OK" | "FAILED";
+  kind: "CHAT_WEBHOOK" | "GITHUB_CHANGE_CONTROL" | "AWS_PUSH" | "M365_PUSH" | "HRMS_PUSH"; configured: boolean; hint: string; status: "NONE" | "UNTESTED" | "OK" | "FAILED";
   last_tested_at: string | null; last_error: string;
 };
 export type ConnectionsState = { key_configured: boolean; connections: ConnectionView[] };
@@ -143,6 +143,9 @@ export const removeChatWebhook = () => request<ConnectionsState>("DELETE", "/con
 export const saveGithub = (token: string, repos: string[]) => request<ConnectionsState>("PUT", "/connections/github", { json: { token, repos } });
 export const testGithub = () => request<ConnectionsState>("POST", "/connections/github/test");
 export const removeGithub = () => request<ConnectionsState>("DELETE", "/connections/github");
+export const makeUploadToken = (source: "aws" | "m365" | "hrms") =>
+  request<ConnectionsState & { new_token: string }>("POST", `/connections/${source}/token`);
+export const removeUpload = (source: "aws" | "m365" | "hrms") => request<ConnectionsState>("DELETE", `/connections/${source}`);
 
 /** The vendor register (ADR-042): tier and review status come from fixed rules on the server. */
 export type VendorReport = {
@@ -212,7 +215,7 @@ export const getPublicTrust = (token: string) => anon<TrustSummary>("GET", `/pub
 
 // An empty org_id means "my own organisation" — the backend fills it in for a signed-in org admin.
 export const createUser = (email: string, org_id: string, role: string) =>
-  request<{ id: string; role: string }>("POST", "/admin/users", { json: { email, org_id: org_id || null, role } });
+  request<{ id: string; role: string; password_link?: string; emailed?: boolean; email_error?: string }>("POST", "/admin/users", { json: { email, org_id: org_id || null, role } });
 
 export type TeamUser = { id: string; email: string; role: string; active: boolean };
 export const listTeam = () => request<TeamUser[]>("GET", "/admin/users");

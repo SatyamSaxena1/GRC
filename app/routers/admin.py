@@ -3,14 +3,16 @@ No self-serve signup or role UI — that is product surface, not this slice."""
 
 from __future__ import annotations
 
+import os
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app import audit_log
+from app import audit_log, auth0_admin, mailer, welcome
 from app.auth import Actor, admin_or_actor, require_admin
 from app.db import get_session, identity_lookup, set_firm, set_tenant
 from app.models import (
@@ -78,10 +80,31 @@ def create_user(body: UserIn, actor: Actor | None = Depends(admin_or_actor),
     # org or firm it belongs to (a signed-in caller is already bound to that same one).
     set_tenant(db, body.org_id)
     set_firm(db, body.audit_firm_id)
+    # The login is created first (ADR-047): if the sign-in service fails, no half-invited person is left behind.
+    link = None
+    if auth0_admin.enabled():
+        try:
+            link = auth0_admin.invite(body.email, os.environ.get("NOTIFY_LINK_BASE_URL", ""))
+        except auth0_admin.Auth0Error as exc:
+            raise HTTPException(502, f"could not create their login: {exc}") from None
     user = User(**body.model_dump())
     db.add(user)
     db.commit()
-    return {"id": user.id, "role": user.role}
+    out = {"id": user.id, "role": user.role}
+    if mailer.enabled():
+        # One welcome email, once, at sign-up (ADR-052): their first steps for their role, a way to reach a person, and the
+        # one-time sign-in link when a login was just made. When it is sent, the admin never handles the link. If it cannot
+        # be sent, the link is returned instead so the invite is not lost, with the reason (an error class, never a message).
+        org = db.get(Organization, user.org_id) if user.org_id else db.get(AuditFirm, user.audit_firm_id)
+        subject, text = welcome.compose(user.role, getattr(org, "name", ""), link, os.environ.get("NOTIFY_LINK_BASE_URL", ""))
+        ok, reason = mailer.send(body.email, subject, text)
+        if ok:
+            return JSONResponse({**out, "emailed": True}, headers={"Cache-Control": "no-store"})
+        out["email_error"] = reason
+    if link is None:
+        return out
+    # The link is a one-time credential: shown once, never stored or logged, and never cached.
+    return JSONResponse({**out, "password_link": link}, headers={"Cache-Control": "no-store"})
 
 
 ORG_ROLES = ("ORG_ADMIN", "CONTROL_OWNER", "COMPLIANCE_VIEWER")
@@ -144,10 +167,19 @@ def update_user(user_id: str, body: UserPatch, actor: Actor | None = Depends(adm
     before = {"role": user.role, "active": user.active}
     user.role, user.active = new_role, new_active
     after = {"role": user.role, "active": user.active}
+    detail = {"email": user.email}
+    if before["active"] != after["active"] and auth0_admin.enabled():
+        # Our own check already ends access at the next request. Blocking the login as well is belt and braces,
+        # so a failure there is recorded, not allowed to stop the deactivation.
+        try:
+            detail["login_found"] = auth0_admin.set_blocked(user.email, not user.active)
+            detail["login_blocked"] = not user.active
+        except auth0_admin.Auth0Error as exc:
+            detail["login_block_error"] = str(exc)
     if before != after:
         audit_log.record(db, actor=actor.label(), request_id=actor.request_id, action="USER_UPDATED",
                          entity_type="user", entity=user.id, org_id=user.org_id,
-                         detail={"email": user.email}, before=before, after=after)
+                         detail=detail, before=before, after=after)
     db.commit()
     return _team_view(user)
 

@@ -13,7 +13,7 @@ on screen, and where the proof is. Add to the top. Say only what the live site d
 | Firm admin could not open a client | **Fixed** (PR 51) |
 | Users page: see team, change roles, switch someone off | **Done** (PR 52, ADR-036) |
 | Controls page fed by every source, not only GitHub | **Done** (PR 56, ADR-037): 3 controls became 11 |
-| In-app connector setup | **Started** (PR 77, ADR-044): team chat (Discord/Slack) done; evidence collectors still open |
+| In-app connector setup | **Done** (PR 77, 90, 98, 99, 100; ADR-044, 045, 049, 050, 051): chat, GitHub by token; AWS, Microsoft 365 and HR by customer-run scripts |
 | Fuller framework catalogue | Open |
 | Policy templates | **Started** (PR 58, ADR-038): three templates whose figures come from the rules |
 | Trust page | **Done** (PR 60/61, ADR-039): opt-in, counts only, revocable |
@@ -26,6 +26,65 @@ Where we lead: the verdict comes from fixed rules, never from a model; a named h
 step is in a tamper-evident log; the DPDP Act pack for India.
 
 ## Entries
+
+### 5 Nov 2026: A personalised welcome email, and a person to answer it (interim support)
+- **Say:** "When you invite someone, they get one welcome email with first steps for their own role and a way to reach a
+  person. If their sign-in link is needed, it is in that email, so the admin never has to forward it."
+- **Show:** Admin, invite a team member: the page says the welcome email was sent; open it: the organisation's name, five
+  short first steps for their role, the one-time link, and "reply to this email". Reply and see it arrive in the support mailbox.
+- **Honest detail:** it is fixed text per role, sent once, not a support desk. It works with any mail server, including
+  BillionMail, but the live site must be able to reach that server and other mail systems must accept its mail (DNS records).
+  Until the settings are added, nothing changes and the admin still sees the link.
+- **Proof:** tests for each role's steps, the reply-to address, the link being emailed and never shown or stored, a failed
+  send handing the link back, header-injection attempts, and exactly one email per sign-up.
+### 5 Nov 2026: Show that leavers have lost access, without sending a single name (issue 79)
+- **Say:** "Export two lists, the people who left and the accounts still active, and run one small script on your own
+  computer. It counts the leavers who still have access and sends us only that number. No names or email addresses
+  leave your computer."
+- **Show:** Connections page, HR card: create the upload token, run the script with --dry-run --show to see which
+  accounts to switch off, run it for real, and watch the leaver-access control update.
+- **Honest detail:** it shows the two exports agree when they were exported, not that they are complete. An empty
+  leavers list is marked incomplete unless you say nobody left. Evidence is as fresh as your last run.
+- **Why this way:** there is no common HR system interface, and HR data is the most sensitive a customer holds, so
+  nothing personal comes near us. That completes the evidence sources for the Connections page.
+- **Proof:** tests for matching (case, spaces, repeats), only a number uploaded, the empty-list guard, the CSV
+  errors, whole-number-only input, and a token for one source never working for another.
+
+### 5 Nov 2026: Send Microsoft 365 evidence from your own tenant (issue 79)
+- **Say:** "Run one small read-only script against your own Microsoft 365 tenant. It checks that every administrator
+  has multi-factor authentication registered and that the audit log is recording, and sends us two yes/no answers. We
+  hold no Microsoft credential of yours."
+- **Show:** Connections page, Microsoft 365 card: create the upload token, run the script with --dry-run, then for real;
+  the card shows when results arrived.
+- **Honest detail:** it shows MFA is registered, not enforced, and that the Entra audit log is active, not the Purview
+  setting. Evidence is as fresh as your last run. No Microsoft account or billing is needed on our side.
+- **Also fixed:** the AWS card on the Connections page was looking for an old connection name and would not have
+  appeared; it now does. The page now has a test that pins the list of connection kinds it expects.
+- **Proof:** tests for both Graph checks, a missing permission, a token for one source never working for another, and the
+  same token and size rules as AWS.
+
+### 5 Nov 2026: Send AWS evidence from your own account (issue 79)
+- **Say:** "You run one small read-only script in your own AWS account. It checks four things (encryption, MFA on
+  admins, a logging trail, backups) and sends us only four yes/no answers. We hold no AWS key of yours."
+- **Show:** Connections page, AWS card: create the upload token (shown once), run the script with --dry-run, then
+  for real; the card shows when results arrived and the DPDP page shows the AWS evidence.
+- **Honest detail:** evidence is as fresh as your last run; schedule the script if you want it regular. A check the
+  permissions do not allow is left out and the run is marked incomplete, never a pass or a fail. Replacing the
+  token ends the old one at once. The first design (we assume a role in your account) was dropped because it needed
+  an AWS account with billing on our side.
+- **Proof:** tests for the token (shown once, only its hash kept, one organisation cannot write to another), refusal of
+  anything but four yes/no answers, rate and size limits, and each control failing on its own.
+
+### 5 Nov 2026: Invite a person and they can actually sign in (issue 81, switched off until configured)
+- **Say:** "Invite someone and they get a one-time link to choose their own password. Nobody, including the
+  admin, ever sees or sets it. Deactivate them and their login is blocked too."
+- **Show:** Admin, Invite a team member: create a user; a one-time link appears once with a Copy button. Deactivate
+  the person on the team card and try to sign in.
+- **Honest detail:** it is off until the operator adds the three Auth0 settings, so today nothing changes on the
+  live site. The link is not stored anywhere and lasts seven days. If the sign-in service is down, the invite
+  fails cleanly with no half-created person.
+- **Proof:** tests with a stand-in sign-in service: off by default, random password, link shown once and absent
+  from the audit trail, existing login reused, clean failure, block and unblock, failed block recorded.
 
 ### 4 Nov 2026: Your own GitHub evidence, tried live, and a way to accept a smaller scope (PRs 90, 91, this one)
 - **Say:** "We connected a real GitHub token from the page. It collected 78 merges from the repository. It was

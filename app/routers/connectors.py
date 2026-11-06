@@ -73,6 +73,13 @@ def _latest(db: Session, org_id: str, source: str) -> Evidence | None:
     )
 
 
+def _has_push(db: Session, org_id: str, source: str) -> bool:
+    """Whether this organisation uploads this source's results from its own script (ADR-049)."""
+    kind = connections.PUSH_KINDS.get(source)
+    return bool(kind) and connections.available() and db.query(Connection).filter_by(
+        org_id=org_id, kind=kind).first() is not None
+
+
 def _has_own_github(db: Session, org_id: str) -> bool:
     return connections.available() and db.query(Connection).filter_by(
         org_id=org_id, kind=connections.KIND_GITHUB).first() is not None
@@ -86,7 +93,8 @@ def connector_status(actor: Actor = Depends(current_actor), db: Session = Depend
         {
             "source": source,
             "label": label,
-            "configured": bool(os.environ.get(_env_key(source, "URL"))) or (source == "github" and _has_own_github(db, actor.org_id)),
+            "configured": bool(os.environ.get(_env_key(source, "URL"))) or (source == "github" and _has_own_github(db, actor.org_id))
+            or _has_push(db, actor.org_id, source),
             "evidence_id": latest.id if (latest := _latest(db, actor.org_id, source)) else None,
             "last_synced_at": latest.created_at.isoformat() if latest else None,
             "status": latest.status if latest else "NEVER_SYNCED",
@@ -181,13 +189,7 @@ def _pull(source: str, db: Session | None = None, org_id: str | None = None) -> 
             if len(response.content) > MAX_SNAPSHOT_BYTES:
                 raise ValueError("snapshot exceeds 1 MB")
             payload = response.json()
-        attributes = payload.get("attributes") if isinstance(payload, dict) else None
-        if not isinstance(attributes, dict):
-            raise ValueError("collector response must contain an attributes object")
-        allowed = SOURCES[source][2]
-        filtered = {name: value for name, value in attributes.items() if name in allowed}
-        if not filtered:
-            raise ValueError(f"collector returned no supported attributes: {sorted(allowed)}")
+        return _snapshot(source, payload)
     except (requests.RequestException, ValueError) as exc:
         raise HTTPException(502, f"{source} collector failed: {exc}") from exc
     except Exception as exc:  # noqa: BLE001 - the class only: nothing from an own-token run may carry the token
@@ -195,6 +197,17 @@ def _pull(source: str, db: Session | None = None, org_id: str | None = None) -> 
             raise
         raise HTTPException(502, f"{source} collector failed ({type(exc).__name__})") from None
 
+
+def _snapshot(source: str, payload) -> dict:
+    """A collector's answer (pulled, or uploaded by the customer's own script) reduced to the supported attributes.
+    Raises ValueError if it has none."""
+    attributes = payload.get("attributes") if isinstance(payload, dict) else None
+    if not isinstance(attributes, dict):
+        raise ValueError("collector response must contain an attributes object")
+    allowed = SOURCES[source][2]
+    filtered = {name: value for name, value in attributes.items() if name in allowed}
+    if not filtered:
+        raise ValueError(f"collector returned no supported attributes: {sorted(allowed)}")
     snapshot = {"source": source, "collected_at": datetime.now(timezone.utc).isoformat(),
                 "attributes": filtered, "declared": payload.get("collection")}
     if source in EXCEPTION_SOURCES:
@@ -231,7 +244,8 @@ def _process(evidence_id: str, org_id: str, actor_label: str, request_id: str) -
             process_evidence(db, CONTENT, evidence, actor_label, request_id)
 
 
-def sync_connector_for_org(db: Session, org_id: str, actor_label: str, request_id: str, source: str) -> Evidence:
+def sync_connector_for_org(db: Session, org_id: str, actor_label: str, request_id: str, source: str,
+                           uploaded: dict | None = None) -> Evidence:
     """The actual pull-and-store work, independent of the HTTP request that
     triggers it. Shared by the button-click endpoint below and by
     app/monitor.py::sync_all_connectors (periodic/cron sync) so there is one
@@ -240,7 +254,7 @@ def sync_connector_for_org(db: Session, org_id: str, actor_label: str, request_i
         raise HTTPException(404, "unknown connector")
 
     try:
-        snapshot = _pull(source, db, org_id)
+        snapshot = _snapshot(source, uploaded) if uploaded is not None else _pull(source, db, org_id)
     except HTTPException as exc:
         # "Could not collect" is recorded, not swallowed: earlier evidence stays CURRENT but the
         # connector reads as failed, so nothing here can look like a clean run (ADR-030).
@@ -311,6 +325,8 @@ def sync_connector(
     if not actor.can_write:
         raise deny_read_only(actor, "collect evidence")
 
+    if not os.environ.get(_env_key(source, "URL")) and _has_push(db, actor.org_id, source):
+        raise HTTPException(409, f"{SOURCES[source][0]} results arrive from your own script: run it (see the Connections page) to refresh")
     if source == "github" and _has_own_github(db, actor.org_id):
         # Reading a repository's review history takes minutes, longer than a web request may live (ADR-045).
         # Run it in the background; the run is recorded (COMPLETE or FAILED) when it ends, and the page shows it.

@@ -6,9 +6,11 @@ status and an error class, not the address. Only an organisation admin may see o
 
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -45,7 +47,10 @@ def _view(row: Connection | None, kind: str = connections.KIND_CHAT) -> dict:
 def _state(db: Session, org_id: str) -> dict:
     return {"key_configured": connections.available(),
             "connections": [_view(_row(db, org_id)),
-                            _view(_row(db, org_id, connections.KIND_GITHUB), connections.KIND_GITHUB)]}
+                            _view(_row(db, org_id, connections.KIND_GITHUB), connections.KIND_GITHUB),
+                            _view(_row(db, org_id, connections.KIND_AWS), connections.KIND_AWS),
+                            _view(_row(db, org_id, connections.KIND_M365), connections.KIND_M365),
+                            _view(_row(db, org_id, connections.KIND_HRMS), connections.KIND_HRMS)]}
 
 
 def _need_key() -> None:
@@ -179,4 +184,47 @@ def test_github(actor: Actor = Depends(current_actor), db: Session = Depends(get
                      entity_type="connection", entity=row.id, org_id=actor.org_id,
                      detail={"kind": row.kind, "ok": ok, "reason": reason})
     db.commit()
+    return _state(db, actor.org_id)
+
+
+def _push_kind(source: str) -> str:
+    kind = connections.PUSH_KINDS.get(source)
+    if kind is None:
+        raise HTTPException(404, "that source does not take uploads")
+    return kind
+
+
+@router.post("/{source}/token")
+def make_upload_token(source: str, actor: Actor = Depends(current_actor), db: Session = Depends(get_session)):
+    """Create (or replace) this organisation's upload token for AWS or Microsoft 365. It is returned once and only its
+    hash is kept, so a lost token is replaced, never read back. Replacing it ends the old one at once."""
+    kind = _push_kind(source)
+    _admin(actor)
+    _need_key()
+    token, digest = connections.new_push_token(actor.org_id)
+    row = _row(db, actor.org_id, kind)
+    replaced = row is not None
+    if row is None:
+        row = Connection(org_id=actor.org_id, kind=kind, created_by=actor.label(), created_at=_now())
+        db.add(row)
+    row.config_encrypted = connections.encrypt(json.dumps({"token_hash": digest}))
+    row.hint, row.status, row.last_tested_at, row.last_error, row.updated_at = connections.push_hint(token), "UNTESTED", None, "", _now()
+    db.flush()
+    audit_log.record(db, actor=actor.label(), request_id=actor.request_id, action="CONNECTION_SET",
+                     entity_type="connection", entity=row.id, org_id=actor.org_id,
+                     detail={"kind": kind, "hint": row.hint, "replaced": replaced})
+    db.commit()
+    return JSONResponse({**_state(db, actor.org_id), "new_token": token}, headers={"Cache-Control": "no-store"})
+
+
+@router.delete("/{source}")
+def remove_upload_connection(source: str, actor: Actor = Depends(current_actor), db: Session = Depends(get_session)):
+    kind = _push_kind(source)
+    _admin(actor)
+    row = _row(db, actor.org_id, kind)
+    if row is not None:
+        audit_log.record(db, actor=actor.label(), request_id=actor.request_id, action="CONNECTION_REMOVED",
+                         entity_type="connection", entity=row.id, org_id=actor.org_id, detail={"kind": row.kind})
+        db.delete(row)
+        db.commit()
     return _state(db, actor.org_id)
