@@ -28,3 +28,17 @@ The client sends `response_format` (json_schema), `reasoning_effort` and `seed`.
 ignore them. Before relying on one, try it on a throwaway deployment with the sidebar light and one Explain request,
 and set `LLM_REASONING_EFFORT=` (empty) if it answers HTTP 400. Nothing here has been tried against a hosted
 vendor yet, so issue #84 stays open until that check passes.
+
+## Fallback model (ADR-053)
+Keep a hosted model behind the primary so the helper survives the primary going away (a sleeping computer, a stopped tunnel):
+
+| Name | Value |
+|---|---|
+| `LLM_FALLBACK_BASE_URL` | e.g. `https://openrouter.ai/api` |
+| `LLM_FALLBACK_MODEL` | a chat model that supports tools and JSON output, e.g. a `:free` OpenRouter model |
+| `LLM_FALLBACK_API_KEY` | the fallback's own key (never the primary's) |
+| `LLM_FALLBACK_REASONING_EFFORT` | leave empty unless the model supports it |
+
+It is chosen per request, only when the primary is unreachable. Names set directly on the `grc` service override the same names
+in the `grc-secrets` group, so check the service's own Environment tab if a change does not take effect. The older `LLM_FALLBACK`
+setting is unrelated: it covers document extraction and names a different kind of provider.
