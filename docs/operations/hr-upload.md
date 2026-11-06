@@ -19,8 +19,8 @@ python hr_leavers.py --url https://grc.blinkedit.me --leavers leavers.csv --acco
 python hr_leavers.py --url https://grc.blinkedit.me --leavers leavers.csv --accounts accounts.csv
 ```
 The first prints the count and, with `--show`, the matching addresses here on your computer, so you can disable those
-accounts. The second uploads only the number. Exit codes: 0 uploaded and complete, 1 refused, 2 missing files or token,
-3 uploaded but marked incomplete.
+accounts. The second uploads only the number. Exit codes: 0 uploaded and complete, 1 refused by the server, 2 missing files, token or an address that is not https,
+3 uploaded but marked incomplete, 4 the server could not be reached.
 
 ## What is checked
 | Attribute | Meaning |
@@ -31,4 +31,6 @@ accounts. The second uploads only the number. Exit codes: 0 uploaded and complet
 - It shows the two exports agree at the time they were exported. It cannot prove the exports are complete.
 - An empty leavers list is marked incomplete unless you pass `--allow-empty` to say nobody left. An empty accounts list is
   always incomplete: it is almost certainly the wrong file.
+- Rows with no usable email address (blank, or no @) are counted and the run is marked incomplete, never silently ignored.
+  Addresses are matched exactly after trimming spaces and ignoring case, so `ada@x.com` and `ada@x.co.uk` are different people.
 - Freshness is as recent as your last run; schedule it if you want it regular.

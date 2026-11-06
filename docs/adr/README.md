@@ -37,3 +37,20 @@
 | [033](033-weak-key-check.md) | Check the keys, not the paperwork: a weak-key collector | Proposed |
 | [034](034-iso42001-eu-ai-act-packs.md) | ISO/IEC 42001 and EU AI Act packs, with source-text ingestion | Proposed |
 | [035](035-advisory-draft-review.md) | Advisory help for reviewing drafted pack requirements | Proposed |
+| [036](036-user-management.md) | Team management: change roles, switch someone off without losing history | Accepted |
+| [037](037-connector-evidence-in-framework-controls.md) | Connector evidence counts toward ISO 27001, SOC 2 and PCI DSS controls | Accepted |
+| [038](038-policy-templates.md) | Policy templates whose figures come from the rules | Accepted |
+| [039](039-trust-page.md) | An opt-in, counts-only trust page | Accepted |
+| [040](040-questionnaire-answers.md) | Questionnaire answers: status from verdicts, the model only words it | Accepted |
+| [041](041-weekly-report.md) | The weekly report: counts only, delivered once a week | Accepted |
+| [042](042-vendor-risk.md) | Vendor risk: a register with a rule-decided tier and review date | Accepted |
+| [043](043-vendor-reports.md) | A vendor's security report is the proof | Accepted |
+| [044](044-connections.md) | Connections an organisation sets up itself (slice 1: chat webhook) | Accepted |
+| [045](045-github-connection.md) | An organisation connects its own GitHub for change-control evidence | Accepted |
+| [046](046-accept-smaller-scope.md) | A person may accept a smaller repository scope | Accepted |
+| [047](047-invite-creates-login.md) | Inviting someone also creates their login, with no password chosen by anyone | Accepted |
+| [048](048-aws-connection.md) | Connect AWS through a cross-account role (never used) | Superseded by 049 |
+| [049](049-aws-by-upload.md) | AWS evidence arrives from the customer's own script | Accepted |
+| [050](050-m365-by-upload.md) | Microsoft 365 evidence arrives from the customer's own script | Accepted |
+| [051](051-hr-leavers-by-upload.md) | HR leaver evidence is reconciled on the customer's computer | Accepted |
+| [052](052-email-welcome-and-support-reply.md) | An email client, used first for a personalised welcome (in PR 101) | Accepted |

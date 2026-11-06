@@ -20,7 +20,8 @@ python m365_readonly.py --url https://grc.blinkedit.me --tenant <tenant id> --cl
 python m365_readonly.py --url https://grc.blinkedit.me --tenant <tenant id> --client-id <app id>
 ```
 The first prints the answers and uploads nothing. Schedule the second for regular evidence. Exit codes: 0 uploaded and
-complete, 1 refused, 2 missing credentials, 3 uploaded but a check could not run.
+complete, 1 refused by the server, 2 missing credentials or an address that is not https, 3 uploaded but a check could not run,
+4 the server could not be reached.
 
 ## What is checked
 | Attribute | True when |

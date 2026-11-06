@@ -29,3 +29,17 @@ credential able to reach every connected customer.
 - The script runs with the customer's own credentials and the permissions they choose; the page lists the eleven
   read-only permissions the four checks need.
 - Microsoft 365 and HR can use this same upload pattern where a hosted-API connection is not practical.
+
+## Amended 2026-11-06 after an adversarial review
+- **The body cap is now enforced on what arrives.** The token is checked first and the body is then read as a stream and
+  refused (413) once it passes 20 KB, so an anonymous caller cannot make the server buffer a large request, and a chunked
+  request with no Content-Length is capped too. Earlier wording ("bodies over 20 KB are refused") was true only for callers
+  who declared a length.
+- **A missing or malformed completeness declaration is never read as complete.** An upload that does not say so is
+  incomplete.
+- **Checks tightened:** existing unencrypted EBS volumes fail encryption; admin group members are read across all pages; a
+  backup plan with no selections does not count; no administrators found is unknown, not a pass.
+- **Scripts:** refuse an `http://` address (other than this computer), never follow a redirect, take the token from the
+  environment in the documented examples, and exit 4 when the server cannot be reached.
+- Not changed, on purpose: the region the script assessed is not shown next to a pass (one region per run is documented),
+  and the check covers one region per run.
