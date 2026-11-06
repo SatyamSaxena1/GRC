@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app import audit_log, auth0_admin
+from app import audit_log, auth0_admin, mailer, welcome
 from app.auth import Actor, admin_or_actor, require_admin
 from app.db import get_session, identity_lookup, set_firm, set_tenant
 from app.models import (
@@ -91,6 +91,16 @@ def create_user(body: UserIn, actor: Actor | None = Depends(admin_or_actor),
     db.add(user)
     db.commit()
     out = {"id": user.id, "role": user.role}
+    if mailer.enabled():
+        # One welcome email, once, at sign-up (ADR-052): their first steps for their role, a way to reach a person, and the
+        # one-time sign-in link when a login was just made. When it is sent, the admin never handles the link. If it cannot
+        # be sent, the link is returned instead so the invite is not lost, with the reason (an error class, never a message).
+        org = db.get(Organization, user.org_id) if user.org_id else db.get(AuditFirm, user.audit_firm_id)
+        subject, text = welcome.compose(user.role, getattr(org, "name", ""), link, os.environ.get("NOTIFY_LINK_BASE_URL", ""))
+        ok, reason = mailer.send(body.email, subject, text)
+        if ok:
+            return JSONResponse({**out, "emailed": True}, headers={"Cache-Control": "no-store"})
+        out["email_error"] = reason
     if link is None:
         return out
     # The link is a one-time credential: shown once, never stored or logged, and never cached.

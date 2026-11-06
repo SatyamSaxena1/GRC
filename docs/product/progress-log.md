@@ -27,6 +27,17 @@ step is in a tamper-evident log; the DPDP Act pack for India.
 
 ## Entries
 
+### 5 Nov 2026: A personalised welcome email, and a person to answer it (interim support)
+- **Say:** "When you invite someone, they get one welcome email with first steps for their own role and a way to reach a
+  person. If their sign-in link is needed, it is in that email, so the admin never has to forward it."
+- **Show:** Admin, invite a team member: the page says the welcome email was sent; open it: the organisation's name, five
+  short first steps for their role, the one-time link, and "reply to this email". Reply and see it arrive in the support mailbox.
+- **Honest detail:** it is fixed text per role, sent once, not a support desk. It works with any mail server, including
+  BillionMail, but the live site must be able to reach that server and other mail systems must accept its mail (DNS records).
+  Until the settings are added, nothing changes and the admin still sees the link.
+- **Proof:** tests for each role's steps, the reply-to address, the link being emailed and never shown or stored, a failed
+  send handing the link back, header-injection attempts, and exactly one email per sign-up.
+
 ### 5 Nov 2026: Send Microsoft 365 evidence from your own tenant (issue 79)
 - **Say:** "Run one small read-only script against your own Microsoft 365 tenant. It checks that every administrator
   has multi-factor authentication registered and that the audit log is recording, and sends us two yes/no answers. We
