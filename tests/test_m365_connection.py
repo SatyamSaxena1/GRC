@@ -28,9 +28,9 @@ def _org(client, bootstrap):
 
 
 # --- the page's contract with the API: the kinds, in order ---------------------------------------------------------
-def test_the_connections_list_has_all_four_kinds_in_the_order_the_page_expects(client, bootstrap, key):
+def test_the_connections_list_starts_with_the_four_kinds_the_page_first_had(client, bootstrap, key):
     kinds = [c["kind"] for c in client.get("/connections", headers=H(_org(client, bootstrap))).json()["connections"]]
-    assert kinds == ["CHAT_WEBHOOK", "GITHUB_CHANGE_CONTROL", "AWS_PUSH", "M365_PUSH"]
+    assert kinds[:4] == ["CHAT_WEBHOOK", "GITHUB_CHANGE_CONTROL", "AWS_PUSH", "M365_PUSH"]
 
 
 # --- the two Graph checks --------------------------------------------------------------------------------------------
@@ -145,8 +145,8 @@ def test_each_source_accepts_only_its_own_attributes(client, bootstrap, key):
 
 def test_unknown_sources_and_non_upload_sources_are_refused(client, bootstrap, key):
     org = _org(client, bootstrap)
-    assert client.post("/connections/hrms/token", headers=H(org)).status_code == 404
-    assert client.post("/ingest/hrms", json=GOOD, headers={"authorization": "Bearer a.bbbbbbbbbbbbbbbbbbbbbbbb"}).status_code == 404
+    assert client.post("/connections/google-workspace/token", headers=H(org)).status_code == 404
+    assert client.post("/ingest/google-workspace", json=GOOD, headers={"authorization": "Bearer a.bbbbbbbbbbbbbbbbbbbbbbbb"}).status_code == 404
 
 
 def test_the_collect_button_explains_that_results_arrive_from_the_script(client, bootstrap, key, monkeypatch):

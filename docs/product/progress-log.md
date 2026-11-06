@@ -37,6 +37,18 @@ step is in a tamper-evident log; the DPDP Act pack for India.
   Until the settings are added, nothing changes and the admin still sees the link.
 - **Proof:** tests for each role's steps, the reply-to address, the link being emailed and never shown or stored, a failed
   send handing the link back, header-injection attempts, and exactly one email per sign-up.
+### 5 Nov 2026: Show that leavers have lost access, without sending a single name (issue 79)
+- **Say:** "Export two lists, the people who left and the accounts still active, and run one small script on your own
+  computer. It counts the leavers who still have access and sends us only that number. No names or email addresses
+  leave your computer."
+- **Show:** Connections page, HR card: create the upload token, run the script with --dry-run --show to see which
+  accounts to switch off, run it for real, and watch the leaver-access control update.
+- **Honest detail:** it shows the two exports agree when they were exported, not that they are complete. An empty
+  leavers list is marked incomplete unless you say nobody left. Evidence is as fresh as your last run.
+- **Why this way:** there is no common HR system interface, and HR data is the most sensitive a customer holds, so
+  nothing personal comes near us. That completes the evidence sources for the Connections page.
+- **Proof:** tests for matching (case, spaces, repeats), only a number uploaded, the empty-list guard, the CSV
+  errors, whole-number-only input, and a token for one source never working for another.
 
 ### 5 Nov 2026: Send Microsoft 365 evidence from your own tenant (issue 79)
 - **Say:** "Run one small read-only script against your own Microsoft 365 tenant. It checks that every administrator
