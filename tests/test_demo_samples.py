@@ -63,7 +63,7 @@ def test_attribute_ground_truth_is_actually_in_the_document():
 def test_story_claims_hold():
     by_id = {s["id"]: s for s in DOC["samples"]}
     v1, v2 = by_id["policy-asteron"]["expect"], by_id["policy-asteron-v2"]["expect"]
-    assert len(v1) == 24                      # "one policy, 24 clauses"
+    assert len(v1) == 26                      # "one policy, 26 clauses" (24 + SOC 2 CC6.5 and CC7.4)
     assert v1["PCI-DSS 8.3.6"] == "PARTIAL" and v2["PCI-DSS 8.3.6"] == "PASS"
     assert v1["ISO-27001 A.5.17"] == "PASS"   # ISO accepts what PCI only partly does
     assert set(by_id["scan-expired"]["expect"].values()) == {"FAIL"}
