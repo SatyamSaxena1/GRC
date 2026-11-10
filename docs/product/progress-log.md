@@ -379,6 +379,12 @@ step is in a tamper-evident log; the DPDP Act pack for India.
 - **Proof:** tests for the scoring bands, role and tenant isolation (including on real Postgres), the audit trail, and a
   draft that carries a score being ignored; ADR-057.
 
+### 10 Nov 2026: Put a policy away without deleting it
+- **Say:** "Made a policy by mistake, or retired an old one? Archive it. Nothing is deleted: every version and every
+  acceptance stays, and you can bring it back."
+- **Show:** Policies, open one, Archive, tick "Show archived policies instead", Restore.
+- **Proof:** the Activity page shows who archived and who restored it.
+
 ## Scenes still to film
 - Team card with Deactivate/Reactivate (needs an org admin session).
 - AI help (Explain, Ask AI) once the model has a stable address.

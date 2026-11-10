@@ -1,6 +1,6 @@
 import { useState } from "react";
 import {
-  ApiError, acceptPolicy, addPolicy, approvePolicy, editPolicy, getPolicy, listPolicies, listPolicyTemplates,
+  ApiError, acceptPolicy, addPolicy, approvePolicy, archivePolicy, editPolicy, restorePolicy, getPolicy, listPolicies, listPolicyTemplates,
   type Policy,
 } from "../api/client";
 import { useApi } from "../lib/useApi";
@@ -13,7 +13,8 @@ const REVIEW_LABEL: Record<Policy["review"], string> = {
  *  change to the text is a new version that everyone accepts again. The server decides who may do what; `can_manage`
  *  only chooses which buttons to draw. */
 export function PoliciesPage() {
-  const state = useApi(() => listPolicies(), []);
+  const [showArchived, setShowArchived] = useState(false);
+  const state = useApi(() => listPolicies(showArchived), [showArchived]);
   const templates = useApi(() => listPolicyTemplates(), []);
   const [open, setOpen] = useState<Policy | null>(null);
   const [draft, setDraft] = useState<{ title: string; body: string } | null>(null);   // editing the open policy
@@ -49,13 +50,19 @@ export function PoliciesPage() {
         </div>
       </div>
       {error && <div className="alert alert-error">{error}</div>}
-      {mine > 0 && <div className="alert alert-info">{mine === 1 ? "One policy is" : `${mine} policies are`} waiting for you to read and accept.</div>}
+      {admin && (
+        <label style={{ display: "inline-flex", gap: 6, alignItems: "center", margin: "0 0 8px" }}>
+          <input type="checkbox" checked={showArchived} onChange={(e) => { setShowArchived(e.target.checked); setOpen(null); }} />
+          Show archived policies instead
+        </label>
+      )}
+      {!showArchived && mine > 0 && <div className="alert alert-info">{mine === 1 ? "One policy is" : `${mine} policies are`} waiting for you to read and accept.</div>}
 
       <table className="data-table static">
         <thead><tr><th>Policy</th><th>Version</th><th>Status</th><th>Review</th><th>Accepted</th><th /></tr></thead>
         <tbody>
           {policies.length === 0 && (
-            <tr><td colSpan={6} className="muted">{admin ? "No policies yet. Add the first one below." : "No approved policies yet."}</td></tr>
+            <tr><td colSpan={6} className="muted">{showArchived ? "Nothing is archived." : admin ? "No policies yet. Add the first one below." : "No approved policies yet."}</td></tr>
           )}
           {policies.map((p) => (
             <tr key={p.id}>
@@ -102,13 +109,19 @@ export function PoliciesPage() {
 
           {!draft && (
             <div style={{ marginTop: 8 }}>
-              {open.status === "APPROVED" && (open.accepted_by_me
+              {open.status === "APPROVED" && !open.archived && (open.accepted_by_me
                 ? <span className="badge badge-pass">You accepted this version</span>
                 : <button className="btn btn-primary" disabled={busy} onClick={() => run(() => acceptPolicy(open.id, open.version))}>I have read and accept this policy</button>)}
               {admin && open.status !== "APPROVED" && (
                 <button className="btn btn-primary" disabled={busy} onClick={() => run(() => approvePolicy(open.id, open.version))}>Approve this version</button>
               )}{" "}
-              {admin && <button className="btn" disabled={busy} onClick={() => setDraft({ title: open.title, body: open.body ?? "" })}>Edit</button>}
+              {admin && !open.archived && <button className="btn" disabled={busy} onClick={() => setDraft({ title: open.title, body: open.body ?? "" })}>Edit</button>}{" "}
+              {admin && (open.archived
+                ? <button className="btn" disabled={busy} onClick={() => run(async () => { const p = await restorePolicy(open.id); setOpen(null); return p; })}>Restore</button>
+                : <button className="btn btn-danger" disabled={busy}
+                    onClick={() => { if (window.confirm("Put this policy away? Nothing is deleted: its versions and every acceptance stay, and you can restore it.")) void run(async () => { await archivePolicy(open.id); setOpen(null); }); }}>
+                    Archive
+                  </button>)}
             </div>
           )}
           {admin && open.status === "APPROVED" && (open.waiting_on ?? []).length > 0 && (

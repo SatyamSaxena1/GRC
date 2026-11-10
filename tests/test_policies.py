@@ -113,3 +113,28 @@ def test_another_organisation_and_an_unnamed_caller_are_kept_out(client):
         assert call.status_code == 404
     # the organisation's shared token is not a person, so it cannot accept on anyone's behalf
     assert client.post(f"/policies/{p['id']}/accept", json={"version": V}, headers={"authorization": f"org:{org}"}).status_code == 422
+
+
+def test_a_policy_can_be_put_away_and_brought_back_without_losing_anything(client, db):
+    org, admin, owner = _team(client)
+    p = client.post("/policies", json={"title": "Access Control Policy", "body": TEXT}, headers=_as(admin)).json()
+    client.post(f"/policies/{p['id']}/approve", json={"version": V}, headers=_as(admin))
+    client.post(f"/policies/{p['id']}/accept", json={"version": V}, headers=_as(owner))
+
+    assert client.post(f"/policies/{p['id']}/archive", headers=_as(owner)).status_code == 403   # an admin's call
+    away = client.post(f"/policies/{p['id']}/archive", headers=_as(admin)).json()
+    assert away["archived"] is True
+    client.post(f"/policies/{p['id']}/archive", headers=_as(admin))                              # twice: one event
+    assert db.query(AuditEvent).filter_by(action="POLICY_ARCHIVED", entity=p["id"]).count() == 1
+
+    assert client.get("/policies", headers=_as(admin)).json()["policies"] == []
+    assert [x["id"] for x in client.get("/policies?archived=true", headers=_as(admin)).json()["policies"]] == [p["id"]]
+    assert client.get("/policies?archived=true", headers=_as(owner)).json()["policies"] == []     # members never see them
+    assert client.get(f"/policies/{p['id']}", headers=_as(owner)).status_code == 404
+    other = _user(client, "late@acme.test", org)
+    assert client.post(f"/policies/{p['id']}/accept", json={"version": V}, headers=_as(other)).status_code == 409
+
+    back = client.post(f"/policies/{p['id']}/restore", headers=_as(admin)).json()
+    assert back["archived"] is False and back["accepted"] == 1 and back["status"] == "APPROVED"   # nothing was lost
+    assert [x["id"] for x in client.get("/policies", headers=_as(admin)).json()["policies"]] == [p["id"]]
+    assert db.query(AuditEvent).filter_by(action="POLICY_RESTORED", entity=p["id"]).count() == 1

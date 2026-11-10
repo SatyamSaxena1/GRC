@@ -31,6 +31,8 @@ const SENTENCES: Record<string, (d: Detail) => string> = {
   POLICY_EDITED: () => "changed a policy, making a new version",
   POLICY_APPROVED: () => "approved a policy version",
   POLICY_ACCEPTED: () => "accepted a policy",
+  POLICY_ARCHIVED: () => "put a policy away (archived it)",
+  POLICY_RESTORED: () => "restored an archived policy",
   VERDICT_REGISTERED: (d) => (str(d.kind) === "REOPENED" ? "added a reopening to the verdict history" : "added a decision to the verdict history"),
   CONTROL_MESSAGE_CREATED: () => "posted on a control's discussion",
   CONTROL_MESSAGE_RESOLVED: () => "resolved a request",

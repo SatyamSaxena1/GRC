@@ -125,6 +125,7 @@ class PolicyDoc(Base):
     approved_by: Mapped[str] = mapped_column(String, default="")
     approved_at: Mapped[datetime | None] = mapped_column(default=None)
     review_due: Mapped[date | None] = mapped_column(default=None)
+    archived_at: Mapped[datetime | None] = mapped_column(default=None)  # set = put away; nothing is deleted
     created_at: Mapped[datetime] = mapped_column(default=_now)
     created_by: Mapped[str] = mapped_column(String, default="")
 
