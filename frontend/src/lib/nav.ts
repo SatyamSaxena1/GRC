@@ -81,10 +81,17 @@ export const ORG_NAV: NavItem[] = [
     hint: "One page per framework: how much your evidence already meets, and exactly which clauses still need something.",
   },
   {
+    to: "/policies", label: "Policies",
+    hint: "Your organisation's own policies: an admin approves each version and every person accepts it for themselves.",
+  },
+  {
     to: "/risks", label: "Risks",
     hint: "What could go wrong, how bad it is by fixed rules, what you are doing about it, who owns it and when it is next reviewed. A model may suggest wording; it never sets a score.",
   },
 ];
+
+// Everyone on the organisation's side reads and accepts policies, so the owner menu carries it too.
+const POLICIES = ORG_NAV.find((item) => item.to === "/policies")!;
 
 // Org-wide read, no setup surface — see docs/adr/017-compliance-officer-persona.md.
 export const VIEWER_NAV: NavItem[] = ORG_NAV.filter((item) => item.to !== "/admin" && item.to !== "/connections");
@@ -100,7 +107,8 @@ export const OWNER_NAV: NavItem[] = [
   ORG_NAV[10],
   ORG_NAV[12],
   ORG_NAV[13],
-  // By path, not index: a control owner sees only the risks that name them as owner (ADR-056).
+  POLICIES,
+  // By path, not index: a control owner sees only the risks that name them as owner (ADR-057).
   ORG_NAV.find((item) => item.to === "/risks")!,
 ];
 
@@ -149,7 +157,7 @@ export function navFor(identity: Identity | null): NavItem[] {
 const STAGE: Record<string, string> = {
   "/evidence": "Collect", "/map": "Collect",
   "/overview": "Assess", "/frameworks": "Assess", "/questionnaire": "Assure", "/vendors": "Assess", "/connections": "Act", "/risks": "Assess", "/controls": "Assess", "/gaps": "Assess", "/code-review": "Assess",
-  "/tasks": "Act", "/notifications": "Act", "/dpdp/operations": "Act", "/admin": "Act",
+  "/tasks": "Act", "/policies": "Act", "/notifications": "Act", "/dpdp/operations": "Act", "/admin": "Act",
   "/firm": "Assure", "/activity": "Assure", "/ciso-sync": "Assure",
   "/ai-compliance": "Regulate", "/dpdp": "Regulate", "/glossary": "Regulate",
 };

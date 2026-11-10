@@ -330,7 +330,7 @@ def test_review_standards_publish_under_rls_and_stay_with_their_tenant(client, e
 
 
 def test_one_tenant_cannot_read_or_write_another_tenants_risks_at_the_database(client, engine):
-    """The risk register (ADR-056), at the database: the policy, not the router's WHERE clause, hides the row
+    """The risk register (ADR-057), at the database: the policy, not the router's WHERE clause, hides the row
     and refuses a cross-tenant write."""
     org_a, org_b = _org(client, "Acme"), _org(client, "Beta")
     created = client.post("/risks", headers={"authorization": f"org:{org_a}"}, json={

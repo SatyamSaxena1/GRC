@@ -1,4 +1,4 @@
-/* Risk register (ADR-056). Band colours reuse the app's own tokens; every cell and badge also says its band in
+/* Risk register (ADR-057). Band colours reuse the app's own tokens; every cell and badge also says its band in
    words, so colour is never the only signal. */
 .risk-summary { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
 .risk-summary > div { min-width: 110px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; }

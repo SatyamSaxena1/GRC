@@ -269,7 +269,7 @@ function RiskDrawer({ risk, register, controls, onClose, onSaved }: {
   );
 }
 
-/** The risk register (ADR-056): what could go wrong, how bad by fixed rules, what is being done, and when it is next
+/** The risk register (ADR-057): what could go wrong, how bad by fixed rules, what is being done, and when it is next
  *  due for review. A model may suggest wording; it never sets a score. */
 export function RisksPage() {
   const register = useApi(() => listRisks(), []);

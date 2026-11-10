@@ -1,4 +1,4 @@
-"""Draft wording for a risk (ADR-056): a description and a treatment plan, as plain text for a person to edit.
+"""Draft wording for a risk (ADR-057): a description and a treatment plan, as plain text for a person to edit.
 
 A drafting aid, never an assessment (ADR-004). The function can return only two strings. It has no way to set
 a likelihood, an impact, a score, a band, a treatment or a status, and the router that calls it stores nothing.

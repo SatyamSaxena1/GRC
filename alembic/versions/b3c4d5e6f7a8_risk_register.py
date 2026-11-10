@@ -1,11 +1,11 @@
-"""risk register: risks table with row level security (ADR-056)
+"""risk register: risks table with row level security (ADR-057)
 
 A new table, so there are no existing rows to convert. Row level security is enabled and forced in the same
 revision, with the same policy as every other tenant table, so no moment exists where the table is readable
 across tenants.
 
 Revision ID: b3c4d5e6f7a8
-Revises: a8b9c0d1e2f3
+Revises: b9c0d1e2f3a4
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ from alembic import op
 import sqlalchemy as sa
 
 revision = "b3c4d5e6f7a8"
-down_revision = "a8b9c0d1e2f3"
+down_revision = "b9c0d1e2f3a4"
 branch_labels = None
 depends_on = None
 

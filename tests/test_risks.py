@@ -1,4 +1,4 @@
-"""The risk register (ADR-056): fixed rules decide the score, tenancy and roles bound who sees what, every change is
+"""The risk register (ADR-057): fixed rules decide the score, tenancy and roles bound who sees what, every change is
 audited, and a model can only draft wording."""
 
 from __future__ import annotations

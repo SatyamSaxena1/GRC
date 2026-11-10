@@ -20,7 +20,7 @@ on screen, and where the proof is. Add to the top. Say only what the live site d
 | Questionnaire answers | **Done** (PR 63, 64, ADR-040): status from verdicts, model only words it |
 | Weekly report | **Done** (PR 66, 73; ADR-041): counts only, vendor reviews included, posts to Discord on Mondays |
 | Vendor risk | **Done for v1** (PR 68, 71; ADR-042, 043): register, rule-decided tier, review dates, reports as proof |
-| Risk register | **Done for v1** (ADR-056): rule-scored heat map, owners, treatment, review dates; a model only drafts wording |
+| Risk register | **Done for v1** (ADR-057): rule-scored heat map, owners, treatment, review dates; a model only drafts wording |
 | AI help on the live site | **Working for demos** (model on a personal machine, reached through a tunnel; not for real use) |
 
 Where we lead: the verdict comes from fixed rules, never from a model; a named human signs and locks; every
@@ -344,6 +344,13 @@ step is in a tamper-evident log; the DPDP Act pack for India.
 - **Show:** the Google Workspace card on Connections: make the token, then `--dry-run` the script and upload.
 - **Proof:** the card lists the DPDP Google Workspace clause; `GET /connectors` shows the source as received.
 
+### 10 Nov 2026: A policy library where every person accepts for themselves
+- **Say:** "Write a policy from a template, approve it, and each person reads and accepts it under their own name.
+  Change one line and it is a new version, so nobody is on record accepting text they never saw."
+- **Show:** Policies, add from the Incident Response template, Approve, then sign in as a control owner and accept;
+  back as admin, "Still to accept" lists who is left. Edit the text: version 2, draft, acceptances start again.
+- **Proof:** the Activity page shows who approved and who accepted, with the version number.
+- **Honest detail:** acceptance is recorded but does not yet count toward any framework clause.
 ### 10 Nov 2026: A risk register
 - **Say:** "Write down what could go wrong, say how likely and how bad, and the score and its band come from fixed
   rules, never from a model. Each risk has an owner, a treatment, a review date, and the controls that treat it. Overdue
@@ -353,7 +360,7 @@ step is in a tamper-evident log; the DPDP Act pack for India.
 - **Honest detail:** the model can word a description and a plan but cannot set a score; whoever saves is the signer. There is
   one fixed 5 by 5 scale, and no separate approval step for accepting a risk yet.
 - **Proof:** tests for the scoring bands, role and tenant isolation (including on real Postgres), the audit trail, and a
-  draft that carries a score being ignored; ADR-056.
+  draft that carries a score being ignored; ADR-057.
 
 ## Scenes still to film
 - Team card with Deactivate/Reactivate (needs an org admin session).

@@ -1,4 +1,4 @@
-"""Risk scoring rules (ADR-056): a score, a band and a review state from fixed rules, never from a model.
+"""Risk scoring rules (ADR-057): a score, a band and a review state from fixed rules, never from a model.
 
 Score is likelihood times impact, each on a 1 to 5 scale, so 1 to 25. The band comes from the score alone.
 A risk is placed on the heat map at its residual position once someone has stated one, else at its inherent

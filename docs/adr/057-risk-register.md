@@ -1,4 +1,4 @@
-# ADR-056: A risk register where fixed rules score and a person signs
+# ADR-057: A risk register where fixed rules score and a person signs
 
 Status: accepted. Roadmap item 6. Applies ADR-004 (rules decide, a model only words things) and follows the shape of
 ADR-042 (the vendor register).

@@ -111,7 +111,7 @@ def assert_may_access_control(db: Session, actor: Actor, framework: str, clause:
 
 
 def risk_scope(db: Session, actor: Actor) -> str | None:
-    """Which risks the caller may read (ADR-056). None means the whole register (org admin, compliance
+    """Which risks the caller may read (ADR-057). None means the whole register (org admin, compliance
     viewer); otherwise the lower-cased email of a control owner, who sees only risks naming them as owner.
     An auditor, a firm-side caller and anyone with no organisation get a plain 403: the register is the
     organisation's own working document, not part of an engagement."""
