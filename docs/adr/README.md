@@ -56,3 +56,4 @@
 | [052](052-email-welcome-and-support-reply.md) | An email client, used first for a personalised welcome (in PR 101) | Accepted |
 | [054](054-plans-and-limits.md) | Plans and limits, set by hand, with no payment code | Accepted |
 | [055](055-google-workspace-by-upload.md) | Google Workspace evidence arrives from the customer's own script | Accepted |
+| [056](056-policy-library.md) | A policy library with approval and each person's own acceptance | Accepted |
