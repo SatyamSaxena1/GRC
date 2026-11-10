@@ -58,10 +58,14 @@ function NotificationsLink() {
 }
 
 // Group headings only: the role menus in lib/nav.ts stay the single source of truth for
-// who sees what. Items in no group (firm console, engagement views) render first.
+// who sees what. Items in no group render first: the home page (Overview), the firm console and the engagement views.
+// Grouped by the job to be done, as the leading tools do: the compliance loop, privacy and AI rules, risk and customers,
+// the systems connected, and the workspace itself. A group with nothing in a role's menu is not drawn.
 const NAV_GROUPS: [string, string[]][] = [
-  ["Work", ["/evidence", "/controls", "/gaps", "/tasks"]],
-  ["Compliance", ["/overview", "/map", "/ai-compliance", "/dpdp", "/dpdp/operations", "/ciso-sync"]],
+  ["Compliance", ["/evidence", "/controls", "/gaps", "/tasks", "/map"]],
+  ["Privacy & AI", ["/dpdp", "/dpdp/operations", "/ai-compliance"]],
+  ["Risk & customers", ["/vendors", "/questionnaire"]],
+  ["Integrations", ["/connections", "/code-review", "/ciso-sync"]],
   ["Workspace", ["/activity", "/admin", "/glossary"]],
 ];
 
