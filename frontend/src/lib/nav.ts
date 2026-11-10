@@ -76,6 +76,10 @@ export const ORG_NAV: NavItem[] = [
     to: "/connections", label: "Connections",
     hint: "Connect your team chat so alerts and the Monday summary reach you. What you paste is stored encrypted and never shown again.",
   },
+  {
+    to: "/frameworks", label: "Frameworks",
+    hint: "One page per framework: how much your evidence already meets, and exactly which clauses still need something.",
+  },
 ];
 
 // Org-wide read, no setup surface — see docs/adr/017-compliance-officer-persona.md.
@@ -138,7 +142,7 @@ export function navFor(identity: Identity | null): NavItem[] {
 // rendered separately (AppShell's NotificationsLink), so it is listed here too.
 const STAGE: Record<string, string> = {
   "/evidence": "Collect", "/map": "Collect",
-  "/overview": "Assess", "/questionnaire": "Assure", "/vendors": "Assess", "/connections": "Act", "/controls": "Assess", "/gaps": "Assess", "/code-review": "Assess",
+  "/overview": "Assess", "/frameworks": "Assess", "/questionnaire": "Assure", "/vendors": "Assess", "/connections": "Act", "/controls": "Assess", "/gaps": "Assess", "/code-review": "Assess",
   "/tasks": "Act", "/notifications": "Act", "/dpdp/operations": "Act", "/admin": "Act",
   "/firm": "Assure", "/activity": "Assure", "/ciso-sync": "Assure",
   "/ai-compliance": "Regulate", "/dpdp": "Regulate", "/glossary": "Regulate",
