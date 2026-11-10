@@ -149,6 +149,20 @@ export const makeUploadToken = (source: "aws" | "m365" | "hrms" | "google-worksp
   request<ConnectionsState & { new_token: string }>("POST", `/connections/${source}/token`);
 export const removeUpload = (source: "aws" | "m365" | "hrms" | "google-workspace") => request<ConnectionsState>("DELETE", `/connections/${source}`);
 
+/** The policy library (ADR-056): versions, approval, and each person's own acceptance. */
+export type Policy = {
+  id: string; title: string; version: number; status: "DRAFT" | "APPROVED"; approved_by: string; approved_at: string | null;
+  review_due: string | null; review: "NOT_APPROVED" | "CURRENT" | "DUE_SOON" | "OVERDUE";
+  people: number; accepted: number; accepted_by_me: boolean; waiting_on?: string[]; body?: string;
+};
+export const listPolicies = () => request<{ can_manage: boolean; policies: Policy[] }>("GET", "/policies");
+export const getPolicy = (id: string) => request<Policy>("GET", `/policies/${id}`);
+export const addPolicy = (p: { template_id: string } | { title: string; body: string }) => request<Policy>("POST", "/policies", { json: p });
+export const editPolicy = (id: string, p: { title: string; body: string }) => request<Policy>("PUT", `/policies/${id}`, { json: p });
+// Both name the version on screen: the server refuses if the text has changed since it was read.
+export const approvePolicy = (id: string, version: number) => request<Policy>("POST", `/policies/${id}/approve`, { json: { version } });
+export const acceptPolicy = (id: string, version: number) => request<Policy>("POST", `/policies/${id}/accept`, { json: { version } });
+
 /** The vendor register (ADR-042): tier and review status come from fixed rules on the server. */
 export type VendorReport = {
   id: string; report_type: string; valid_until: string; filename: string; size_bytes: number; sha256: string;

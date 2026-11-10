@@ -4,8 +4,8 @@ Additive. The two organizations columns are nullable and nothing is backfilled: 
 no recorded start, so it has no time-to-first-verdict rather than an invented one. control_verdict_changes is a new
 tenant table, under row level security from the start; it fills as controls are evaluated and by the weekly run.
 
-Revision ID: b9c0d1e2f3a4
-Revises: a8b9c0d1e2f3
+Revision ID: e7c4a91d5b32
+Revises: b9c0d1e2f3a4
 """
 
 from __future__ import annotations
@@ -13,8 +13,8 @@ from __future__ import annotations
 import sqlalchemy as sa
 from alembic import op
 
-revision = "b9c0d1e2f3a4"
-down_revision = "a8b9c0d1e2f3"
+revision = "e7c4a91d5b32"
+down_revision = "b9c0d1e2f3a4"
 branch_labels = None
 depends_on = None
 

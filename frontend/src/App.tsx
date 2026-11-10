@@ -9,6 +9,7 @@ import { PublicTrustPage } from "./pages/PublicTrust";
 import { QuestionnairePage } from "./pages/Questionnaire";
 import { VendorsPage } from "./pages/Vendors";
 import { FrameworksPage } from "./pages/Frameworks";
+import { PoliciesPage } from "./pages/Policies";
 import { ConnectionsPage } from "./pages/Connections";
 import { JeffDemoPage } from "./pages/jeff/JeffDemo";
 import { OverviewPage } from "./pages/Overview";
@@ -73,6 +74,7 @@ export function App() {
         <Route path="/evidence" element={<EvidenceListPage />} />
         <Route path="/evidence/:id" element={<EvidenceDetailPage />} />
         <Route path="/frameworks" element={<FrameworksPage />} />
+        <Route path="/policies" element={<PoliciesPage />} />
         <Route path="/controls" element={<ControlsListPage />} />
         <Route path="/controls/:id" element={<ControlDetailPage />} />
         <Route path="/gaps" element={<GapsListPage />} />

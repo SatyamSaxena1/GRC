@@ -17,7 +17,7 @@ from app.ai.provider import make_gateway
 from app.db import engine, init_db
 from app.routers import (
     activity, admin, analytics, assistant, audit, breach, ciso, findings, connections, connectors, ingest, content, controls, evidence, exceptions, export, firm,
-    glossary, notifications, review, questionnaire, reports, rights_requests, templates, trust, vendors,
+    glossary, notifications, review, questionnaire, reports, policies, rights_requests, templates, trust, vendors,
 )
 from app.routers import onboarding
 
@@ -119,6 +119,7 @@ app.include_router(admin.router)
 app.include_router(templates.router)
 app.include_router(reports.router)
 app.include_router(vendors.router)
+app.include_router(policies.router)
 app.include_router(connections.router)
 app.include_router(questionnaire.router)
 app.include_router(trust.router)

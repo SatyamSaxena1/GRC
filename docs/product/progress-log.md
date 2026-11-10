@@ -360,6 +360,14 @@ step is in a tamper-evident log; the DPDP Act pack for India.
 - **Show:** the Google Workspace card on Connections: make the token, then `--dry-run` the script and upload.
 - **Proof:** the card lists the DPDP Google Workspace clause; `GET /connectors` shows the source as received.
 
+### 10 Nov 2026: A policy library where every person accepts for themselves
+- **Say:** "Write a policy from a template, approve it, and each person reads and accepts it under their own name.
+  Change one line and it is a new version, so nobody is on record accepting text they never saw."
+- **Show:** Policies, add from the Incident Response template, Approve, then sign in as a control owner and accept;
+  back as admin, "Still to accept" lists who is left. Edit the text: version 2, draft, acceptances start again.
+- **Proof:** the Activity page shows who approved and who accepted, with the version number.
+- **Honest detail:** acceptance is recorded but does not yet count toward any framework clause.
+
 ## Scenes still to film
 - Team card with Deactivate/Reactivate (needs an org admin session).
 - AI help (Explain, Ask AI) once the model has a stable address.
