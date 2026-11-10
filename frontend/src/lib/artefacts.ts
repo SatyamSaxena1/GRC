@@ -6,7 +6,7 @@
 // evidence_requirements mapped yet — they upload and classify but won't
 // produce any framework links until a content pack maps them to one.
 export const ARTEFACT_TYPES = [
-  "POLICY", "ENCRYPTION_POLICY", "LOGGING_POLICY", "SCAN_REPORT", "REVIEW_RECORD", "REPORT", "CERTIFICATE", "SCREENSHOT",
+  "POLICY", "ENCRYPTION_POLICY", "LOGGING_POLICY", "INCIDENT_POLICY", "RETENTION_POLICY", "SCAN_REPORT", "REVIEW_RECORD", "REPORT", "CERTIFICATE", "SCREENSHOT",
   "AI_POLICY", "AI_INVENTORY", "PRIVACY_NOTICE",
 ];
 
@@ -14,6 +14,8 @@ export const ARTEFACT_LABELS: Record<string, string> = {
   POLICY: "Policies & procedures",
   ENCRYPTION_POLICY: "Encryption policies",
   LOGGING_POLICY: "Logging policies",
+  INCIDENT_POLICY: "Incident response policies",
+  RETENTION_POLICY: "Data retention policies",
   SCAN_REPORT: "Scan reports",
   REVIEW_RECORD: "Review records",
   REPORT: "Reports",

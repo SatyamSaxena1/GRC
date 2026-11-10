@@ -132,12 +132,13 @@ def test_day_one_readiness_for_an_unsubscribed_framework(client, bootstrap, uplo
                         headers={"authorization": f"org:{org_id}"}).json()
 
     assert result["already_subscribed"] is False
-    assert result["total_requirements"] == 11
+    assert result["total_requirements"] == 13
     assert result["satisfied"] >= 3          # policy clauses already met
     assert 0.0 < result["readiness"] <= 1.0
     document_clauses = {"12.1.1", "8.3.6", "8.4.2", "7.2.4", "11.3.2", "6.5.1"}
     connector_clauses = {"10.2.1", "8.4.1", "8.4.3", "8.2.5", "3.5.1"}  # need a collected snapshot (ADR-037)
-    assert {c["clause"] for c in result["clauses"]} == document_clauses | connector_clauses
+    topic_policy_clauses = {"3.2.1", "12.10.1"}  # need a retention or an incident policy, not the access policy uploaded here
+    assert {c["clause"] for c in result["clauses"]} == document_clauses | connector_clauses | topic_policy_clauses
 
 
 def test_readiness_names_what_is_not_covered(client, bootstrap, upload, stub_extraction):

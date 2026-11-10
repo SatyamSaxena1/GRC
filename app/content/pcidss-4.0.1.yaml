@@ -252,3 +252,36 @@ requirements:
         source: AI
         delta_conditions:
           - {attribute: encryption_at_rest, operator: "==", value: true}
+
+  # DRAFT, awaiting human review (issue 82). Drafted by an AI from the public requirement titles, so each mapping says
+  # source: AI, not EXPERT. They read their own kinds of policy (RETENTION_POLICY, INCIDENT_POLICY).
+  - clause: "3.2.1"
+    title: Account data storage is kept to a minimum
+    text: >
+      Account data storage is kept to a minimum through implementation of data retention and disposal policies,
+      procedures, and processes.
+    evidence_requirements:
+      - artefact_type: RETENTION_POLICY
+        required_attributes: [data_retention_schedule, erasure_process]
+    mappings:
+      - uco: UCO-PRIV-002
+        coverage: PARTIAL
+        confidence: 0.6
+        source: AI
+        delta_conditions: []
+
+  - clause: "12.10.1"
+    title: An incident response plan exists and is ready to be activated
+    text: >
+      An incident response plan exists and is ready to be activated in the event of a suspected or confirmed security
+      incident, including roles, communication and containment strategies.
+    evidence_requirements:
+      - artefact_type: INCIDENT_POLICY
+        required_attributes: [data_breach_response_process, board_notification_hours, affected_person_notification]
+    mappings:
+      - uco: UCO-PRIV-003
+        coverage: PARTIAL
+        confidence: 0.6
+        source: AI
+        delta_conditions:
+          - {attribute: affected_person_notification, operator: "==", value: true}

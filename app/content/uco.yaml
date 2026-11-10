@@ -23,6 +23,9 @@ ucos:
   - code: UCO-DATA-001
     title: Sensitive data is encrypted at rest and in transit
     domain: DATA_PROTECTION
+  - code: UCO-DATA-002
+    title: Important data is backed up regularly so it can be restored
+    domain: DATA_PROTECTION
   - code: UCO-LOG-001
     title: Security-relevant events are logged and retained for a defined period
     domain: LOGGING

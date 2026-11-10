@@ -209,3 +209,53 @@ requirements:
         source: AI
         delta_conditions:
           - {attribute: access_logging_enabled, operator: "==", value: true}
+
+  # DRAFT, awaiting human review (issue 82). Drafted by an AI from the public control titles, so each mapping says
+  # source: AI, not EXPERT. A.5.26 and A.8.10 read their own kinds of policy (INCIDENT_POLICY, RETENTION_POLICY), so an
+  # access-control policy is never asked for incident or retention facts. A.8.13 reads the AWS snapshot.
+  - clause: "A.5.26"
+    title: Response to information security incidents
+    text: >
+      Information security incidents shall be responded to in accordance with the documented procedures.
+    evidence_requirements:
+      - artefact_type: INCIDENT_POLICY
+        required_attributes: [data_breach_response_process, board_notification_hours, affected_person_notification]
+    mappings:
+      - uco: UCO-PRIV-003
+        coverage: PARTIAL
+        confidence: 0.6
+        source: AI
+        delta_conditions:
+          - {attribute: affected_person_notification, operator: "==", value: true}
+
+  - clause: "A.8.10"
+    title: Information deletion
+    text: >
+      Information stored in information systems, devices or in any other storage media shall be deleted when no
+      longer required.
+    evidence_requirements:
+      - artefact_type: RETENTION_POLICY
+        required_attributes: [data_retention_schedule, erasure_process]
+    mappings:
+      - uco: UCO-PRIV-002
+        coverage: PARTIAL
+        confidence: 0.6
+        source: AI
+        delta_conditions: []
+
+  # Evidenced by a connector snapshot, not a document. AWS shows that backups exist, not that a restore works.
+  - clause: "A.8.13"
+    title: Information backup
+    text: >
+      Backup copies of information, software and systems shall be maintained and regularly tested in accordance with
+      the agreed topic-specific policy on backup.
+    evidence_requirements:
+      - artefact_type: AWS_SNAPSHOT
+        required_attributes: [backup_enabled]
+    mappings:
+      - uco: UCO-DATA-002
+        coverage: PARTIAL
+        confidence: 0.5
+        source: AI
+        delta_conditions:
+          - {attribute: backup_enabled, operator: "==", value: true}
