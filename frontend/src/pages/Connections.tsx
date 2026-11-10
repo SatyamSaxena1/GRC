@@ -31,7 +31,7 @@ function Feeds({ feeds }: { feeds: ConnectionView["feeds"] }) {
 /** A source whose evidence the customer uploads from their own script (ADR-049, ADR-050). The upload token is
  *  shown once; only a fingerprint is kept on the server. */
 function UploadCard({ conn, source, title, blurb, permissions, permissionsWhere, script, command, keyOn, busy, run }: {
-  conn: ConnectionView; source: "aws" | "m365" | "hrms"; title: string; blurb: string; permissions: string; permissionsWhere: string;
+  conn: ConnectionView; source: "aws" | "m365" | "hrms" | "google-workspace"; title: string; blurb: string; permissions: string; permissionsWhere: string;
   script: string; command: string; keyOn: boolean; busy: boolean; run: (fn: () => Promise<unknown>) => Promise<void>;
 }) {
   const [token, setToken] = useState<string | null>(null);
@@ -101,6 +101,7 @@ export function ConnectionsPage() {
   const aws = state.data.connections.find((c) => c.kind === "AWS_PUSH");
   const m365 = state.data.connections.find((c) => c.kind === "M365_PUSH");
   const hrms = state.data.connections.find((c) => c.kind === "HRMS_PUSH");
+  const gws = state.data.connections.find((c) => c.kind === "GOOGLE_WORKSPACE_PUSH");
   const keyOn = state.data.key_configured;
   const repoList = ghRepos.split(/[\s,]+/).filter(Boolean);
 
@@ -215,6 +216,16 @@ export function ConnectionsPage() {
           permissionsWhere="In Microsoft Entra, create an app registration with a client secret and grant it:"
           script="m365_readonly.py"
           command={`export GRC_UPLOAD_TOKEN=YOUR_TOKEN\npython m365_readonly.py --url ${window.location.origin} --tenant YOUR_TENANT_ID --client-id YOUR_APP_ID`} />
+      )}
+      {gws && (
+        <UploadCard conn={gws} source="google-workspace" title="Google Workspace: security settings evidence" keyOn={keyOn} busy={busy} run={run}
+          blurb="You run a small read-only script on your own computer, signed in as a Google Workspace super administrator. It checks two things (every super administrator has 2-step verification enforced, and the admin audit log has recorded activity in the last 30 days) and sends us only two yes/no answers. We hold no Google credential of yours."
+          permissions="The scopes admin.directory.user.readonly and admin.reports.audit.readonly, on an OAuth client you create in your own Google Cloud project"
+          permissionsWhere="In your Google Cloud console, create an OAuth client and get a read-only access token or refresh token for these two scopes (see the guide in the project repository, docs/operations/gworkspace-upload.md):"
+          script="gworkspace_readonly.py"
+          command={`export GRC_UPLOAD_TOKEN=YOUR_TOKEN
+export GOOGLE_ACCESS_TOKEN=YOUR_GOOGLE_TOKEN
+python gworkspace_readonly.py --url ${window.location.origin}`} />
       )}
       {hrms && (
         <UploadCard conn={hrms} source="hrms" title="HR: leavers who still have access" keyOn={keyOn} busy={busy} run={run}

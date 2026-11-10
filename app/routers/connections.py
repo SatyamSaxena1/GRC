@@ -39,7 +39,8 @@ def _row(db: Session, org_id: str, kind: str = connections.KIND_CHAT) -> Connect
 # The evidence each source produces, so the page can say which clauses it counts toward. Read from the content packs,
 # never written out by hand, so a new clause shows up here the moment it is added.
 _EVIDENCE = {connections.KIND_GITHUB: "CHANGE_CONTROL_SNAPSHOT", connections.KIND_AWS: "AWS_SNAPSHOT",
-             connections.KIND_M365: "M365_SNAPSHOT", connections.KIND_HRMS: "HRMS_SNAPSHOT"}
+             connections.KIND_M365: "M365_SNAPSHOT", connections.KIND_HRMS: "HRMS_SNAPSHOT",
+             connections.KIND_GWS: "GOOGLE_WORKSPACE_SNAPSHOT"}
 
 
 def _feeds(kind: str) -> list[dict]:
@@ -68,7 +69,8 @@ def _state(db: Session, org_id: str) -> dict:
                             _view(_row(db, org_id, connections.KIND_GITHUB), connections.KIND_GITHUB),
                             _view(_row(db, org_id, connections.KIND_AWS), connections.KIND_AWS),
                             _view(_row(db, org_id, connections.KIND_M365), connections.KIND_M365),
-                            _view(_row(db, org_id, connections.KIND_HRMS), connections.KIND_HRMS)]}
+                            _view(_row(db, org_id, connections.KIND_HRMS), connections.KIND_HRMS),
+                            _view(_row(db, org_id, connections.KIND_GWS), connections.KIND_GWS)]}
 
 
 def _need_key() -> None:

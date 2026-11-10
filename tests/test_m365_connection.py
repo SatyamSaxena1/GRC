@@ -145,8 +145,8 @@ def test_each_source_accepts_only_its_own_attributes(client, bootstrap, key):
 
 def test_unknown_sources_and_non_upload_sources_are_refused(client, bootstrap, key):
     org = _org(client, bootstrap)
-    assert client.post("/connections/google-workspace/token", headers=H(org)).status_code == 404
-    assert client.post("/ingest/google-workspace", json=GOOD, headers={"authorization": "Bearer a.bbbbbbbbbbbbbbbbbbbbbbbb"}).status_code == 404
+    assert client.post("/connections/okta/token", headers=H(org)).status_code == 404
+    assert client.post("/ingest/okta", json=GOOD, headers={"authorization": "Bearer a.bbbbbbbbbbbbbbbbbbbbbbbb"}).status_code == 404
 
 
 def test_the_collect_button_explains_that_results_arrive_from_the_script(client, bootstrap, key, monkeypatch):
