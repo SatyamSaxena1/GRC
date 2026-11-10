@@ -123,7 +123,7 @@ def test_a_policy_can_be_put_away_and_brought_back_without_losing_anything(clien
 
     assert client.post(f"/policies/{p['id']}/archive", headers=_as(owner)).status_code == 403   # an admin's call
     away = client.post(f"/policies/{p['id']}/archive", headers=_as(admin)).json()
-    assert away["archived"] is True
+    assert away["archived"] is True and away["waiting_on"] == []      # a policy put away is waiting on nobody
     client.post(f"/policies/{p['id']}/archive", headers=_as(admin))                              # twice: one event
     assert db.query(AuditEvent).filter_by(action="POLICY_ARCHIVED", entity=p["id"]).count() == 1
 

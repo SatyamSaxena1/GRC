@@ -68,7 +68,7 @@ def _out(p: PolicyDoc, people: dict[str, str], accepted: set[str], actor: Actor,
         "accepted_by_me": bool(actor.user_id and actor.user_id in accepted),
     }
     if actor.role == "ORG_ADMIN":                                 # who is still to accept is for the admin only
-        out["waiting_on"] = sorted(email for uid, email in people.items() if uid not in done) if p.status == "APPROVED" else []
+        out["waiting_on"] = sorted(email for uid, email in people.items() if uid not in done) if p.status == "APPROVED" and p.archived_at is None else []
     if body:
         out["body"] = p.body
     return out
