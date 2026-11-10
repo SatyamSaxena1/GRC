@@ -245,3 +245,89 @@ requirements:
         source: AI
         delta_conditions:
           - {attribute: affected_person_notification, operator: "==", value: true}
+
+  # DRAFT, awaiting human review (issue 82, second SOC 2 batch). Drafted by an AI from the public criteria titles, so
+  # every mapping says source: AI, not EXPERT, and coverage is PARTIAL or SUPPORTING only. All of them reuse existing
+  # unified controls, attributes and evidence types (AWS_SNAPSHOT, RETENTION_POLICY, INCIDENT_POLICY); no new rules.
+  # Not drafted, and why: CC1.x, CC2.x, CC3.x, CC5.x (governance and risk assessment: no evidence we collect shows
+  # them), CC6.4 physical access, CC6.8 malicious software, CC9.x vendor and disruption risk (each needs a NEW unified
+  # control), A1.1 capacity and A1.3 recovery testing (a backup flag is not a capacity figure or a restore test),
+  # C1.1 identifying confidential information, P1-P3 and P5-P8 notice, consent and subject access (no privacy-notice
+  # type yet). Leaver access (HRMS) belongs on the existing CC6.2/CC6.3, whose verdicts would change, so it waits.
+
+  # Evidenced by a connector snapshot. AWS shows that backups exist, not that a recovery was rehearsed.
+  - clause: "CC7.5"
+    title: Recovery from security incidents
+    text: >
+      The entity identifies, develops and implements activities to recover from identified security incidents.
+    evidence_requirements:
+      - artefact_type: AWS_SNAPSHOT
+        required_attributes: [backup_enabled]
+    mappings:
+      - uco: UCO-DATA-002
+        coverage: SUPPORTING
+        confidence: 0.4
+        source: AI
+        delta_conditions:
+          - {attribute: backup_enabled, operator: "==", value: true}
+
+  - clause: "A1.2"
+    title: Backup and recovery infrastructure
+    text: >
+      The entity authorizes, designs, develops or acquires, implements, operates, approves, maintains and monitors
+      environmental protections, software, data backup processes and recovery infrastructure to meet its availability
+      objectives.
+    evidence_requirements:
+      - artefact_type: AWS_SNAPSHOT
+        required_attributes: [backup_enabled]
+    mappings:
+      - uco: UCO-DATA-002
+        coverage: PARTIAL
+        confidence: 0.5
+        source: AI
+        delta_conditions:
+          - {attribute: backup_enabled, operator: "==", value: true}
+
+  - clause: "C1.2"
+    title: Disposal of confidential information
+    text: >
+      The entity disposes of confidential information to meet its confidentiality objectives.
+    evidence_requirements:
+      - artefact_type: RETENTION_POLICY
+        required_attributes: [data_retention_schedule, erasure_process]
+    mappings:
+      - uco: UCO-PRIV-002
+        coverage: PARTIAL
+        confidence: 0.5
+        source: AI
+        delta_conditions: []
+
+  - clause: "P4.2"
+    title: Retention of personal information
+    text: >
+      The entity retains personal information consistent with its objectives.
+    evidence_requirements:
+      - artefact_type: RETENTION_POLICY
+        required_attributes: [data_retention_schedule, erasure_process]
+    mappings:
+      - uco: UCO-PRIV-002
+        coverage: PARTIAL
+        confidence: 0.6
+        source: AI
+        delta_conditions: []
+
+  - clause: "P6.6"
+    title: Notification of breaches and incidents
+    text: >
+      The entity provides notification of breaches and incidents to affected data subjects, regulators and others to
+      meet its objectives.
+    evidence_requirements:
+      - artefact_type: INCIDENT_POLICY
+        required_attributes: [data_breach_response_process, board_notification_hours, affected_person_notification]
+    mappings:
+      - uco: UCO-PRIV-003
+        coverage: PARTIAL
+        confidence: 0.6
+        source: AI
+        delta_conditions:
+          - {attribute: affected_person_notification, operator: "==", value: true}

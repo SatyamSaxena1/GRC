@@ -27,6 +27,12 @@ step is in a tamper-evident log; the DPDP Act pack for India.
 
 ## Entries
 
+### 10 Nov 2026: Five more SOC 2 criteria drafted, waiting for a person to approve (issue 82)
+
+**In plain words:** SOC 2 now also checks recovery from incidents, backup and recovery set-up, disposal of confidential information, retention of personal information and breach notification, using evidence we already collect. An AI drafted them, so each is marked AI and stays PARTIAL or SUPPORTING until a person approves the mapping.
+**Show on screen:** the SOC 2 pack with CC7.5, A1.2, C1.2, P4.2 and P6.6 open as gaps until AWS, a retention policy and an incident policy are present.
+**Proof:** PR (draft); no existing verdict changed, so the rules version stays 3. Left out: governance and risk criteria, physical access, malicious software, vendor risk, capacity, recovery testing and the notice/consent criteria, each because we hold no evidence for it or it needs a new unified control.
+
 ### 5 Nov 2026: A personalised welcome email, and a person to answer it (interim support)
 - **Say:** "When you invite someone, they get one welcome email with first steps for their own role and a way to reach a
   person. If their sign-in link is needed, it is in that email, so the admin never has to forward it."
@@ -109,15 +115,24 @@ step is in a tamper-evident log; the DPDP Act pack for India.
 - **Proof:** tests cover bad input, write-only storage, no token in audit or errors, the access check's failure
   reasons, per-organisation isolation, and that a sync uses the organisation's own token and repositories.
 
-### 4 Nov 2026: A tool to clean up old duplicate gaps (PR 88, closes issue 85)
-- **Say:** "Gaps that an old bug duplicated can be cleaned up safely. We checked the live system and none exist,
-  so nothing needed changing."
-- **Show:** run `python -m app.gap_repair` (report only), then with `--apply` on a database that has duplicates.
-- **Honest detail:** it never deletes. The earliest gap stays open, the copies are marked closed with a reason
-  naming the one kept, and each closure is in the audit log. It is safe to run twice.
-- **Proof:** tests for report-only, apply, no deletion, audit event, second run, and task handling; a read-only
-  count on the live database found zero duplicate groups.
-
+### 4 Nov 2026: A tool to clean up old duplicate gaps (PR 88, closes issue 85)
+
+- **Say:** "Gaps that an old bug duplicated can be cleaned up safely. We checked the live system and none exist,
+
+  so nothing needed changing."
+
+- **Show:** run `python -m app.gap_repair` (report only), then with `--apply` on a database that has duplicates.
+
+- **Honest detail:** it never deletes. The earliest gap stays open, the copies are marked closed with a reason
+
+  naming the one kept, and each closure is in the audit log. It is safe to run twice.
+
+- **Proof:** tests for report-only, apply, no deletion, audit event, second run, and task handling; a read-only
+
+  count on the live database found zero duplicate groups.
+
+
+
 ### 4 Nov 2026: Overdue vendor reviews show up in the daily list (PR 86, closes issue 83)
 - **Say:** "A vendor whose review is overdue, or was never done, now appears in the same daily list as expiring
   evidence and breach deadlines, with a link straight to the Vendors page."
