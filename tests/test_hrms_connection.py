@@ -77,9 +77,9 @@ def _push(client, token, count, source="hrms", extra=None):
     return client.post(f"/ingest/{source}", json=body, headers={"authorization": f"Bearer {token}"})
 
 
-def test_the_connections_list_has_all_five_kinds_in_the_order_the_page_expects(client, bootstrap, key):
+def test_the_connections_list_has_all_six_kinds_in_the_order_the_page_expects(client, bootstrap, key):
     kinds = [c["kind"] for c in client.get("/connections", headers=H(_org(client, bootstrap))).json()["connections"]]
-    assert kinds == ["CHAT_WEBHOOK", "GITHUB_CHANGE_CONTROL", "AWS_PUSH", "M365_PUSH", "HRMS_PUSH"]
+    assert kinds == ["CHAT_WEBHOOK", "GITHUB_CHANGE_CONTROL", "AWS_PUSH", "M365_PUSH", "HRMS_PUSH", "GOOGLE_WORKSPACE_PUSH"]
 
 
 def test_a_count_is_stored_as_hr_evidence_and_zero_is_a_valid_answer(client, bootstrap, key):

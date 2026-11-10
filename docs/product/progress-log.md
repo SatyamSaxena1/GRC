@@ -337,6 +337,12 @@ step is in a tamper-evident log; the DPDP Act pack for India.
 - **Show:** the plan panel on Admin, then the operator page changing a plan; try inviting one person past the limit.
 - **Proof:** `GET /admin/usage` shows seats and frameworks used against the limit; the refusal is a clear 402 message.
 
+### 10 Nov 2026: Google Workspace evidence, sent from your own computer
+- **Say:** "If you run Google Workspace, run one small read-only script and we get two yes/no answers: every super admin
+  has 2-step verification enforced, and the admin audit log is active. We never hold a Google credential of yours."
+- **Show:** the Google Workspace card on Connections: make the token, then `--dry-run` the script and upload.
+- **Proof:** the card lists the DPDP Google Workspace clause; `GET /connectors` shows the source as received.
+
 ## Scenes still to film
 - Team card with Deactivate/Reactivate (needs an org admin session).
 - AI help (Explain, Ask AI) once the model has a stable address.
