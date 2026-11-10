@@ -319,6 +319,12 @@ step is in a tamper-evident log; the DPDP Act pack for India.
 - **Show:** upload an incident policy with a 24-hour promise, then declare a breach: the board deadline is 24 hours.
 - **Proof:** the control page shows the incident clauses across frameworks; the breach deadline reads the stated hours.
 
+### 10 Nov 2026: A sidebar grouped by the job to be done
+- **Say:** "The menu now reads like the work: Home, Compliance, Privacy and AI, Risk and customers, Integrations,
+  Workspace. Nothing moved out of reach, and a role only sees the groups it has."
+- **Show:** sign in as the org admin, then as a control owner, and compare the menus.
+- **Proof:** Overview is first; Vendors and Questionnaires now sit together; Connections sits with Code review and CISO sync.
+
 ## Scenes still to film
 - Team card with Deactivate/Reactivate (needs an org admin session).
 - AI help (Explain, Ask AI) once the model has a stable address.
