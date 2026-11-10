@@ -313,6 +313,12 @@ step is in a tamper-evident log; the DPDP Act pack for India.
 - **Show:** Ask AI: "How many open gaps are there?" and the answer naming the model.
 - **Proof:** `GET /assistant/status` reports `available: true` and the model; the audit record names it too.
 
+### 10 Nov 2026: Every clause on incidents and retention reads the same kind of policy
+- **Say:** "Breach and retention clauses all look at one place now. File your incident policy as an incident policy
+  and it counts for SOC 2, ISO, PCI and DPDP at once."
+- **Show:** upload an incident policy with a 24-hour promise, then declare a breach: the board deadline is 24 hours.
+- **Proof:** the control page shows the incident clauses across frameworks; the breach deadline reads the stated hours.
+
 ## Scenes still to film
 - Team card with Deactivate/Reactivate (needs an org admin session).
 - AI help (Explain, Ask AI) once the model has a stable address.

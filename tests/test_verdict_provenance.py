@@ -215,7 +215,8 @@ def test_recorded_inputs_alone_reproduce_every_evaluation():
 # Change this only together with ENGINE_VERSION: a logic change that alters any verdict or gap
 # below must also say so on every verdict it produces from now on.
 ENGINE_FINGERPRINT = {"1": "afed8623b0642be2a4a54c3bdc9b7e12875e8bc5ff4f8aa90dfcb9dfeb5f9c28",
-                      "2": "f6273f0012aa8027c5f329b76121701e5b147a6b4d2b58f654cb4c6360bbfb1c"}  # SOC 2 CC6.5, CC7.3, CC7.4 added
+                      "2": "f6273f0012aa8027c5f329b76121701e5b147a6b4d2b58f654cb4c6360bbfb1c",  # SOC 2 CC6.5, CC7.3, CC7.4 added
+                      "3": "b9c75e86dc70560fe00d3c6c8d92f3585cdaca4c47cdaafed6904208472f6fcb"}  # CC6.5, CC7.4 and two DPDP clauses moved to INCIDENT_POLICY / RETENTION_POLICY
 
 
 def test_the_engine_fingerprint_matches_its_version():

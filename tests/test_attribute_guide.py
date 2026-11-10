@@ -12,7 +12,7 @@ from app.service import required_attribute_names
 
 CONTENT = load()
 GUIDE = load_guide()
-ALL = {a for t in ("POLICY", "SCAN_REPORT", "REVIEW_RECORD", "ENCRYPTION_POLICY", "LOGGING_POLICY", "PRIVACY_NOTICE")
+ALL = {a for t in ("POLICY", "SCAN_REPORT", "REVIEW_RECORD", "ENCRYPTION_POLICY", "LOGGING_POLICY", "INCIDENT_POLICY", "RETENTION_POLICY", "PRIVACY_NOTICE")
        for a in required_attribute_names(CONTENT, [], t)}
 
 
