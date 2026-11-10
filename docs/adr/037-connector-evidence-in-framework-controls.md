@@ -37,7 +37,14 @@ never fail an access-control policy. Also ISO A.8.13 Information backup (AWS, ba
 restore was tested) on a new unified control UCO-DATA-002. All `source: AI`, awaiting review. SOC 2 CC6.5 and CC7.4 and
 the DPDP clauses still read POLICY: moving them would change existing verdicts, so it needs its own decision. Two
 policy templates (incident response, data retention) were added so an organisation can start from text that meets them.
-Not drafted: ISO A.8.20 network security (we collect no such evidence). The Connections page now lists, for each source, the
+Not drafted: ISO A.8.20 network security (we collect no such evidence).
+
+**Moved later the same day (rules version 3):** SOC 2 CC6.5 and CC7.4 and the DPDP breach-notification (Rule 7) and
+retention clauses now read INCIDENT_POLICY and RETENTION_POLICY instead of POLICY, so every clause on those facts reads
+the same kind of document. Consequences, stated plainly: a general POLICY that happens to describe breach or retention no
+longer evidences those four clauses, and an organisation that filed one that way must re-upload it as the right kind to
+get a verdict. Verdicts already recorded are history and are not rewritten. The breach log still takes the organisation's
+own stated board-notification hours from a POLICY or an INCIDENT_POLICY. The Connections page now lists, for each source, the
 clauses it counts toward, marking any still awaiting review.
 
 Same rules as every other pack: versioned, deterministic, expert-sourced, confidence below 1.

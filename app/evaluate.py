@@ -19,7 +19,7 @@ Verdict = str  # PASS | PARTIAL | FAIL
 # Bump whenever this module's logic changes what a verdict or gap would be. Stamped on
 # every verdict (ADR-022) and pinned by tests/test_verdict_provenance.py's engine
 # fingerprint, which fails until the bump and the new fingerprint land together.
-ENGINE_VERSION = "2"
+ENGINE_VERSION = "3"
 
 
 @dataclass(frozen=True)

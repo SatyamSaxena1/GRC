@@ -52,3 +52,27 @@ def test_notify_board_closes_task_and_is_audited(client, bootstrap):
     tasks = {t["title"]: t for t in client.get("/tasks", headers=headers).json()}
     board_task = next(t for title, t in tasks.items() if "Notify Board" in title)
     assert board_task["status"] == "DONE"
+
+
+def test_an_incident_policys_stated_hours_set_the_board_deadline(client, bootstrap, upload, monkeypatch):
+    """The breach log holds the organisation to its own stated hours. Those now arrive in an incident policy, not only in
+    the general POLICY, so an uploaded incident policy must still set the commitment (issue 82)."""
+    from app import service
+    from app.ai.schemas import ExtractedField, ExtractionRun
+
+    def fake_extract(text, names, method="native_text", gateway=None):
+        values = {"board_notification_hours": 24, "data_breach_response_process": True, "affected_person_notification": True}
+        return ExtractionRun(fields={n: ExtractedField(value=values.get(n), confidence=1.0) for n in names},
+                             model="stub", provider="stub", status="OK")
+
+    monkeypatch.setattr(service, "extract_attributes", fake_extract)
+    org_id, _ = bootstrap(client, frameworks=["DPDP"])
+    upload(client, org_id, content=b"an incident response policy", name="incident.txt", artefact_type="INCIDENT_POLICY")
+    headers = {"authorization": f"org:{org_id}"}
+    detected = datetime.now(timezone.utc).replace(microsecond=0)
+    body = client.post("/breach-events", headers=headers,
+                       json={"title": "Leaked export", "detected_at": detected.isoformat()}).json()
+    due = datetime.fromisoformat(body["board_notify_due_at"])
+    if due.tzinfo is None:
+        due = due.replace(tzinfo=timezone.utc)
+    assert due - detected == timedelta(hours=24)

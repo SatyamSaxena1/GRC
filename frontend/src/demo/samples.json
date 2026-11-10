@@ -110,9 +110,7 @@
     "CIS-CONTROLS 6.2": "PASS",
     "GDPR Art.5(1)(f) & 32": "PASS",
     "GDPR Art.32(1)": "PASS",
-    "GDPR Art.32(4)": "PASS",
-    "SOC-2 CC6.5": "FAIL",
-    "SOC-2 CC7.4": "FAIL"
+    "GDPR Art.32(4)": "PASS"
    }
   },
   {
@@ -199,9 +197,7 @@
     "CIS-CONTROLS 6.2": "PASS",
     "GDPR Art.5(1)(f) & 32": "PASS",
     "GDPR Art.32(1)": "PASS",
-    "GDPR Art.32(4)": "PASS",
-    "SOC-2 CC6.5": "FAIL",
-    "SOC-2 CC7.4": "FAIL"
+    "GDPR Art.32(4)": "PASS"
    }
   },
   {
@@ -468,9 +464,7 @@
     "CIS-CONTROLS 6.2": "FAIL",
     "GDPR Art.5(1)(f) & 32": "PARTIAL",
     "GDPR Art.32(1)": "FAIL",
-    "GDPR Art.32(4)": "FAIL",
-    "SOC-2 CC6.5": "FAIL",
-    "SOC-2 CC7.4": "FAIL"
+    "GDPR Art.32(4)": "FAIL"
    }
   },
   {
@@ -560,9 +554,7 @@
     "CIS-CONTROLS 6.2": "PASS",
     "GDPR Art.5(1)(f) & 32": "PASS",
     "GDPR Art.32(1)": "PASS",
-    "GDPR Art.32(4)": "PASS",
-    "SOC-2 CC6.5": "FAIL",
-    "SOC-2 CC7.4": "PARTIAL"
+    "GDPR Art.32(4)": "PASS"
    }
   },
   {

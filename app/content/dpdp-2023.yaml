@@ -114,7 +114,7 @@ requirements:
       The breach process covers affected-person notification without delay and
       detailed notification to the Board within seventy-two hours.
     evidence_requirements:
-      - artefact_type: POLICY
+      - artefact_type: INCIDENT_POLICY
         required_attributes: [data_breach_response_process, board_notification_hours, affected_person_notification]
     mappings:
       - uco: UCO-PRIV-003
@@ -131,7 +131,7 @@ requirements:
       Personal data is erased when consent is withdrawn or its purpose is no
       longer served, subject to applicable legal retention duties.
     evidence_requirements:
-      - artefact_type: POLICY
+      - artefact_type: RETENTION_POLICY
         required_attributes: [data_retention_schedule, erasure_process]
     mappings:
       - uco: UCO-PRIV-002

@@ -421,7 +421,9 @@ def _upsert_org_commitments(db: Session, evidence: Evidence, run) -> None:
     is stored unconditionally — ponytail: no lookup of "which attributes matter"
     here, only the ones a requirement actually reads via
     org_defined_max_age_attribute are ever consulted."""
-    if evidence.artefact_type != "POLICY":
+    # An incident policy states the board-notification hours the breach log holds the organisation to, and a retention
+    # policy states retention facts, so both count, not only the general POLICY (issue 82).
+    if evidence.artefact_type not in ("POLICY", "INCIDENT_POLICY", "RETENTION_POLICY"):
         return
     existing = {
         c.attribute: c
