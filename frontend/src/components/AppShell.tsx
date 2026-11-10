@@ -117,7 +117,8 @@ export function AppShell() {
         <NotificationsLink key={viewKey} />
         {ungrouped.map(link)}
         {NAV_GROUPS.map(([title, paths]) => {
-          const items = nav.filter((i) => paths.includes(i.to));
+          // In the order this table lists them, not the role menu's order, so the grouping reads as written.
+          const items = paths.flatMap((to) => nav.filter((i) => i.to === to));
           return items.length > 0 && (
             <div key={title} style={{ display: "contents" }}>
               <div className="nav-group">{title}</div>
