@@ -365,6 +365,16 @@ table.data-table.static td { vertical-align: top; }
 }
 .readiness-bar > div { height: 100%; background: var(--primary); }
 
+/* First-week checklist on Overview (components/FirstWeekChecklist.tsx) */
+.checklist { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 2px; }
+.checklist li { display: flex; gap: 10px; align-items: baseline; padding: 6px 0; border-top: 1px solid var(--border); }
+.checklist li:first-child { border-top: 0; }
+.checklist__mark { flex: none; width: 1.2em; text-align: center; color: var(--text-muted); }
+.checklist .is-done .checklist__mark { color: var(--success); }
+.checklist .is-done a { color: var(--text-muted); text-decoration: line-through; }
+.checklist a { font-weight: 600; }
+.checklist__hint { display: block; font-size: 12px; color: var(--text-muted); font-weight: 400; }
+
 .btn {
   display: inline-flex;
   align-items: center;

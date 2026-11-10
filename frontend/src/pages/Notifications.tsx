@@ -8,7 +8,7 @@ import { PageTour } from "../components/PageTour";
 const TOUR_STEPS = [
   {
     title: "Everything open, in one place",
-    body: "Open tasks, evidence and unlock requests from your auditor, and evidence quietly going stale — combined into one feed so you don't have to check four different pages.",
+    body: "Open tasks, evidence and unlock requests from your auditor, evidence quietly going stale, controls that turned worse this week, and connectors that have gone quiet — combined into one feed so you don't have to check five different pages.",
     target: ".page-header",
   },
   {
@@ -41,7 +41,7 @@ export function NotificationsPage() {
       <div className="page-header">
         <div>
           <h2>Notifications</h2>
-          <p>Everything open right now that needs a look — tasks, requests from your auditor, and evidence going stale.</p>
+          <p>Everything open right now that needs a look — tasks, requests from your auditor, evidence going stale, controls that turned worse this week, and connectors that have gone quiet.</p>
         </div>
         <PageTour id="notifications" steps={TOUR_STEPS} />
       </div>

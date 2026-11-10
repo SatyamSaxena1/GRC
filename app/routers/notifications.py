@@ -19,11 +19,11 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app import monitor
+from app import authorization, drift, monitor
 from app.auth import Actor, current_actor
 from app.content.load import load as load_content
 from app.db import get_session
-from app.models import Evidence
+from app.models import Evidence, Organization
 from app.routers import controls as controls_router
 from app.routers.analytics import control_details
 
@@ -120,6 +120,23 @@ def _attention_items(report: dict, checked_at: str, *, names: bool = True) -> li
     return items
 
 
+def _drift_items(db: Session, actor: Actor) -> list[dict]:
+    """What turned worse this week and which connectors have gone quiet (ADR-058). Evidence expiring within 30 days is
+    already in the attention items above. A control owner sees only the controls they own, as everywhere else."""
+    allowed = authorization.visible_clauses(db, actor)
+    items = [{"kind": "CONTROL_WORSE", "severity": "high" if c["now"] == "FAIL" else "medium", "at": c["changed_at"],
+              "message": f"{c['framework']} {c['clause']} turned worse this week: {c['was']} to {c['now']}",
+              "link": f"/controls/{c['control_id']}" if c["control_id"] else "/controls"}
+             for c in drift.controls_worse(db, actor.org_id)
+             if allowed is None or (c["framework"], c["clause"]) in allowed]
+    org = db.get(Organization, actor.org_id)
+    checked = datetime.now(timezone.utc).isoformat()
+    items += [{"kind": "CONNECTOR_STALE", "severity": "medium", "at": checked,
+               "message": f"{c['label']} has not been refreshed in {c['days']} days",
+               "link": "/connections"} for c in (drift.stale_connectors(db, org) if org else [])]  # a stale sign-in names no organisation
+    return items
+
+
 @router.get("/notifications")
 def list_notifications(actor: Actor = Depends(current_actor), db: Session = Depends(get_session)):
     now = datetime.now(timezone.utc).isoformat()
@@ -139,6 +156,8 @@ def list_notifications(actor: Actor = Depends(current_actor), db: Session = Depe
                     "message": f"{control['framework']} {control['clause']}: {link['stale_reason']}",
                     "link": f"/controls/{control['id']}",
                 })
+
+    items += _drift_items(db, actor)
 
     items.sort(key=lambda i: i["at"], reverse=True)
     return {"items": items, "count": len(items)}

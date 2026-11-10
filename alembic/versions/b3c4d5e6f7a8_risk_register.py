@@ -5,7 +5,7 @@ revision, with the same policy as every other tenant table, so no moment exists 
 across tenants.
 
 Revision ID: b3c4d5e6f7a8
-Revises: b9c0d1e2f3a4
+Revises: e7c4a91d5b32
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ from alembic import op
 import sqlalchemy as sa
 
 revision = "b3c4d5e6f7a8"
-down_revision = "b9c0d1e2f3a4"
+down_revision = "e7c4a91d5b32"
 branch_labels = None
 depends_on = None
 

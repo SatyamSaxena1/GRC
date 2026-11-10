@@ -238,6 +238,8 @@ export type WeeklyReport = {
   period: { from: string; to: string };
   this_week: { new_gaps: number; gaps_resolved: number; evidence_collected_or_uploaded: number; controls_locked: number };
   open_now: { gaps: number; tasks_overdue: number };
+  /** What moved the wrong way, as counts only (ADR-058). */
+  drift: { controls_worse: number; evidence_expiring: number; evidence_expired: number; expiry_days: number; connectors_quiet: number; connector_days: number };
   delivery: { webhook_configured: boolean; schedule: string };
 };
 export const getWeeklyReport = () => request<WeeklyReport>("GET", "/reports/weekly");
@@ -290,6 +292,8 @@ export const getUsage = () => request<Usage>("GET", "/admin/usage");
 export type OperatorOrg = {
   id: string; name: string; plan: string | null; trial_ends_at: string | null; trial_over: boolean;
   frameworks: string[]; frameworks_limit: number | null; seats_limit: number | null;
+  /** Activation (ADR-058): minutes from the workspace being created to its first verdict; null if either is unknown. */
+  created_at: string | null; first_verdict_at: string | null; minutes_to_first_verdict: number | null;
 };
 /** Operator calls carry the shared admin key. It is typed in by the operator and held in memory only. */
 async function operator<T>(key: string, method: string, path: string, json?: unknown): Promise<T> {
@@ -1273,3 +1277,13 @@ export function reviewProblems(err: unknown): ReviewProblem[] | null {
   const detail = err.detail as { problems?: ReviewProblem[] } | undefined;
   return Array.isArray(detail?.problems) ? detail!.problems : null;
 }
+
+// ---------------------------------------------------------------- first-week checklist (ADR-058)
+
+export type OnboardingStep = { id: string; title: string; link: string; hint: string; done: boolean; optional: boolean };
+/** Every step is derived from data on the server; none is ticked by hand. An organisation admin only (403 otherwise). */
+export type Onboarding = {
+  steps: OnboardingStep[]; done: number; total: number; complete: boolean;
+  first_verdict: { at: string | null; minutes_from_start: number | null };
+};
+export const getOnboarding = () => request<Onboarding>("GET", "/onboarding");

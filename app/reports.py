@@ -14,7 +14,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app import risks, vendors
+from app import drift, monitor, risks, vendors
 from app.models import (
     AuditEvent, Evidence, EvidenceControlLink, GapRow, Organization, Risk, TaskRow, Vendor, VendorReport,
 )
@@ -46,6 +46,15 @@ def risk_counts(db: Session, org: Organization, now: datetime) -> dict:
     return {"open": len(open_rows), "high_or_critical": serious,
             "reviews_overdue": risks.overdue_count(rows, now.date())}
 
+def drift_counts(db: Session, org: Organization, now: datetime) -> dict:
+    """What moved the wrong way, as counts (ADR-058): controls that turned worse this week, evidence expiring within the
+    look-ahead (and what is already past it), connectors gone quiet. Never a control, file or source name."""
+    attention = monitor.attention_report(db, org.id, trust.CONTENT, as_of=now.date(), now=now.replace(tzinfo=timezone.utc))
+    return {"controls_worse": len(drift.controls_worse(db, org.id, now=now)),
+            "evidence_expiring": len(attention.expiring_soon), "evidence_expired": len(attention.expired),
+            "expiry_days": attention.horizon_days,
+            "connectors_quiet": len(drift.stale_connectors(db, org, now=now)), "connector_days": drift.CONNECTOR_STALE_DAYS}
+
 
 def build(db: Session, org: Organization, now: datetime | None = None) -> dict:
     now = _naive(now or datetime.now(timezone.utc))
@@ -72,6 +81,7 @@ def build(db: Session, org: Organization, now: datetime | None = None) -> dict:
         },
         "vendors": vendor_counts(db, org, now),
         "risks": risk_counts(db, org, now),
+        "drift": drift_counts(db, org, now),
     }
 
 
@@ -88,6 +98,21 @@ def _risk_sentence(k: dict) -> str:
         return ""
     return f" Risks: {k['open']} open, {k['high_or_critical']} high or critical, {k['reviews_overdue']} reviews overdue."
 
+def _n(count: int, one: str, many: str) -> str:
+    return f"{count} {one if count == 1 else many}"
+
+
+def _drift_sentence(d: dict) -> str:
+    parts = []
+    if d["controls_worse"]:
+        parts.append(_n(d["controls_worse"], "control turned worse this week", "controls turned worse this week"))
+    if d["evidence_expiring"] or d["evidence_expired"]:
+        said = _n(d["evidence_expiring"], "evidence item", "evidence items") + f" expiring within {d['expiry_days']} days"
+        parts.append(said + (f" ({d['evidence_expired']} already expired)" if d["evidence_expired"] else ""))
+    if d["connectors_quiet"]:
+        parts.append(_n(d["connectors_quiet"], "connector", "connectors") + f" not refreshed in {d['connector_days']} days")
+    return " Drift: " + (", ".join(parts) if parts else "nothing turned worse, nothing expiring soon, no connector gone quiet") + "."
+
 
 def text(report: dict) -> str:
     c, w, o = report["now"]["controls"], report["this_week"], report["open_now"]
@@ -99,14 +124,14 @@ def text(report: dict) -> str:
             f"This week: {w['new_gaps']} new gaps, {w['gaps_resolved']} resolved, "
             f"{w['evidence_collected_or_uploaded']} evidence collections or uploads, {w['controls_locked']} controls locked. "
             f"Open now: {o['gaps']} gaps, {o['tasks_overdue']} overdue tasks."
-            + _vendor_sentence(report["vendors"]) + _risk_sentence(report["risks"]))
+            + _vendor_sentence(report["vendors"]) + _risk_sentence(report["risks"]) + _drift_sentence(report["drift"]))
 
 
 def markdown(report: dict) -> str:
     c, w, o, p = report["now"]["controls"], report["this_week"], report["open_now"], report["period"]
     rows = "\n".join(f"| {f['framework']} | {f['requirements_met']} of {f['requirements']} | {f['readiness_percent']}% |"
                      for f in report["now"]["frameworks"]) or "| none | | |"
-    v = report["vendors"]
+    v, d = report["vendors"], report["drift"]
     vendor_md = (f"\n## Vendors\n- Active: {v['active']}\n- Reviews overdue or never done: {v['reviews_overdue']}\n"
                  f"- Reviews due within 30 days: {v['reviews_due_soon']}\n") if v["active"] else ""
     k = report["risks"]
@@ -134,4 +159,9 @@ def markdown(report: dict) -> str:
 ## Open now
 - Gaps: {o['gaps']}
 - Overdue tasks: {o['tasks_overdue']}
-{vendor_md}{risk_md}"""
+{vendor_md}{risk_md}
+## Drift
+- Controls that turned worse this week: {d['controls_worse']}
+- Evidence expiring within {d['expiry_days']} days: {d['evidence_expiring']} ({d['evidence_expired']} already expired)
+- Connectors not refreshed in {d['connector_days']} days: {d['connectors_quiet']}
+"""

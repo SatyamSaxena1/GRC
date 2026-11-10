@@ -58,3 +58,4 @@
 | [055](055-google-workspace-by-upload.md) | Google Workspace evidence arrives from the customer's own script | Accepted |
 | [056](056-policy-library.md) | A policy library with approval and each person's own acceptance | Accepted |
 | [057](057-risk-register.md) | A risk register where fixed rules score and a person signs | Accepted |
+| [058](058-first-week-checklist-and-drift.md) | A first-week checklist read from real data, and drift counted from a verdict history | Accepted |
