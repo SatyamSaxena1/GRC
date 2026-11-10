@@ -63,12 +63,12 @@ def _out(p: PolicyDoc, people: dict[str, str], accepted: set[str], actor: Actor,
         "id": p.id, "title": p.title, "version": p.version, "status": p.status,
         "approved_by": p.approved_by, "approved_at": p.approved_at.isoformat() if p.approved_at else None,
         "review_due": p.review_due.isoformat() if p.review_due else None,
-        "review": review_state(p.status, p.review_due),
+        "review": review_state(p.status, p.review_due), "archived": p.archived_at is not None,
         "people": len(people), "accepted": len(done),
         "accepted_by_me": bool(actor.user_id and actor.user_id in accepted),
     }
     if actor.role == "ORG_ADMIN":                                 # who is still to accept is for the admin only
-        out["waiting_on"] = sorted(email for uid, email in people.items() if uid not in done) if p.status == "APPROVED" else []
+        out["waiting_on"] = sorted(email for uid, email in people.items() if uid not in done) if p.status == "APPROVED" and p.archived_at is None else []
     if body:
         out["body"] = p.body
     return out
@@ -109,10 +109,13 @@ class PolicyEdit(BaseModel):
 
 
 @router.get("")
-def list_policies(actor: Actor = Depends(current_actor), db: Session = Depends(get_session)):
+def list_policies(archived: bool = False, actor: Actor = Depends(current_actor), db: Session = Depends(get_session)):
+    """Archived policies are put away: hidden unless an admin asks for them (`?archived=true`), and never counted as
+    waiting for anyone."""
     _member(actor)
     people = _people(db, actor.org_id)
     rows = db.query(PolicyDoc).filter_by(org_id=actor.org_id).order_by(PolicyDoc.title).all()
+    rows = [p for p in rows if (p.archived_at is not None) == (archived and actor.role == "ORG_ADMIN")]
     if actor.role != "ORG_ADMIN":
         rows = [p for p in rows if p.status == "APPROVED"]       # a draft is the admin's until it is approved
     # can_manage tells the page whether to offer the admin's buttons; the routes above decide for real.
@@ -122,7 +125,7 @@ def list_policies(actor: Actor = Depends(current_actor), db: Session = Depends(g
 @router.get("/{policy_id}")
 def get_policy(policy_id: str, actor: Actor = Depends(current_actor), db: Session = Depends(get_session)):
     p = _load(db, _member(actor), policy_id)
-    if p.status != "APPROVED" and actor.role != "ORG_ADMIN":
+    if (p.status != "APPROVED" or p.archived_at is not None) and actor.role != "ORG_ADMIN":
         raise HTTPException(404)
     return _out(p, _people(db, actor.org_id), _accepted(db, p), actor, body=True)
 
@@ -187,8 +190,8 @@ def accept_policy(policy_id: str, seen: Seen, actor: Actor = Depends(current_act
     p = _load(db, _member(actor), policy_id)
     if not actor.user_id:
         raise HTTPException(422, "sign in as a named person to accept a policy")
-    if p.status != "APPROVED":
-        raise HTTPException(409, "this version has not been approved yet")
+    if p.status != "APPROVED" or p.archived_at is not None:
+        raise HTTPException(409, "this policy is not open for acceptance")
     _same_version(p, seen)
     accepted = _accepted(db, p)
     if actor.user_id not in accepted:
@@ -212,3 +215,25 @@ def get_version(policy_id: str, version: int, actor: Actor = Depends(current_act
     return {"version": v.version, "title": v.title, "body": v.body, "sha256": v.sha256, "approved_by": v.approved_by,
             "approved_at": v.approved_at.isoformat(),
             "accepted_by": sorted((emails.get(a.user_id, a.user_id), a.accepted_at.isoformat()) for a in accepted)}
+
+
+def _set_archived(db: Session, actor: Actor, policy_id: str, put_away: bool) -> dict:
+    p = _load(db, _admin(actor), policy_id)
+    if (p.archived_at is not None) != put_away:
+        p.archived_at = _now() if put_away else None
+        audit_log.record(db, actor=actor.label(), request_id=actor.request_id,
+                         action="POLICY_ARCHIVED" if put_away else "POLICY_RESTORED", entity_type="policy",
+                         entity=p.id, org_id=actor.org_id, after={"title": p.title, "version": p.version})
+        db.commit()
+    return _out(p, _people(db, actor.org_id), _accepted(db, p), actor)
+
+
+@router.post("/{policy_id}/archive")
+def archive_policy(policy_id: str, actor: Actor = Depends(current_actor), db: Session = Depends(get_session)):
+    """Put a policy away. Nothing is deleted: its versions and every acceptance stay, and restoring brings it back."""
+    return _set_archived(db, actor, policy_id, True)
+
+
+@router.post("/{policy_id}/restore")
+def restore_policy(policy_id: str, actor: Actor = Depends(current_actor), db: Session = Depends(get_session)):
+    return _set_archived(db, actor, policy_id, False)

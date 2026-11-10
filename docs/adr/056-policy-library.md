@@ -26,6 +26,12 @@ record of who approved it, and no record of who accepted it.
 - **Templates:** a policy can start from any ADR-038 template, so its figures already meet every framework's rules.
 - Every write is in the audit chain (`POLICY_ADDED`, `POLICY_EDITED`, `POLICY_APPROVED`, `POLICY_ACCEPTED`).
 
+## Amendment: archive instead of delete
+- Policies can be **archived and restored** by an admin (`policy_docs.archived_at`, additive and nullable). Nothing is
+  deleted: every version and every acceptance stays. An archived policy is hidden from lists unless an admin asks, is
+  invisible to other members, cannot be accepted, and never counts as waiting. Both actions are audited.
+- Risks need nothing new: a risk is put away by setting its status to Closed (ADR-057).
+
 ## Not done, on purpose
 - Acceptance is **not yet evidence**: it does not feed any framework clause or verdict. Doing that means new clauses and
   a rules version, which a person must review (ADR-004).
