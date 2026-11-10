@@ -62,7 +62,7 @@ function NotificationsLink() {
 // Grouped by the job to be done, as the leading tools do: the compliance loop, privacy and AI rules, risk and customers,
 // the systems connected, and the workspace itself. A group with nothing in a role's menu is not drawn.
 const NAV_GROUPS: [string, string[]][] = [
-  ["Compliance", ["/evidence", "/controls", "/gaps", "/tasks", "/map"]],
+  ["Compliance", ["/frameworks", "/evidence", "/controls", "/gaps", "/tasks", "/map"]],
   ["Privacy & AI", ["/dpdp", "/dpdp/operations", "/ai-compliance"]],
   ["Risk & customers", ["/vendors", "/questionnaire"]],
   ["Integrations", ["/connections", "/code-review", "/ciso-sync"]],
