@@ -35,7 +35,7 @@ from datetime import date, datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session
 
-from app import audit_log, vendors
+from app import audit_log, drift, vendors
 from app.content.load import Content
 from app.evaluate import evaluate
 from app.ai import decision
@@ -582,6 +582,10 @@ def _weekly_report() -> int:
     with session_scope() as db:
         for org in db.query(Organization).order_by(Organization.name).all():
             set_tenant(db, org.id)
+            # Record every control's verdict first, so what moved since the last run (an auditor's lock, say, which no
+            # evaluation touches) is in this week's figures (ADR-058).
+            drift.snapshot(db, org.id)
+            db.commit()
             message = reports.text(reports.build(db, org))
             print(f"{org.name}: {message}")
             sent += notify.digest(db, org.id, [{"kind": "weekly_report", "severity": "info",

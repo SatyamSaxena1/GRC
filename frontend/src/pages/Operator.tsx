@@ -35,7 +35,7 @@ export function OperatorPage() {
       {error && <div className="alert alert-error">{error}</div>}
       {orgs && (
         <table className="data-table static">
-          <thead><tr><th>Organisation</th><th>Plan</th><th>Frameworks</th><th>Seat limit</th><th>Trial ends</th></tr></thead>
+          <thead><tr><th>Organisation</th><th>Plan</th><th>Frameworks</th><th>Seat limit</th><th>Trial ends</th><th>First verdict</th></tr></thead>
           <tbody>
             {orgs.map((o) => (
               <tr key={o.id}>
@@ -49,6 +49,9 @@ export function OperatorPage() {
                 <td>{o.frameworks.length}{o.frameworks_limit !== null ? ` of ${o.frameworks_limit}` : ""}</td>
                 <td>{o.seats_limit ?? "no limit"}</td>
                 <td>{o.trial_ends_at ? `${new Date(o.trial_ends_at).toLocaleDateString()}${o.trial_over ? " (ended)" : ""}` : "-"}</td>
+                <td title="Minutes from the workspace being created to its first verdict (ADR-058)">
+                  {o.minutes_to_first_verdict !== null ? `${o.minutes_to_first_verdict} min` : o.created_at && !o.first_verdict_at ? "not yet" : "-"}
+                </td>
               </tr>
             ))}
           </tbody>

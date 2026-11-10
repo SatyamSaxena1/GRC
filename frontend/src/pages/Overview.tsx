@@ -5,6 +5,7 @@ import { ApiError, downloadComplianceExport, downloadOscalExport, getDashboard }
 import { useApi } from "../lib/useApi";
 import { useSession } from "../lib/session";
 import { Badge } from "../components/Badge";
+import { FirstWeekChecklist } from "../components/FirstWeekChecklist";
 import { PageTour } from "../components/PageTour";
 import { ProcessingNotice } from "../components/ProcessingNotice";
 
@@ -121,6 +122,8 @@ export function OverviewPage() {
           {" — see Evidence"}
         </Link>
       )}
+
+      <FirstWeekChecklist />
 
       {empty && (
         <div className="card empty-hero">

@@ -19,6 +19,7 @@ from app.routers import (
     activity, admin, analytics, assistant, audit, breach, ciso, findings, connections, connectors, ingest, content, controls, evidence, exceptions, export, firm,
     glossary, notifications, review, questionnaire, reports, rights_requests, templates, trust, vendors,
 )
+from app.routers import onboarding
 
 logging.basicConfig(
     level=os.environ.get("LOG_LEVEL", "INFO"),
@@ -133,6 +134,7 @@ app.include_router(controls.messages_router)
 app.include_router(controls.requests_router)
 app.include_router(analytics.router)
 app.include_router(notifications.router)
+app.include_router(onboarding.router)
 app.include_router(export.router)
 app.include_router(activity.router)
 app.include_router(content.router)
