@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app import audit_log, auth0_admin, entitlements, mailer, welcome
+from app import audit_log, auth0_admin, entitlements, mailer, onboarding, welcome
 from app.auth import Actor, admin_or_actor, require_admin
 from app.db import get_session, identity_lookup, set_firm, set_tenant
 from app.routers.content import CONTENT
@@ -346,7 +346,10 @@ def list_organizations(db: Session = Depends(get_session)):
     """Operator only (the shared admin key). organizations is not tenant-owned, so every row is visible here."""
     return [{"id": o.id, "name": o.name, "plan": o.plan, "trial_ends_at": o.trial_ends_at,
              "trial_over": entitlements.trial_over(o), "frameworks": o.frameworks,
-             "frameworks_limit": o.frameworks_limit, "seats_limit": o.seats_limit}
+             "frameworks_limit": o.frameworks_limit, "seats_limit": o.seats_limit,
+             # Activation (ADR-058): null for an organisation that predates the start time being recorded.
+             "created_at": o.created_at, "first_verdict_at": o.first_verdict_at,
+             "minutes_to_first_verdict": onboarding.minutes_to_first_verdict(o)}
             for o in db.query(Organization).order_by(Organization.name)]
 
 

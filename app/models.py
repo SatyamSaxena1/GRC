@@ -45,6 +45,10 @@ class Organization(Base):
     trial_ends_at: Mapped[datetime | None] = mapped_column(default=None)  # only read while plan is TRIAL
     frameworks_limit: Mapped[int | None] = mapped_column(default=None)  # null = unlimited
     seats_limit: Mapped[int | None] = mapped_column(default=None)  # null = unlimited
+    # Activation (ADR-058). created_at is null on every row that existed before it, so those have no figure rather
+    # than a made-up one; first_verdict_at is set once, by the first evaluation that rested on facts the platform read.
+    created_at: Mapped[datetime | None] = mapped_column(default=_now)
+    first_verdict_at: Mapped[datetime | None] = mapped_column(default=None)
 
 
 class Vendor(Base):
@@ -563,6 +567,20 @@ class VerdictRecord(Base):
     record_hash: Mapped[str] = mapped_column(String, default="")
     audit_chain_seq: Mapped[int | None] = mapped_column(Integer, default=None)
     audit_entry_hash: Mapped[str | None] = mapped_column(default=None)
+
+
+class ControlVerdictChange(Base):
+    """One control's verdict, written when it differs from the last one recorded (ADR-058). The verdict as of a date is
+    the latest row at or before it, so "turned worse this week" is a comparison of two rows. Insert-only. `verdict` is
+    the control's, by the same rule the Controls page uses (PASS | PARTIAL | FAIL | NO_EVIDENCE), not one link's."""
+    __tablename__ = "control_verdict_changes"
+    __table_args__ = (Index("ix_control_verdict_changes_org_at", "org_id", "at"),)
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"))
+    framework: Mapped[str]
+    clause: Mapped[str]
+    verdict: Mapped[str]
+    at: Mapped[datetime] = mapped_column(default=_now)
 
 
 class Finding(Base):

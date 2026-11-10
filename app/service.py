@@ -14,7 +14,7 @@ from datetime import date, datetime, timezone
 
 from sqlalchemy.orm import Session
 
-from app import audit_log, ciso_sync, provenance
+from app import audit_log, ciso_sync, drift, provenance
 from app import events, normalize
 from app.ai import decision
 from app.ai.provider import decision_gateway
@@ -710,6 +710,13 @@ def _run_pipeline(db: Session, content: Content, evidence: Evidence, actor_label
 
     _resolve_gaps_from_earlier_versions(db, evidence, still_failing, evaluated,
                                         actor_label, request_id)
+
+    # Drift history (ADR-058): each control this run judged, written if its verdict moved.
+    drift.record(db, evidence.org_id, evaluated)
+    # Activation (ADR-058): the first verdict that rests on facts the platform read, once per organisation. A run where
+    # the model returned nothing usable is not a verdict anyone could act on, so it does not start the clock's stop.
+    if evaluated and not no_facts and org.first_verdict_at is None:
+        org.first_verdict_at = datetime.now(timezone.utc)
 
     audit_log.record(
         db, actor=actor_label, action="EVIDENCE_PROCESSED", entity_type="evidence",

@@ -27,6 +27,23 @@ step is in a tamper-evident log; the DPDP Act pack for India.
 
 ## Entries
 
+### 10 Nov 2026: A first-week checklist, and "what got worse this week" (ADR-058)
+- **Say:** "A new admin now sees exactly what to do in their first week, and every tick is real: it comes from what they
+  actually did, not a box they click. And every Monday the summary says how many controls turned worse, how much evidence
+  is about to expire and which connectors have gone quiet, as counts, never names."
+- **Show:** Overview as an organisation admin of a new workspace: the "Your first week" card with five steps, each a link
+  to the page where it is done; invite two people and publish the trust page and watch it go to "5 of 5" and then vanish;
+  unpublish the trust page and the step comes back. Then Notifications: "ISO-27001 A.5.15 turned worse this week: PASS to
+  FAIL" and "Google Workspace has not been refreshed in 21 days". Then Admin, Weekly report: the new Drift sentence.
+- **Honest detail:** history starts when this ships, so the first week after it can only report what moved after the
+  first Monday run wrote a baseline. "Turned worse" is the verdict a week ago against now, not a count of events.
+  Organisations that existed before this have no start time, so they show no time-to-first-verdict.
+- **Proof:** 21 new tests: each step flipping from real data and un-ticking, only an admin seeing it, one organisation not
+  ticking another's, the first verdict stamped once and never by a run that read nothing, the recorded verdict equal to
+  the one the Controls page shows, history written only when a verdict moves, ten cases of what counts as worse, quiet
+  connectors (a failed run is not a refresh), the weekly sentence, and none of it naming a control, framework, source or file.
+- **Activation number:** the operator's organisation list now carries minutes from creation to first verdict.
+
 ### 5 Nov 2026: A personalised welcome email, and a person to answer it (interim support)
 - **Say:** "When you invite someone, they get one welcome email with first steps for their own role and a way to reach a
   person. If their sign-in link is needed, it is in that email, so the admin never has to forward it."
