@@ -9,7 +9,11 @@ record of who approved it, and no record of who accepted it.
 
 ## Decision
 - **Three stored facts, nothing inferred:** the text of each policy, who approved the current version and when, and
-  who accepted which version and when (`policy_docs`, `policy_acceptances`, both under forced row level security).
+  who accepted which version and when (`policy_docs`, `policy_versions`, `policy_acceptances`, all under forced row level security).
+- **The approved words are kept for good.** Approval writes the exact text and its SHA-256 to `policy_versions`, which is
+  never updated, so an acceptance of version N can always be read back against what that person accepted.
+- **Approve and accept name the version on screen.** If the text changed since the page was opened the server refuses
+  (409), so nobody approves or accepts words they did not see. (Both points came from the automated review of PR 114.)
 - **A change to the title or text is a new version.** It returns to draft, needs approval again, and everyone accepts
   it again. Earlier acceptances stay as history; the acceptance table is insert-only.
 - **Who may do what:** an organisation admin writes, edits and approves. Every member of the organisation, including

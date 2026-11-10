@@ -104,9 +104,9 @@ export function PoliciesPage() {
             <div style={{ marginTop: 8 }}>
               {open.status === "APPROVED" && (open.accepted_by_me
                 ? <span className="badge badge-pass">You accepted this version</span>
-                : <button className="btn btn-primary" disabled={busy} onClick={() => run(() => acceptPolicy(open.id))}>I have read and accept this policy</button>)}
+                : <button className="btn btn-primary" disabled={busy} onClick={() => run(() => acceptPolicy(open.id, open.version))}>I have read and accept this policy</button>)}
               {admin && open.status !== "APPROVED" && (
-                <button className="btn btn-primary" disabled={busy} onClick={() => run(() => approvePolicy(open.id))}>Approve this version</button>
+                <button className="btn btn-primary" disabled={busy} onClick={() => run(() => approvePolicy(open.id, open.version))}>Approve this version</button>
               )}{" "}
               {admin && <button className="btn" disabled={busy} onClick={() => setDraft({ title: open.title, body: open.body ?? "" })}>Edit</button>}
             </div>

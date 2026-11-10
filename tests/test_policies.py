@@ -8,6 +8,7 @@ from datetime import date, timedelta
 from app.models import AuditEvent
 from app.routers import policies
 
+V = 1
 TEXT = "Access to our systems is limited to people who need it, and is removed when they leave."
 
 
@@ -44,17 +45,17 @@ def test_a_policy_is_drafted_approved_and_accepted_by_each_person(client, db):
     # a draft is the admin's: a member neither sees it nor can accept it
     assert client.get("/policies", headers=_as(owner)).json() == {"can_manage": False, "policies": []}
     assert client.get(f"/policies/{p['id']}", headers=_as(owner)).status_code == 404
-    assert client.post(f"/policies/{p['id']}/accept", headers=_as(owner)).status_code == 409
-    assert client.post(f"/policies/{p['id']}/approve", headers=_as(owner)).status_code == 403
+    assert client.post(f"/policies/{p['id']}/accept", json={"version": V}, headers=_as(owner)).status_code == 409
+    assert client.post(f"/policies/{p['id']}/approve", json={"version": V}, headers=_as(owner)).status_code == 403
 
-    approved = client.post(f"/policies/{p['id']}/approve", headers=_as(admin)).json()
+    approved = client.post(f"/policies/{p['id']}/approve", json={"version": V}, headers=_as(admin)).json()
     assert approved["status"] == "APPROVED" and approved["review"] == "CURRENT" and approved["approved_by"] == f"user:{admin}"
     assert approved["people"] == 2 and approved["accepted"] == 0
     assert approved["waiting_on"] == ["admin@acme.test", "owner@acme.test"]
 
-    mine = client.post(f"/policies/{p['id']}/accept", headers=_as(owner)).json()
+    mine = client.post(f"/policies/{p['id']}/accept", json={"version": V}, headers=_as(owner)).json()
     assert mine["accepted"] == 1 and mine["accepted_by_me"] is True and "waiting_on" not in mine   # names are for the admin
-    assert client.post(f"/policies/{p['id']}/accept", headers=_as(owner)).json()["accepted"] == 1   # twice changes nothing
+    assert client.post(f"/policies/{p['id']}/accept", json={"version": V}, headers=_as(owner)).json()["accepted"] == 1   # twice changes nothing
     assert db.query(AuditEvent).filter_by(action="POLICY_ACCEPTED", entity=p["id"]).count() == 1
     assert client.get(f"/policies/{p['id']}", headers=_as(admin)).json()["waiting_on"] == ["admin@acme.test"]
     assert client.get(f"/policies/{p['id']}", headers=_as(owner)).json()["body"] == TEXT
@@ -63,8 +64,8 @@ def test_a_policy_is_drafted_approved_and_accepted_by_each_person(client, db):
 def test_changing_the_text_is_a_new_version_that_everyone_accepts_again(client, db):
     org, admin, owner = _team(client)
     p = client.post("/policies", json={"title": "Access Control Policy", "body": TEXT}, headers=_as(admin)).json()
-    client.post(f"/policies/{p['id']}/approve", headers=_as(admin))
-    client.post(f"/policies/{p['id']}/accept", headers=_as(owner))
+    client.post(f"/policies/{p['id']}/approve", json={"version": V}, headers=_as(admin))
+    client.post(f"/policies/{p['id']}/accept", json={"version": V}, headers=_as(owner))
 
     same = client.put(f"/policies/{p['id']}", json={"body": TEXT}, headers=_as(admin)).json()
     assert same["version"] == 1 and same["status"] == "APPROVED"                      # no change, no new version
@@ -73,7 +74,17 @@ def test_changing_the_text_is_a_new_version_that_everyone_accepts_again(client, 
     assert v2["version"] == 2 and v2["status"] == "DRAFT" and v2["accepted"] == 0 and v2["approved_at"] is None
     event = db.query(AuditEvent).filter_by(action="POLICY_EDITED", entity=p["id"]).one()
     assert event.before["version"] == 1 and event.after["version"] == 2
-    client.post(f"/policies/{p['id']}/approve", headers=_as(admin))
+
+    # a stale page cannot approve or accept words it never showed
+    assert client.post(f"/policies/{p['id']}/approve", json={"version": 1}, headers=_as(admin)).status_code == 409
+    client.post(f"/policies/{p['id']}/approve", json={"version": 2}, headers=_as(admin))
+    assert client.post(f"/policies/{p['id']}/accept", json={"version": 1}, headers=_as(owner)).status_code == 409
+
+    # the words of version 1 are still there, with who accepted them
+    old = client.get(f"/policies/{p['id']}/versions/1", headers=_as(admin)).json()
+    assert old["body"] == TEXT and [e for e, _ in old["accepted_by"]] == ["owner@acme.test"]
+    assert client.get(f"/policies/{p['id']}/versions/2", headers=_as(admin)).json()["body"].endswith("90 days.")
+    assert client.get(f"/policies/{p['id']}/versions/1", headers=_as(owner)).status_code == 403
     assert client.get(f"/policies/{p['id']}", headers=_as(owner)).json()["accepted_by_me"] is False
     assert client.put(f"/policies/{p['id']}", json={"body": TEXT}, headers=_as(owner)).status_code == 403
 
@@ -84,7 +95,7 @@ def test_a_policy_can_start_from_a_template_and_a_deactivated_person_no_longer_c
     assert p["title"] == "Incident Response Policy" and "## Purpose" in p["body"]
     assert client.post("/policies", json={"template_id": "nope"}, headers=_as(admin)).status_code == 422
     assert client.post("/policies", json={"title": "Only a title"}, headers=_as(admin)).status_code == 422
-    client.post(f"/policies/{p['id']}/approve", headers=_as(admin))
+    client.post(f"/policies/{p['id']}/approve", json={"version": V}, headers=_as(admin))
     client.patch(f"/admin/users/{owner}", json={"active": False}, headers=_as(admin))
     assert client.get(f"/policies/{p['id']}", headers=_as(admin)).json()["people"] == 1
 
@@ -94,11 +105,11 @@ def test_another_organisation_and_an_unnamed_caller_are_kept_out(client):
     other = _org(client, "Other")
     stranger = _user(client, "x@other.test", other, "ORG_ADMIN")
     p = client.post("/policies", json={"title": "Access Control Policy", "body": TEXT}, headers=_as(admin)).json()
-    client.post(f"/policies/{p['id']}/approve", headers=_as(admin))
+    client.post(f"/policies/{p['id']}/approve", json={"version": V}, headers=_as(admin))
     assert client.get("/policies", headers=_as(stranger)).json() == {"can_manage": True, "policies": []}
     for call in (client.get(f"/policies/{p['id']}", headers=_as(stranger)),
-                 client.post(f"/policies/{p['id']}/accept", headers=_as(stranger)),
-                 client.post(f"/policies/{p['id']}/approve", headers=_as(stranger))):
+                 client.post(f"/policies/{p['id']}/accept", json={"version": V}, headers=_as(stranger)),
+                 client.post(f"/policies/{p['id']}/approve", json={"version": V}, headers=_as(stranger))):
         assert call.status_code == 404
     # the organisation's shared token is not a person, so it cannot accept on anyone's behalf
-    assert client.post(f"/policies/{p['id']}/accept", headers={"authorization": f"org:{org}"}).status_code == 422
+    assert client.post(f"/policies/{p['id']}/accept", json={"version": V}, headers={"authorization": f"org:{org}"}).status_code == 422

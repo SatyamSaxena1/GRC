@@ -1,6 +1,6 @@
 """policy library and acceptances (ADR-056), under row level security from the start
 
-Additive: two new tables. Nothing existing changes.
+Additive: three new tables. Nothing existing changes.
 
 Revision ID: b9c0d1e2f3a4
 Revises: a8b9c0d1e2f3
@@ -44,9 +44,23 @@ def upgrade() -> None:
         sa.UniqueConstraint("policy_id", "version", "user_id", name="uq_policy_acceptance"),
     )
     op.create_index("ix_policy_acceptances_org", "policy_acceptances", ["org_id", "policy_id"])
+    op.create_table(
+        "policy_versions",
+        sa.Column("id", sa.String(), primary_key=True),
+        sa.Column("org_id", sa.String(), sa.ForeignKey("organizations.id"), nullable=False),
+        sa.Column("policy_id", sa.String(), sa.ForeignKey("policy_docs.id"), nullable=False),
+        sa.Column("version", sa.Integer(), nullable=False),
+        sa.Column("title", sa.String(), nullable=False),
+        sa.Column("body", sa.Text(), nullable=False),
+        sa.Column("sha256", sa.String(), nullable=False),
+        sa.Column("approved_by", sa.String(), nullable=False, server_default=""),
+        sa.Column("approved_at", sa.DateTime(), nullable=False),
+        sa.UniqueConstraint("policy_id", "version", name="uq_policy_version"),
+    )
+    op.create_index("ix_policy_versions_org", "policy_versions", ["org_id", "policy_id"])
     if op.get_bind().dialect.name != "postgresql":
         return
-    for table in ("policy_docs", "policy_acceptances"):
+    for table in ("policy_docs", "policy_acceptances", "policy_versions"):
         op.execute(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY")
         op.execute(f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY")
         op.execute(f"""
@@ -57,6 +71,8 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    op.drop_index("ix_policy_versions_org", table_name="policy_versions")
+    op.drop_table("policy_versions")
     op.drop_index("ix_policy_acceptances_org", table_name="policy_acceptances")
     op.drop_table("policy_acceptances")
     op.drop_index("ix_policy_docs_org", table_name="policy_docs")

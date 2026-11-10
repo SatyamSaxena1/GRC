@@ -159,8 +159,9 @@ export const listPolicies = () => request<{ can_manage: boolean; policies: Polic
 export const getPolicy = (id: string) => request<Policy>("GET", `/policies/${id}`);
 export const addPolicy = (p: { template_id: string } | { title: string; body: string }) => request<Policy>("POST", "/policies", { json: p });
 export const editPolicy = (id: string, p: { title: string; body: string }) => request<Policy>("PUT", `/policies/${id}`, { json: p });
-export const approvePolicy = (id: string) => request<Policy>("POST", `/policies/${id}/approve`);
-export const acceptPolicy = (id: string) => request<Policy>("POST", `/policies/${id}/accept`);
+// Both name the version on screen: the server refuses if the text has changed since it was read.
+export const approvePolicy = (id: string, version: number) => request<Policy>("POST", `/policies/${id}/approve`, { json: { version } });
+export const acceptPolicy = (id: string, version: number) => request<Policy>("POST", `/policies/${id}/accept`, { json: { version } });
 
 /** The vendor register (ADR-042): tier and review status come from fixed rules on the server. */
 export type VendorReport = {

@@ -101,6 +101,22 @@ class PolicyDoc(Base):
     created_by: Mapped[str] = mapped_column(String, default="")
 
 
+class PolicyVersion(Base):
+    """The exact text of one approved version (ADR-056), written once at approval and never changed, so an acceptance
+    of version N can always be read back against the words that person accepted."""
+    __tablename__ = "policy_versions"
+    __table_args__ = (UniqueConstraint("policy_id", "version", name="uq_policy_version"),)
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"))
+    policy_id: Mapped[str] = mapped_column(ForeignKey("policy_docs.id"))
+    version: Mapped[int]
+    title: Mapped[str]
+    body: Mapped[str] = mapped_column(Text)
+    sha256: Mapped[str]
+    approved_by: Mapped[str] = mapped_column(String, default="")
+    approved_at: Mapped[datetime] = mapped_column(default=_now)
+
+
 class PolicyAcceptance(Base):
     """One person accepted one version of one policy (ADR-056). Insert-only: there is no update or delete."""
     __tablename__ = "policy_acceptances"
