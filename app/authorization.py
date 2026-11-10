@@ -20,7 +20,7 @@ from sqlalchemy.orm import Session
 
 from app import audit_log
 from app.auth import Actor
-from app.models import ControlAssignment, Engagement, EngagementAllocation, OrgControl
+from app.models import ControlAssignment, Engagement, EngagementAllocation, OrgControl, Risk, User
 
 logger = logging.getLogger("app.authorization")
 
@@ -108,6 +108,31 @@ def assert_may_access_control(db: Session, actor: Actor, framework: str, clause:
                    reason="control not assigned to this user",
                    framework=framework, clause=clause)
     return control
+
+
+def risk_scope(db: Session, actor: Actor) -> str | None:
+    """Which risks the caller may read (ADR-056). None means the whole register (org admin, compliance
+    viewer); otherwise the lower-cased email of a control owner, who sees only risks naming them as owner.
+    An auditor, a firm-side caller and anyone with no organisation get a plain 403: the register is the
+    organisation's own working document, not part of an engagement."""
+    if actor.engagement_id or not actor.org_id:
+        raise HTTPException(403, "the risk register is for the organisation's own team")
+    if actor.role in ("ORG_ADMIN", "COMPLIANCE_VIEWER"):
+        return None
+    user = db.get(User, actor.user_id) if actor.user_id else None
+    if actor.role != "CONTROL_OWNER" or user is None:
+        raise HTTPException(403, "the risk register is for the organisation's own team")
+    return user.email.strip().lower()
+
+
+def assert_may_change_risk(db: Session, actor: Actor, risk: Risk) -> None:
+    """An org admin changes any risk; a control owner changes only risks that name them as owner, and a risk
+    that is not theirs is answered as absent, like an unassigned control. A viewer changes nothing."""
+    if not actor.can_write:
+        raise HTTPException(403, "the compliance-viewer role cannot change the risk register — access is read-only")
+    scope = risk_scope(db, actor)
+    if scope is not None and risk.owner_email != scope:
+        raise deny(db, actor, f"risk:{risk.id}", reason="risk not owned by this user")
 
 
 def visible_clauses(db: Session, actor: Actor) -> set[tuple[str, str]] | None:

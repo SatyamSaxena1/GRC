@@ -20,6 +20,7 @@ on screen, and where the proof is. Add to the top. Say only what the live site d
 | Questionnaire answers | **Done** (PR 63, 64, ADR-040): status from verdicts, model only words it |
 | Weekly report | **Done** (PR 66, 73; ADR-041): counts only, vendor reviews included, posts to Discord on Mondays |
 | Vendor risk | **Done for v1** (PR 68, 71; ADR-042, 043): register, rule-decided tier, review dates, reports as proof |
+| Risk register | **Done for v1** (ADR-056): rule-scored heat map, owners, treatment, review dates; a model only drafts wording |
 | AI help on the live site | **Working for demos** (model on a personal machine, reached through a tunnel; not for real use) |
 
 Where we lead: the verdict comes from fixed rules, never from a model; a named human signs and locks; every
@@ -342,6 +343,17 @@ step is in a tamper-evident log; the DPDP Act pack for India.
   has 2-step verification enforced, and the admin audit log is active. We never hold a Google credential of yours."
 - **Show:** the Google Workspace card on Connections: make the token, then `--dry-run` the script and upload.
 - **Proof:** the card lists the DPDP Google Workspace clause; `GET /connectors` shows the source as received.
+
+### 10 Nov 2026: A risk register
+- **Say:** "Write down what could go wrong, say how likely and how bad, and the score and its band come from fixed
+  rules, never from a model. Each risk has an owner, a treatment, a review date, and the controls that treat it. Overdue
+  reviews are flagged, and the weekly report counts them."
+- **Show:** Risks in the sidebar (under Risk and customers): the heat map, click a square to list just those risks, open
+  one and move it from "before treatment" to "after treatment", then "Suggest wording with AI" and note it is only a draft.
+- **Honest detail:** the model can word a description and a plan but cannot set a score; whoever saves is the signer. There is
+  one fixed 5 by 5 scale, and no separate approval step for accepting a risk yet.
+- **Proof:** tests for the scoring bands, role and tenant isolation (including on real Postgres), the audit trail, and a
+  draft that carries a score being ignored; ADR-056.
 
 ## Scenes still to film
 - Team card with Deactivate/Reactivate (needs an org admin session).

@@ -327,3 +327,25 @@ def test_review_standards_publish_under_rls_and_stay_with_their_tenant(client, e
         with engine.begin() as conn:  # transaction-local binding, as the app does
             conn.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": tenant})
             assert conn.execute(text("SELECT count(*) FROM review_standards")).scalar_one() == expected
+
+
+def test_one_tenant_cannot_read_or_write_another_tenants_risks_at_the_database(client, engine):
+    """The risk register (ADR-056), at the database: the policy, not the router's WHERE clause, hides the row
+    and refuses a cross-tenant write."""
+    org_a, org_b = _org(client, "Acme"), _org(client, "Beta")
+    created = client.post("/risks", headers={"authorization": f"org:{org_a}"}, json={
+        "title": "Laptop stolen with customer data", "inherent_likelihood": 4, "inherent_impact": 4})
+    assert created.status_code == 201, created.text
+    risk_id = created.json()["id"]
+
+    def visible(tenant):
+        with engine.begin() as conn:
+            conn.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": tenant})
+            return conn.execute(text("SELECT count(*) FROM risks WHERE id = :id"), {"id": risk_id}).scalar_one()
+
+    assert visible(org_a) == 1
+    assert visible(org_b) == 0
+    with pytest.raises(Exception, match="row-level security"), engine.begin() as conn:
+        conn.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": org_b})
+        conn.execute(text("INSERT INTO risks (id, org_id, title, inherent_likelihood, inherent_impact, control_ids, "
+                          "created_at) VALUES ('x', :o, 't', 1, 1, '[]', now())"), {"o": org_a})

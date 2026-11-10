@@ -66,6 +66,30 @@ class Vendor(Base):
     created_by: Mapped[str] = mapped_column(String, default="")
 
 
+class Risk(Base):
+    """One line of the risk register (ADR-056). Scores, bands and review state are derived from these columns
+    by fixed rules at read time (app/risks.py), never stored and never set by a model."""
+    __tablename__ = "risks"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"), index=True)
+    title: Mapped[str]
+    description: Mapped[str] = mapped_column(Text, default="")
+    category: Mapped[str] = mapped_column(String, default="OTHER")  # see app/risks.py::CATEGORIES
+    owner_email: Mapped[str] = mapped_column(String, default="")  # lower case; empty = no owner yet
+    inherent_likelihood: Mapped[int]  # 1-5, before any treatment
+    inherent_impact: Mapped[int]  # 1-5
+    treatment: Mapped[str | None] = mapped_column(String, default=None)  # MITIGATE | ACCEPT | TRANSFER | AVOID; null = undecided
+    treatment_plan: Mapped[str] = mapped_column(Text, default="")
+    residual_likelihood: Mapped[int | None] = mapped_column(default=None)  # both set or both null
+    residual_impact: Mapped[int | None] = mapped_column(default=None)
+    status: Mapped[str] = mapped_column(String, default="OPEN")  # OPEN | IN_TREATMENT | CLOSED
+    next_review_date: Mapped[date | None] = mapped_column(default=None)
+    last_reviewed_at: Mapped[datetime | None] = mapped_column(default=None)
+    control_ids: Mapped[list[str]] = mapped_column(JSON, default=list)  # OrgControl ids this risk is treated by
+    created_at: Mapped[datetime] = mapped_column(default=_now)
+    created_by: Mapped[str] = mapped_column(String, default="")
+
+
 class VendorReport(Base):
     """A SOC 2 / ISO 27001 report (or other document) attached to a vendor (ADR-043). Immutable: there is
     no update or delete. Whether it counts as an attestation is a fixed rule at read time."""

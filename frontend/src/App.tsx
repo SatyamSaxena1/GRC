@@ -8,6 +8,7 @@ import { PitchPage } from "./pages/Pitch";
 import { PublicTrustPage } from "./pages/PublicTrust";
 import { QuestionnairePage } from "./pages/Questionnaire";
 import { VendorsPage } from "./pages/Vendors";
+import { RisksPage } from "./pages/Risks";
 import { FrameworksPage } from "./pages/Frameworks";
 import { ConnectionsPage } from "./pages/Connections";
 import { JeffDemoPage } from "./pages/jeff/JeffDemo";
@@ -84,6 +85,7 @@ export function App() {
         <Route path="/glossary" element={<GlossaryPage />} />
         <Route path="/questionnaire" element={<QuestionnairePage />} />
         <Route path="/vendors" element={<VendorsPage />} />
+        <Route path="/risks" element={<RisksPage />} />
         <Route path="/connections" element={<ConnectionsPage />} />
         <Route path="/ai-compliance" element={<AiCompliancePage />} />
         <Route path="/dpdp" element={<DpdpPage />} />

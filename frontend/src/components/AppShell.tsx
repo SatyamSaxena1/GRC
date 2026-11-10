@@ -64,7 +64,7 @@ function NotificationsLink() {
 const NAV_GROUPS: [string, string[]][] = [
   ["Compliance", ["/frameworks", "/evidence", "/controls", "/gaps", "/tasks", "/map"]],
   ["Privacy & AI", ["/dpdp", "/dpdp/operations", "/ai-compliance"]],
-  ["Risk & customers", ["/vendors", "/questionnaire"]],
+  ["Risk & customers", ["/risks", "/vendors", "/questionnaire"]],
   ["Integrations", ["/connections", "/code-review", "/ciso-sync"]],
   ["Workspace", ["/activity", "/admin", "/glossary"]],
 ];
