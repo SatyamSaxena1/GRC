@@ -149,7 +149,7 @@ export const makeUploadToken = (source: "aws" | "m365" | "hrms" | "google-worksp
   request<ConnectionsState & { new_token: string }>("POST", `/connections/${source}/token`);
 export const removeUpload = (source: "aws" | "m365" | "hrms" | "google-workspace") => request<ConnectionsState>("DELETE", `/connections/${source}`);
 
-/** The policy library (ADR-056): versions, approval, and each person's own acceptance. */
+/** The policy library (ADR-057): versions, approval, and each person's own acceptance. */
 export type Policy = {
   id: string; title: string; version: number; status: "DRAFT" | "APPROVED"; approved_by: string; approved_at: string | null;
   review_due: string | null; review: "NOT_APPROVED" | "CURRENT" | "DUE_SOON" | "OVERDUE";
@@ -192,6 +192,45 @@ export const downloadVendorReport = (vendorId: string, r: VendorReport) =>
   downloadFile(`/vendors/${vendorId}/reports/${r.id}/file`, r.filename);
 export const reviewVendor = (id: string, note: string) =>
   request<Vendor>("POST", `/vendors/${id}/review`, { json: { note } });
+
+/** The risk register (ADR-057): scores, bands and review states come from fixed rules on the server, never from a model. */
+export type RiskBand = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+export type RiskRating = { likelihood: number; impact: number; score: number; band: RiskBand };
+export type Risk = {
+  id: string; title: string; description: string; category: string; owner_email: string;
+  treatment: "MITIGATE" | "ACCEPT" | "TRANSFER" | "AVOID" | null; treatment_plan: string;
+  status: "OPEN" | "IN_TREATMENT" | "CLOSED";
+  inherent: RiskRating; residual: RiskRating | null; current: RiskRating; review_every_days: number;
+  next_review_date: string | null; last_reviewed_at: string | null;
+  review_state: "OVERDUE" | "DUE_SOON" | "CURRENT" | "CLOSED";
+  controls: { id: string; framework: string; clause: string }[];
+  created_at: string; created_by: string;
+};
+export type RiskHeatCell = RiskRating & { count: number };
+export type RiskRegister = {
+  risks: Risk[];
+  summary: { open: number; by_band: Record<RiskBand, number>; reviews_overdue: number };
+  heatmap: { inherent: RiskHeatCell[]; current: RiskHeatCell[] };
+  bands: { band: RiskBand; from: number }[];
+  /** May change at least the risks listed here: an admin, or a control owner for their own. A viewer may not. */
+  can_write: boolean;
+  /** An organisation admin: may also add risks, reassign owners and link controls. */
+  can_write_all: boolean;
+};
+export type RiskIn = {
+  title: string; description: string; category: string; owner_email: string;
+  inherent_likelihood: number; inherent_impact: number; treatment: Risk["treatment"]; treatment_plan: string;
+  residual_likelihood: number | null; residual_impact: number | null; status: Risk["status"];
+  next_review_date: string | null; control_ids: string[];
+};
+export type RiskDraft = { description: string; treatment_plan: string; model: string; notice: string };
+export const listRisks = () => request<RiskRegister>("GET", "/risks");
+export const addRisk = (r: Partial<RiskIn> & Pick<RiskIn, "title" | "inherent_likelihood" | "inherent_impact">) =>
+  request<Risk>("POST", "/risks", { json: r });
+export const updateRisk = (id: string, patch: Partial<RiskIn>) => request<Risk>("PATCH", `/risks/${id}`, { json: patch });
+export const reviewRisk = (id: string, note: string) => request<Risk>("POST", `/risks/${id}/review`, { json: { note } });
+/** Wording only: nothing is stored and no score is set. */
+export const draftRisk = (title: string, context: string) => request<RiskDraft>("POST", "/risks/draft", { json: { title, context } });
 
 /** The weekly compliance report (ADR-041): the same figures the cron posts to the webhook. */
 export type WeeklyReport = {

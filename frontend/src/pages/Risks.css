@@ -1,0 +1,47 @@
+/* Risk register (ADR-057). Band colours reuse the app's own tokens; every cell and badge also says its band in
+   words, so colour is never the only signal. */
+.risk-summary { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+.risk-summary > div { min-width: 110px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; }
+.risk-summary span { display: block; color: var(--text-muted); font-size: 11px; text-transform: uppercase; }
+.risk-summary strong { display: block; font-size: 22px; margin-top: 2px; }
+.risk-summary .is-warn strong { color: var(--warn); }
+
+.risk-top { display: grid; grid-template-columns: auto 1fr; gap: 24px; align-items: start; margin-bottom: 20px; }
+@media (max-width: 760px) { .risk-top { grid-template-columns: 1fr; } }
+
+.heat-toggle { display: inline-flex; gap: 0; margin-bottom: 8px; }
+.heat-toggle button { border: 1px solid var(--border); background: var(--panel); padding: 5px 12px; font-size: 12px; cursor: pointer; }
+.heat-toggle button:first-child { border-radius: 8px 0 0 8px; }
+.heat-toggle button:last-child { border-radius: 0 8px 8px 0; border-left: 0; }
+.heat-toggle button[aria-pressed="true"] { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+.heat { display: grid; grid-template-columns: 22px repeat(5, 54px); grid-auto-rows: 44px; gap: 3px; align-items: stretch; }
+.heat-axis { display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--text-muted); }
+.heat-cell { border: 2px solid transparent; border-radius: 6px; font-size: 15px; font-weight: 700; cursor: pointer; line-height: 1.1; padding: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.heat-cell small { font-size: 10px; font-weight: 500; opacity: .8; }
+.heat-cell.is-empty { font-weight: 400; opacity: .75; }
+.heat-cell[aria-pressed="true"] { border-color: var(--text); }
+
+.band-LOW { background: var(--success-bg); color: var(--success); }
+.band-MEDIUM { background: var(--warn-bg); color: var(--warn); }
+.band-HIGH { background: #f6d5cf; color: #8f2a1d; }
+.band-CRITICAL { background: var(--danger); color: #fff; }
+.band-chip { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+
+.risk-legend { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.risk-title-cell strong { display: block; }
+.risk-title-cell .muted { font-size: 12px; }
+.risk-row-overdue td:first-child { box-shadow: inset 3px 0 0 var(--warn); }
+.risk-filter { margin-bottom: 8px; font-size: 13px; }
+
+.risk-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 14px 0; }
+.risk-form label { display: grid; gap: 5px; font-size: 12px; font-weight: 600; }
+.risk-form .wide { grid-column: 1 / -1; }
+.risk-form textarea, .risk-form input, .risk-form select { padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel); width: 100%; font: inherit; font-weight: 400; }
+.risk-form textarea { min-height: 84px; resize: vertical; }
+.risk-score-preview { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.risk-draft { border: 1px dashed var(--primary); border-radius: 8px; padding: 12px; background: #eef1fb; margin-bottom: 14px; font-size: 13px; }
+.risk-draft pre { white-space: pre-wrap; font: inherit; margin: 6px 0; }
+.risk-controls { max-height: 150px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; display: grid; gap: 4px; }
+.risk-controls label { display: flex; align-items: center; gap: 8px; font-weight: 400; font-size: 13px; }
+.risk-controls input { width: auto; }

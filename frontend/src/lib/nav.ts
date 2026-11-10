@@ -84,6 +84,10 @@ export const ORG_NAV: NavItem[] = [
     to: "/policies", label: "Policies",
     hint: "Your organisation's own policies: an admin approves each version and every person accepts it for themselves.",
   },
+  {
+    to: "/risks", label: "Risks",
+    hint: "What could go wrong, how bad it is by fixed rules, what you are doing about it, who owns it and when it is next reviewed. A model may suggest wording; it never sets a score.",
+  },
 ];
 
 // Everyone on the organisation's side reads and accepts policies, so the owner menu carries it too.
@@ -104,6 +108,8 @@ export const OWNER_NAV: NavItem[] = [
   ORG_NAV[12],
   ORG_NAV[13],
   POLICIES,
+  // By path, not index: a control owner sees only the risks that name them as owner (ADR-057).
+  ORG_NAV.find((item) => item.to === "/risks")!,
 ];
 
 export const FIRM_NAV: NavItem[] = [
@@ -150,7 +156,7 @@ export function navFor(identity: Identity | null): NavItem[] {
 // rendered separately (AppShell's NotificationsLink), so it is listed here too.
 const STAGE: Record<string, string> = {
   "/evidence": "Collect", "/map": "Collect",
-  "/overview": "Assess", "/frameworks": "Assess", "/questionnaire": "Assure", "/vendors": "Assess", "/connections": "Act", "/controls": "Assess", "/gaps": "Assess", "/code-review": "Assess",
+  "/overview": "Assess", "/frameworks": "Assess", "/questionnaire": "Assure", "/vendors": "Assess", "/connections": "Act", "/risks": "Assess", "/controls": "Assess", "/gaps": "Assess", "/code-review": "Assess",
   "/tasks": "Act", "/policies": "Act", "/notifications": "Act", "/dpdp/operations": "Act", "/admin": "Act",
   "/firm": "Assure", "/activity": "Assure", "/ciso-sync": "Assure",
   "/ai-compliance": "Regulate", "/dpdp": "Regulate", "/glossary": "Regulate",

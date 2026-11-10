@@ -14,9 +14,9 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app import drift, monitor, vendors
+from app import drift, monitor, risks, vendors
 from app.models import (
-    AuditEvent, Evidence, EvidenceControlLink, GapRow, Organization, TaskRow, Vendor, VendorReport,
+    AuditEvent, Evidence, EvidenceControlLink, GapRow, Organization, Risk, TaskRow, Vendor, VendorReport,
 )
 from app.routers import trust
 
@@ -35,6 +35,16 @@ def vendor_counts(db: Session, org: Organization, now: datetime) -> dict:
     soon = sum(r["state"] == "DUE_SOON" for _, r in rows)
     return {"active": len(rows), "reviews_overdue": overdue, "reviews_due_soon": soon}
 
+
+def risk_counts(db: Session, org: Organization, now: datetime) -> dict:
+    """Open risks, how many are high or critical, and how many are overdue for review, by the same rules as the
+    Risks page. Counts only: a risk's title can say what the organisation is worried about, so it never goes in
+    a report."""
+    rows = db.query(Risk).filter_by(org_id=org.id).all()
+    open_rows = [r for r in rows if r.status != "CLOSED"]
+    serious = sum(risks.band(risks.score(*risks.position(r))) in ("HIGH", "CRITICAL") for r in open_rows)
+    return {"open": len(open_rows), "high_or_critical": serious,
+            "reviews_overdue": risks.overdue_count(rows, now.date())}
 
 def drift_counts(db: Session, org: Organization, now: datetime) -> dict:
     """What moved the wrong way, as counts (ADR-058): controls that turned worse this week, evidence expiring within the
@@ -70,6 +80,7 @@ def build(db: Session, org: Organization, now: datetime | None = None) -> dict:
                                                       TaskRow.due_at.isnot(None), TaskRow.due_at < now).count(),
         },
         "vendors": vendor_counts(db, org, now),
+        "risks": risk_counts(db, org, now),
         "drift": drift_counts(db, org, now),
     }
 
@@ -80,6 +91,12 @@ def _vendor_sentence(v: dict) -> str:
         return ""
     return f" Vendors: {v['active']} active, {v['reviews_overdue']} reviews overdue, {v['reviews_due_soon']} due soon."
 
+
+def _risk_sentence(k: dict) -> str:
+    """Said only when the organisation keeps a risk register at all."""
+    if not k["open"]:
+        return ""
+    return f" Risks: {k['open']} open, {k['high_or_critical']} high or critical, {k['reviews_overdue']} reviews overdue."
 
 def _n(count: int, one: str, many: str) -> str:
     return f"{count} {one if count == 1 else many}"
@@ -107,7 +124,7 @@ def text(report: dict) -> str:
             f"This week: {w['new_gaps']} new gaps, {w['gaps_resolved']} resolved, "
             f"{w['evidence_collected_or_uploaded']} evidence collections or uploads, {w['controls_locked']} controls locked. "
             f"Open now: {o['gaps']} gaps, {o['tasks_overdue']} overdue tasks."
-            + _vendor_sentence(report["vendors"]) + _drift_sentence(report["drift"]))
+            + _vendor_sentence(report["vendors"]) + _risk_sentence(report["risks"]) + _drift_sentence(report["drift"]))
 
 
 def markdown(report: dict) -> str:
@@ -117,6 +134,9 @@ def markdown(report: dict) -> str:
     v, d = report["vendors"], report["drift"]
     vendor_md = (f"\n## Vendors\n- Active: {v['active']}\n- Reviews overdue or never done: {v['reviews_overdue']}\n"
                  f"- Reviews due within 30 days: {v['reviews_due_soon']}\n") if v["active"] else ""
+    k = report["risks"]
+    risk_md = (f"\n## Risks\n- Open: {k['open']}\n- High or critical: {k['high_or_critical']}\n"
+               f"- Reviews overdue: {k['reviews_overdue']}\n") if k["open"] else ""
     return f"""# Weekly compliance report: {report['organisation']}
 
 {p['from']} to {p['to']}
@@ -139,7 +159,7 @@ def markdown(report: dict) -> str:
 ## Open now
 - Gaps: {o['gaps']}
 - Overdue tasks: {o['tasks_overdue']}
-{vendor_md}
+{vendor_md}{risk_md}
 ## Drift
 - Controls that turned worse this week: {d['controls_worse']}
 - Evidence expiring within {d['expiry_days']} days: {d['evidence_expiring']} ({d['evidence_expired']} already expired)
