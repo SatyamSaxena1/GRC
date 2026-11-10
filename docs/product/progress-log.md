@@ -325,6 +325,12 @@ step is in a tamper-evident log; the DPDP Act pack for India.
 - **Show:** sign in as the org admin, then as a control owner, and compare the menus.
 - **Proof:** Overview is first; Vendors and Questionnaires now sit together; Connections sits with Code review and CISO sync.
 
+### 10 Nov 2026: A page for each framework
+- **Say:** "Pick a framework and see how ready you are, and exactly which clauses still need something. Not
+  subscribed yet? It shows what the evidence you already have would satisfy."
+- **Show:** Frameworks in the sidebar, pick PCI DSS, switch between "Needs attention" and "All clauses".
+- **Proof:** the percentages match the Overview, because both read the same readiness figures.
+
 ## Scenes still to film
 - Team card with Deactivate/Reactivate (needs an org admin session).
 - AI help (Explain, Ask AI) once the model has a stable address.
