@@ -331,6 +331,12 @@ step is in a tamper-evident log; the DPDP Act pack for India.
 - **Show:** Frameworks in the sidebar, pick PCI DSS, switch between "Needs attention" and "All clauses".
 - **Proof:** the percentages match the Overview, because both read the same readiness figures.
 
+### 10 Nov 2026: Plans, limits and a read-only ended trial
+- **Say:** "Each customer now has a plan: how many frameworks and people. When a trial ends the workspace turns
+  read-only. Nothing is deleted, and one click from us turns it back on."
+- **Show:** the plan panel on Admin, then the operator page changing a plan; try inviting one person past the limit.
+- **Proof:** `GET /admin/usage` shows seats and frameworks used against the limit; the refusal is a clear 402 message.
+
 ## Scenes still to film
 - Team card with Deactivate/Reactivate (needs an org admin session).
 - AI help (Explain, Ask AI) once the model has a stable address.

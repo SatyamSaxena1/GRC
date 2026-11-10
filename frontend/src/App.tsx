@@ -3,6 +3,7 @@ import { AppShell } from "./components/AppShell";
 import { useSession } from "./lib/session";
 import { LoginPage } from "./pages/Login";
 import { OidcCallbackPage } from "./pages/OidcCallback";
+import { OperatorPage } from "./pages/Operator";
 import { PitchPage } from "./pages/Pitch";
 import { PublicTrustPage } from "./pages/PublicTrust";
 import { QuestionnairePage } from "./pages/Questionnaire";
@@ -55,6 +56,7 @@ export function App() {
     <DemoGate />
     <Routes>
       <Route path="/trust/:token" element={<PublicTrustPage />} />
+      <Route path="/operator" element={<OperatorPage />} />
       <Route path="/pitch" element={<PitchPage />} />
       <Route path="/jeff" element={<JeffDemoPage />} />
       <Route path="/login" element={<LoginPage />} />

@@ -19,7 +19,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app import audit_log
+from app import audit_log, entitlements
 from app.auth import Actor, current_actor
 from app.db import get_session, identity_lookup, set_firm, set_tenant
 from app.models import (
@@ -137,6 +137,7 @@ def approve_onboarding_request(request_id: str, body: ApprovalIn,
         raise HTTPException(422, "an approved engagement needs at least one framework")
 
     org = Organization(name=req.org_name, frameworks=frameworks)
+    entitlements.apply_plan(org, "TRIAL")  # a new prospect starts on a trial; the operator moves them on
     db.add(org)
     db.flush()
     # The firm's session carries only app.firm_id; the tenant being created has

@@ -224,6 +224,30 @@ export const listTeam = () => request<TeamUser[]>("GET", "/admin/users");
 export const updateTeamUser = (id: string, patch: { role?: string; active?: boolean }) =>
   request<TeamUser>("PATCH", `/admin/users/${id}`, { json: patch });
 
+// ---------------------------------------------------------------- plans and usage (ADR-054)
+
+export type Usage = {
+  plan: string | null; trial_ends_at: string | null; trial_over: boolean;
+  frameworks: { used: number; limit: number | null; names: string[] };
+  seats: { used: number; limit: number | null };
+  evidence_count: number; last_collection: string | null;
+};
+export const getUsage = () => request<Usage>("GET", "/admin/usage");
+
+export type OperatorOrg = {
+  id: string; name: string; plan: string | null; trial_ends_at: string | null; trial_over: boolean;
+  frameworks: string[]; frameworks_limit: number | null; seats_limit: number | null;
+};
+/** Operator calls carry the shared admin key. It is typed in by the operator and held in memory only. */
+async function operator<T>(key: string, method: string, path: string, json?: unknown): Promise<T> {
+  const headers: Record<string, string> = { "x-admin-key": key };
+  if (json !== undefined) headers["Content-Type"] = "application/json";
+  return handle<T>(await fetch(path, { method, headers, body: json !== undefined ? JSON.stringify(json) : undefined }));
+}
+export const operatorListOrgs = (key: string) => operator<OperatorOrg[]>(key, "GET", "/admin/organizations");
+export const operatorSetPlan = (key: string, orgId: string, plan: string) =>
+  operator<Usage>(key, "PUT", `/admin/organizations/${orgId}/plan`, { plan });
+
 export const createControl = (org_id: string, framework: string, clause: string) =>
   request<{ id: string }>("POST", "/admin/controls", { json: { org_id, framework, clause } });
 

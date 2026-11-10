@@ -54,3 +54,4 @@
 | [050](050-m365-by-upload.md) | Microsoft 365 evidence arrives from the customer's own script | Accepted |
 | [051](051-hr-leavers-by-upload.md) | HR leaver evidence is reconciled on the customer's computer | Accepted |
 | [052](052-email-welcome-and-support-reply.md) | An email client, used first for a personalised welcome (in PR 101) | Accepted |
+| [054](054-plans-and-limits.md) | Plans and limits, set by hand, with no payment code | Accepted |

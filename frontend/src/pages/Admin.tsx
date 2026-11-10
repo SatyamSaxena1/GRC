@@ -9,6 +9,7 @@ import {
   listTaskOwners,
   downloadWeeklyReport,
   getTrustState,
+  getUsage,
   getWeeklyReport,
   listTeam,
   publishTrust,
@@ -53,6 +54,8 @@ export function AdminPage() {
         </div>
       </div>
 
+      <UsageCard key={`u${teamVersion}`} />
+
       <TeamCard key={teamVersion} />
 
       <TrustCard />
@@ -73,6 +76,35 @@ const ROLE_LABEL: Record<string, string> = {
   ORG_ADMIN: "Org admin", CONTROL_OWNER: "Control owner", COMPLIANCE_VIEWER: "Compliance viewer (read-only)",
   FIRM_ADMIN: "Firm admin", AUDITOR: "Auditor",
 };
+
+/** Plan and use, read-only (ADR-054). Only the organisation admin gets an answer; everyone else sees nothing. */
+function UsageCard() {
+  const usage = useApi(() => getUsage(), []);
+  if (usage.error || !usage.data) return null;
+  const u = usage.data;
+  const of = (n: number, limit: number | null) => (limit === null ? `${n} (no limit)` : `${n} of ${limit}`);
+  return (
+    <div className="card" id="usage" style={{ marginBottom: 16 }}>
+      <strong>Your plan: {u.plan ? u.plan.replace("_", " ") : "No plan set"}</strong>
+      {u.trial_over && (
+        <div className="alert alert-error">
+          Your trial has ended, so the workspace is read-only. Nothing has been deleted. Ask your GRC contact to move you to a plan.
+        </div>
+      )}
+      {u.plan === "TRIAL" && u.trial_ends_at && !u.trial_over && (
+        <p className="stat-sub">Trial ends on {new Date(u.trial_ends_at).toLocaleDateString()}.</p>
+      )}
+      <table className="data-table static">
+        <tbody>
+          <tr><td>Frameworks</td><td>{of(u.frameworks.used, u.frameworks.limit)}</td></tr>
+          <tr><td>Seats (active people)</td><td>{of(u.seats.used, u.seats.limit)}</td></tr>
+          <tr><td>Evidence files</td><td>{u.evidence_count}</td></tr>
+          <tr><td>Last collection</td><td>{u.last_collection ? new Date(u.last_collection).toLocaleString() : "None yet"}</td></tr>
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 /** Who has access: change a role, or switch someone off without losing what they did (ADR-036).
  *  The server enforces who may do this and keeps the last admin in place; this only shows its answer. */
