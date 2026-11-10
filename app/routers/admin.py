@@ -12,9 +12,10 @@ from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app import audit_log, auth0_admin, mailer, welcome
+from app import audit_log, auth0_admin, entitlements, mailer, welcome
 from app.auth import Actor, admin_or_actor, require_admin
 from app.db import get_session, identity_lookup, set_firm, set_tenant
+from app.routers.content import CONTENT
 from app.models import (
     AuditFirm, ControlAssignment, Engagement, EngagementAllocation, OrgControl,
     Organization, User,
@@ -80,6 +81,11 @@ def create_user(body: UserIn, actor: Actor | None = Depends(admin_or_actor),
     # org or firm it belongs to (a signed-in caller is already bound to that same one).
     set_tenant(db, body.org_id)
     set_firm(db, body.audit_firm_id)
+    if body.org_id:  # a seat is an organisation-side person; firm staff are not counted
+        org = db.get(Organization, body.org_id)
+        if org is None:
+            raise HTTPException(404, "no such organisation")
+        entitlements.assert_seat_free(db, actor, org)
     # The login is created first (ADR-047): if the sign-in service fails, no half-invited person is left behind.
     link = None
     if auth0_admin.enabled():
@@ -164,6 +170,8 @@ def update_user(user_id: str, body: UserPatch, actor: Actor | None = Depends(adm
         if others.count() == 0:
             raise HTTPException(409, "this is the last active admin; make someone else an admin first")
 
+    if new_active and not user.active and user.org_id:  # reactivating takes a seat again
+        entitlements.assert_seat_free(db, actor, db.get(Organization, user.org_id))
     before = {"role": user.role, "active": user.active}
     user.role, user.active = new_role, new_active
     after = {"role": user.role, "active": user.active}
@@ -290,3 +298,74 @@ def assign_control(body: AssignmentIn, actor: Actor | None = Depends(admin_or_ac
                      detail={"user_id": body.user_id})
     db.commit()
     return {"id": assignment.id}
+
+
+# --------------------------------------------------------------------------- plans and usage (ADR-054)
+
+
+class FrameworkIn(BaseModel):
+    framework: str
+
+
+@router.post("/frameworks")
+def subscribe_framework(body: FrameworkIn, actor: Actor | None = Depends(admin_or_actor),
+                        db: Session = Depends(get_session)):
+    """An org admin subscribes their own organisation to another framework, within the plan's limit."""
+    if actor is None or actor.role != "ORG_ADMIN" or actor.engagement_id:
+        raise HTTPException(403, "only an organisation admin can subscribe to a framework")
+    if body.framework not in {p.framework.code for p in CONTENT.packs}:
+        raise HTTPException(422, "unknown framework")
+    org = db.get(Organization, actor.org_id)
+    if body.framework in org.frameworks:
+        return {"frameworks": org.frameworks}
+    entitlements.assert_may_subscribe(db, actor, org, body.framework)
+    org.frameworks = [*org.frameworks, body.framework]  # a new list: in-place edits of a JSON column go unseen
+    audit_log.record(db, actor=actor.label(), request_id=actor.request_id, action="FRAMEWORK_SUBSCRIBED",
+                     entity_type="organization", entity=org.id, org_id=org.id, detail={"framework": body.framework})
+    db.commit()
+    return {"frameworks": org.frameworks}
+
+
+@router.get("/usage")
+def my_usage(actor: Actor | None = Depends(admin_or_actor), db: Session = Depends(get_session)):
+    """The org admin's read-only view of plan and use. Reading is always allowed, even after a trial ends."""
+    if actor is None or actor.role != "ORG_ADMIN" or actor.engagement_id:
+        raise HTTPException(403, "only an organisation admin can see usage")
+    return entitlements.usage(db, db.get(Organization, actor.org_id))
+
+
+class PlanIn(BaseModel):
+    plan: str
+    trial_days: int | None = None
+    frameworks_limit: int | None = None
+    seats_limit: int | None = None
+
+
+@router.get("/organizations", dependencies=[Depends(require_admin)])
+def list_organizations(db: Session = Depends(get_session)):
+    """Operator only (the shared admin key). organizations is not tenant-owned, so every row is visible here."""
+    return [{"id": o.id, "name": o.name, "plan": o.plan, "trial_ends_at": o.trial_ends_at,
+             "trial_over": entitlements.trial_over(o), "frameworks": o.frameworks,
+             "frameworks_limit": o.frameworks_limit, "seats_limit": o.seats_limit}
+            for o in db.query(Organization).order_by(Organization.name)]
+
+
+@router.put("/organizations/{org_id}/plan", dependencies=[Depends(require_admin)])
+def set_plan(org_id: str, body: PlanIn, db: Session = Depends(get_session)):
+    """Operator only. Moving to a plan never removes anything: frameworks or seats already above a new, lower limit
+    stay; only further additions are refused."""
+    org = db.get(Organization, org_id)
+    if org is None:
+        raise HTTPException(404)
+    before = {"plan": org.plan, "frameworks_limit": org.frameworks_limit, "seats_limit": org.seats_limit}
+    try:
+        entitlements.apply_plan(org, body.plan, trial_days=body.trial_days,
+                                frameworks_limit=body.frameworks_limit, seats_limit=body.seats_limit)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from None
+    set_tenant(db, org.id)  # the audit row is tenant-scoped
+    audit_log.record(db, actor="operator", action="PLAN_SET", entity_type="organization", entity=org.id,
+                     org_id=org.id, before=before,
+                     after={"plan": org.plan, "frameworks_limit": org.frameworks_limit, "seats_limit": org.seats_limit})
+    db.commit()
+    return entitlements.usage(db, org)

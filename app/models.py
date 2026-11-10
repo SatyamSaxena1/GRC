@@ -40,6 +40,11 @@ class Organization(Base):
     # Set = the organisation has published its trust page (ADR-039): the unguessable path segment
     # of /public/trust/{token}. Clearing it takes the page down at once.
     trust_token: Mapped[str | None] = mapped_column(String, unique=True, default=None)
+    # Commercial layer (ADR-054). All null = a legacy organisation: no plan, no limits, nothing to enforce.
+    plan: Mapped[str | None] = mapped_column(String, default=None)  # TRIAL | DPDP_STARTER | GROWTH | SCALE
+    trial_ends_at: Mapped[datetime | None] = mapped_column(default=None)  # only read while plan is TRIAL
+    frameworks_limit: Mapped[int | None] = mapped_column(default=None)  # null = unlimited
+    seats_limit: Mapped[int | None] = mapped_column(default=None)  # null = unlimited
 
 
 class Vendor(Base):

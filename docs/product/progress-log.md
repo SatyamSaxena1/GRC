@@ -109,15 +109,24 @@ step is in a tamper-evident log; the DPDP Act pack for India.
 - **Proof:** tests cover bad input, write-only storage, no token in audit or errors, the access check's failure
   reasons, per-organisation isolation, and that a sync uses the organisation's own token and repositories.
 
-### 4 Nov 2026: A tool to clean up old duplicate gaps (PR 88, closes issue 85)
-- **Say:** "Gaps that an old bug duplicated can be cleaned up safely. We checked the live system and none exist,
-  so nothing needed changing."
-- **Show:** run `python -m app.gap_repair` (report only), then with `--apply` on a database that has duplicates.
-- **Honest detail:** it never deletes. The earliest gap stays open, the copies are marked closed with a reason
-  naming the one kept, and each closure is in the audit log. It is safe to run twice.
-- **Proof:** tests for report-only, apply, no deletion, audit event, second run, and task handling; a read-only
-  count on the live database found zero duplicate groups.
-
+### 4 Nov 2026: A tool to clean up old duplicate gaps (PR 88, closes issue 85)
+
+- **Say:** "Gaps that an old bug duplicated can be cleaned up safely. We checked the live system and none exist,
+
+  so nothing needed changing."
+
+- **Show:** run `python -m app.gap_repair` (report only), then with `--apply` on a database that has duplicates.
+
+- **Honest detail:** it never deletes. The earliest gap stays open, the copies are marked closed with a reason
+
+  naming the one kept, and each closure is in the audit log. It is safe to run twice.
+
+- **Proof:** tests for report-only, apply, no deletion, audit event, second run, and task handling; a read-only
+
+  count on the live database found zero duplicate groups.
+
+
+
 ### 4 Nov 2026: Overdue vendor reviews show up in the daily list (PR 86, closes issue 83)
 - **Say:** "A vendor whose review is overdue, or was never done, now appears in the same daily list as expiring
   evidence and breach deadlines, with a link straight to the Vendors page."
@@ -324,6 +333,12 @@ step is in a tamper-evident log; the DPDP Act pack for India.
   Workspace. Nothing moved out of reach, and a role only sees the groups it has."
 - **Show:** sign in as the org admin, then as a control owner, and compare the menus.
 - **Proof:** Overview is first; Vendors and Questionnaires now sit together; Connections sits with Code review and CISO sync.
+
+### 10 Nov 2026: Plans, limits and a read-only ended trial
+- **Say:** "Each customer now has a plan: how many frameworks and people. When a trial ends the workspace turns
+  read-only. Nothing is deleted, and one click from us turns it back on."
+- **Show:** the plan panel on Admin, then the operator page changing a plan; try inviting one person past the limit.
+- **Proof:** `GET /admin/usage` shows seats and frameworks used against the limit; the refusal is a clear 402 message.
 
 ## Scenes still to film
 - Team card with Deactivate/Reactivate (needs an org admin session).

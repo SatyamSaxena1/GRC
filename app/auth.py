@@ -88,6 +88,13 @@ def require_admin(x_admin_key: str | None = Header(None)) -> None:
         raise HTTPException(403, "admin API is disabled: set ADMIN_API_KEY")
 
 
+def _enforce_trial(request: Request, db: Session, actor: Actor) -> None:
+    """An ended trial is read-only (ADR-054). Imported late: entitlements builds on authorization, which imports this module."""
+    if request.method not in ("GET", "HEAD", "OPTIONS"):
+        from app import entitlements
+        entitlements.assert_writable(db, actor)
+
+
 def admin_or_actor(
     request: Request,
     x_admin_key: str | None = Header(None),
@@ -107,6 +114,7 @@ def admin_or_actor(
         actor = replace(actor, request_id=getattr(request.state, "request_id", ""))
         set_tenant(db, actor.org_id)
         set_firm(db, actor.audit_firm_id)
+        _enforce_trial(request, db, actor)
         return actor
     require_admin(x_admin_key)
     return None
@@ -132,6 +140,7 @@ def current_actor(
     actor = replace(actor, request_id=getattr(request.state, "request_id", ""))
     set_tenant(db, actor.org_id)
     set_firm(db, actor.audit_firm_id)
+    _enforce_trial(request, db, actor)
     return actor
 
 
