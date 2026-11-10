@@ -277,3 +277,20 @@ def test_an_ai_policy_must_commit_to_fairness():
     with_fairness = govern_1_2(["valid and reliable", "safe", "secure and resilient",
                                 "transparent and accountable", "fairness and harmful bias management"])
     assert with_fairness.verdict == "PASS" and not with_fairness.gaps
+
+
+# --- incident response and data retention have their own kinds of policy (issue 82) ------------------------------------
+def test_an_access_control_policy_is_never_asked_for_incident_or_retention_facts():
+    clauses = {(l.framework, l.clause) for l in evaluate(POLICY, "POLICY", ["ISO-27001", "PCI-DSS"], CONTENT)}
+    assert not clauses & {("ISO-27001", "A.5.26"), ("ISO-27001", "A.8.10"), ("PCI-DSS", "3.2.1"), ("PCI-DSS", "12.10.1")}
+
+
+def test_an_incident_policy_and_a_retention_policy_are_judged_on_their_own_clauses():
+    incident = {"data_breach_response_process": True, "board_notification_hours": 24, "affected_person_notification": True}
+    got = {(l.framework, l.clause): l for l in evaluate(incident, "INCIDENT_POLICY", ["ISO-27001", "PCI-DSS"], CONTENT)}
+    assert set(got) == {("ISO-27001", "A.5.26"), ("PCI-DSS", "12.10.1")}
+    assert all(l.verdict == "PARTIAL" and not l.gaps for l in got.values())   # PARTIAL by design: coverage is partial
+    silent = {k: None for k in incident}
+    assert all(l.verdict == "FAIL" for l in evaluate(silent, "INCIDENT_POLICY", ["ISO-27001"], CONTENT))
+    retention = {"data_retention_schedule": True, "erasure_process": True}
+    assert {l.clause for l in evaluate(retention, "RETENTION_POLICY", ["ISO-27001", "PCI-DSS"], CONTENT)} == {"A.8.10", "3.2.1"}

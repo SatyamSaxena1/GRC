@@ -51,9 +51,11 @@ def set_status(db: Session, evidence: Evidence, status: str, detail: str = "") -
 # until a framework pack maps them. The descriptions are what the model sees
 # in classify_artefact (same text as the form's ARTEFACT_HELP).
 ARTEFACT_TYPES = {
-    "POLICY": "A written policy or procedure document — access control, passwords, data retention, and similar. Encryption and logging policies have their own types.",
+    "POLICY": "A written policy or procedure document — access control, passwords, and similar. Encryption, logging, incident response and data retention policies have their own types.",
     "ENCRYPTION_POLICY": "An encryption policy — protection of data at rest and in transit, and key management.",
     "LOGGING_POLICY": "A logging and monitoring policy — what is logged and how long audit logs are retained.",
+    "INCIDENT_POLICY": "An incident response policy or plan — how security incidents and personal-data breaches are handled, who is told and how fast.",
+    "RETENTION_POLICY": "A data retention and disposal policy — how long each kind of data is kept and how it is deleted.",
     "SCAN_REPORT": "Output from a vulnerability or penetration test scan (e.g. an ASV report).",
     "REVIEW_RECORD": "A record that a periodic review happened — access reviews, log reviews.",
     "REPORT": "A narrative finding or audit report, distinct from an automated scan.",
@@ -66,7 +68,7 @@ ARTEFACT_TYPES = {
 # Topic-specific policies split out of POLICY so an access-control policy is not failed for
 # saying nothing about encryption. They still state who approved them and when, which no
 # requirement asks of them — extract those too, for the quality score only (no gaps).
-TOPIC_POLICIES = {"ENCRYPTION_POLICY", "LOGGING_POLICY"}
+TOPIC_POLICIES = {"ENCRYPTION_POLICY", "LOGGING_POLICY", "INCIDENT_POLICY", "RETENTION_POLICY"}
 DOCUMENT_CONTROL = ("approval_date", "approver_role", "effective_date", "systems_covered")
 CLASSIFY_MAX_CHARS = 4000
 CLASSIFY_ORDERS = 3

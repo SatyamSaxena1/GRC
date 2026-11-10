@@ -301,6 +301,18 @@ step is in a tamper-evident log; the DPDP Act pack for India.
 - **Show:** Connections, AWS card, "Counts toward" list; the AI-drafted ones carry a note.
 - **Proof:** `GET /connections` returns `feeds` for each source, read from the content packs.
 
+### 10 Nov 2026: Incident and retention policies get their own type
+- **Say:** "Upload an incident response policy and it is judged on the incident clauses, not on everything else.
+  An access-control policy is never failed for saying nothing about retention."
+- **Show:** upload form (new types in the list), the two new policy templates, then the clauses on the control page.
+- **Proof:** `GET /templates` lists incident-response and data-retention; the verdicts are PARTIAL by design.
+
+### 10 Nov 2026: The AI helper now runs on OpenRouter
+- **Say:** "The helper no longer depends on a laptop being on. It answers from a hosted model, and still only
+  phrases what the rules decided."
+- **Show:** Ask AI: "How many open gaps are there?" and the answer naming the model.
+- **Proof:** `GET /assistant/status` reports `available: true` and the model; the audit record names it too.
+
 ## Scenes still to film
 - Team card with Deactivate/Reactivate (needs an org admin session).
 - AI help (Explain, Ask AI) once the model has a stable address.

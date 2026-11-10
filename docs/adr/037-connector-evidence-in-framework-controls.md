@@ -31,7 +31,13 @@ activities (AWS, access logging, SUPPORTING) and PCI DSS 3.5.1 PAN rendered unre
 encryption at rest, PARTIAL: AWS shows encryption at rest only). Policy-evidenced clauses such as ISO A.5.26
 incident response, A.8.10 deletion, PCI 3.2.1 and 12.10.1 were tried and left out: a POLICY clause asks every
 uploaded policy for incident and retention facts, so an ordinary access-control policy started failing ISO and PCI.
-They wait for evidence types that name the kind of policy. The Connections page now lists, for each source, the
+**Then done properly (same day):** two new document types, INCIDENT_POLICY and RETENTION_POLICY (the same pattern as
+ENCRYPTION_POLICY and LOGGING_POLICY), so ISO A.5.26, A.8.10 and PCI 3.2.1, 12.10.1 read the right kind of policy and
+never fail an access-control policy. Also ISO A.8.13 Information backup (AWS, backups present, PARTIAL: AWS does not show a
+restore was tested) on a new unified control UCO-DATA-002. All `source: AI`, awaiting review. SOC 2 CC6.5 and CC7.4 and
+the DPDP clauses still read POLICY: moving them would change existing verdicts, so it needs its own decision. Two
+policy templates (incident response, data retention) were added so an organisation can start from text that meets them.
+Not drafted: ISO A.8.20 network security (we collect no such evidence). The Connections page now lists, for each source, the
 clauses it counts toward, marking any still awaiting review.
 
 Same rules as every other pack: versioned, deterministic, expert-sourced, confidence below 1.

@@ -132,10 +132,55 @@ Any exception is approved in writing by the policy owner, time-limited, and reco
     return body, stated
 
 
+def _incident() -> tuple[str, dict]:
+    hours, notify = strictest("board_notification_hours"), strictest("affected_person_notification")
+    stated = {"data_breach_response_process": True, "board_notification_hours": hours, "affected_person_notification": notify}
+    body = HEAD.format(title="Incident Response Policy") + f"""## Purpose
+Security incidents and personal-data breaches are found early, contained, put right, and reported to the people
+who need to know.
+
+## Response process
+A breach response process is in place. Anyone who suspects an incident reports it at once to the security lead,
+who records it, decides its severity, contains it, and records what was done to put it right.
+
+## Who is told, and when
+The board or senior leadership is told within {hours} hours of a confirmed personal-data breach.
+People affected by a personal-data breach are notified, and so is any regulator the law requires.
+
+## After an incident
+The cause is found, the fix is recorded, and the process is changed if it failed.
+
+## Exceptions
+Any exception is approved in writing by the policy owner, time-limited, and recorded.
+"""
+    return body, stated
+
+
+def _retention() -> tuple[str, dict]:
+    stated = {"data_retention_schedule": True, "erasure_process": True}
+    body = HEAD.format(title="Data Retention and Disposal Policy") + """## Purpose
+Data is kept only as long as its purpose or the law requires, and is then deleted so it cannot be read or recovered.
+
+## Retention schedule
+A retention schedule sets how long each kind of data is kept. It lists each kind of data, its period, and the
+reason for that period.
+
+## Erasure
+An erasure process deletes personal data on request and when its period ends. Deletion covers backups and copies,
+and the person who did it records that it was done.
+
+## Exceptions
+Any exception is approved in writing by the policy owner, time-limited, and recorded.
+"""
+    return body, stated
+
+
 TEMPLATES = {
     "access-control": ("Access Control Policy", "POLICY", _access_control),
     "password-and-mfa": ("Password and Authentication Policy", "POLICY", _password_and_mfa),
     "encryption": ("Encryption Policy", "ENCRYPTION_POLICY", _encryption),
+    "incident-response": ("Incident Response Policy", "INCIDENT_POLICY", _incident),
+    "data-retention": ("Data Retention and Disposal Policy", "RETENTION_POLICY", _retention),
 }
 
 

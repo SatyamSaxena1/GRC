@@ -38,6 +38,8 @@ const ARTEFACT_HELP: Record<string, string> = {
   POLICY: "A written policy or procedure document — access control, passwords, data retention, and similar. Encryption and logging policies have their own types.",
   ENCRYPTION_POLICY: "An encryption policy — protection of data at rest and in transit, and key management.",
   LOGGING_POLICY: "A logging and monitoring policy — what is logged and how long audit logs are retained.",
+  INCIDENT_POLICY: "An incident response policy or plan — how security incidents and personal-data breaches are handled, who is told and how fast.",
+  RETENTION_POLICY: "A data retention and disposal policy — how long each kind of data is kept and how it is deleted.",
   SCAN_REPORT: "Output from a vulnerability or penetration test scan (e.g. an ASV report).",
   REVIEW_RECORD: "A record that a periodic review happened — access reviews, log reviews.",
   REPORT: "A narrative finding or audit report, distinct from an automated scan.",
