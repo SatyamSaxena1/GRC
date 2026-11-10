@@ -36,9 +36,27 @@ def _row(db: Session, org_id: str, kind: str = connections.KIND_CHAT) -> Connect
     return db.query(Connection).filter_by(org_id=org_id, kind=kind).one_or_none()
 
 
+# The evidence each source produces, so the page can say which clauses it counts toward. Read from the content packs,
+# never written out by hand, so a new clause shows up here the moment it is added.
+_EVIDENCE = {connections.KIND_GITHUB: "CHANGE_CONTROL_SNAPSHOT", connections.KIND_AWS: "AWS_SNAPSHOT",
+             connections.KIND_M365: "M365_SNAPSHOT", connections.KIND_HRMS: "HRMS_SNAPSHOT"}
+
+
+def _feeds(kind: str) -> list[dict]:
+    artefact = _EVIDENCE.get(kind)
+    if not artefact:
+        return []
+    from app.content.load import load
+
+    return [{"framework": pack.framework.code, "clause": r.clause, "title": r.title,
+             "reviewed": all(m.source != "AI" for m in r.mappings)}
+            for pack in load().packs for r in pack.requirements
+            if any(e.artefact_type == artefact for e in r.evidence_requirements)]
+
+
 def _view(row: Connection | None, kind: str = connections.KIND_CHAT) -> dict:
     """The only shape that ever leaves this module: status facts, never the secret."""
-    return {"kind": kind, "configured": row is not None,
+    return {"kind": kind, "configured": row is not None, "feeds": _feeds(kind),
             "hint": row.hint if row else "", "status": row.status if row else "NONE",
             "last_tested_at": row.last_tested_at.isoformat() if row and row.last_tested_at else None,
             "last_error": row.last_error if row else ""}

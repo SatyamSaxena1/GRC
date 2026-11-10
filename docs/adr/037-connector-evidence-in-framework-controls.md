@@ -26,6 +26,14 @@ is on; retention and review are not shown), and a PARTIAL mapping can only ever 
 clause is left out when no snapshot covers it (ISO A.6.5 is about documented responsibilities, which a
 leaver check cannot show).
 
+**Added 2026-11-10 (issue 82, drafted by an AI, awaiting review, so `source: AI`):** ISO 27001 A.8.16 Monitoring
+activities (AWS, access logging, SUPPORTING) and PCI DSS 3.5.1 PAN rendered unreadable where stored (AWS,
+encryption at rest, PARTIAL: AWS shows encryption at rest only). Policy-evidenced clauses such as ISO A.5.26
+incident response, A.8.10 deletion, PCI 3.2.1 and 12.10.1 were tried and left out: a POLICY clause asks every
+uploaded policy for incident and retention facts, so an ordinary access-control policy started failing ISO and PCI.
+They wait for evidence types that name the kind of policy. The Connections page now lists, for each source, the
+clauses it counts toward, marking any still awaiting review.
+
 Same rules as every other pack: versioned, deterministic, expert-sourced, confidence below 1.
 
 ## Consequences
