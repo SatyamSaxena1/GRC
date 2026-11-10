@@ -256,3 +256,14 @@ def test_the_report_card_knows_a_connection_counts_as_delivery(client, bootstrap
     assert client.get("/reports/weekly", headers=H(org)).json()["delivery"]["webhook_configured"] is False
     client.put("/connections/chat-webhook", json={"url": HOOK}, headers=H(org))
     assert client.get("/reports/weekly", headers=H(org)).json()["delivery"]["webhook_configured"] is True
+
+
+def test_each_source_lists_the_clauses_it_counts_toward_and_whether_a_person_has_reviewed_them(client, bootstrap):
+    org_id, _ = bootstrap(client)
+    views = {c["kind"]: c for c in client.get("/connections", headers={"authorization": f"org:{org_id}"}).json()["connections"]}
+    assert views["CHAT_WEBHOOK"]["feeds"] == []
+    aws = {(f["framework"], f["clause"]): f for f in views["AWS_PUSH"]["feeds"]}
+    assert ("ISO-27001", "A.8.16") in aws and ("PCI-DSS", "3.5.1") in aws and ("PCI-DSS", "10.2.1") in aws
+    assert aws[("ISO-27001", "A.8.16")]["reviewed"] is False      # drafted by an AI, awaiting a person
+    assert aws[("PCI-DSS", "10.2.1")]["reviewed"] is True
+    assert ("PCI-DSS", "8.2.5") in {(f["framework"], f["clause"]) for f in views["HRMS_PUSH"]["feeds"]}

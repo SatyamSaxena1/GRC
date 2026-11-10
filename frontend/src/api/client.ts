@@ -134,6 +134,8 @@ export const closeEngagement = (engagementId: string) =>
 export type ConnectionView = {
   kind: "CHAT_WEBHOOK" | "GITHUB_CHANGE_CONTROL" | "AWS_PUSH" | "M365_PUSH" | "HRMS_PUSH"; configured: boolean; hint: string; status: "NONE" | "UNTESTED" | "OK" | "FAILED";
   last_tested_at: string | null; last_error: string;
+  /** The clauses this source's evidence counts toward; `reviewed` is false while a mapping is an AI draft awaiting a person. */
+  feeds: { framework: string; clause: string; title: string; reviewed: boolean }[];
 };
 export type ConnectionsState = { key_configured: boolean; connections: ConnectionView[] };
 export const getConnections = () => request<ConnectionsState>("GET", "/connections");

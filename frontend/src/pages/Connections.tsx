@@ -9,6 +9,25 @@ const STATUS_LABEL: Record<ConnectionView["status"], string> = {
   NONE: "Not connected", UNTESTED: "Saved, not tested yet", OK: "Working", FAILED: "Failed",
 };
 
+/** Which clauses a source's evidence counts toward, read from the content packs on the server. A mapping an AI drafted
+ *  and no person has reviewed yet is marked, so nobody mistakes it for an expert reading. */
+function Feeds({ feeds }: { feeds: ConnectionView["feeds"] }) {
+  if (!feeds.length) return null;
+  return (
+    <details style={{ margin: "8px 0" }}>
+      <summary>Counts toward {feeds.length} clause{feeds.length === 1 ? "" : "s"}</summary>
+      <ul style={{ fontSize: 13, margin: "6px 0 0 18px" }}>
+        {feeds.map((f) => (
+          <li key={`${f.framework}-${f.clause}`}>
+            <span className="mono">{f.framework} {f.clause}</span> {f.title}
+            {!f.reviewed && <span className="muted"> (drafted by AI, awaiting review)</span>}
+          </li>
+        ))}
+      </ul>
+    </details>
+  );
+}
+
 /** A source whose evidence the customer uploads from their own script (ADR-049, ADR-050). The upload token is
  *  shown once; only a fingerprint is kept on the server. */
 function UploadCard({ conn, source, title, blurb, permissions, permissionsWhere, script, command, keyOn, busy, run }: {
@@ -20,6 +39,7 @@ function UploadCard({ conn, source, title, blurb, permissions, permissionsWhere,
     <div className="card" id={source} style={{ marginTop: 16 }}>
       <strong>{title}</strong>
       <p className="stat-sub">{blurb}</p>
+      <Feeds feeds={conn.feeds} />
       <p>
         <strong>{STATUS_LABEL[conn.status]}</strong>
         {conn.configured && <span className="muted"> {conn.hint}</span>}
@@ -148,6 +168,7 @@ export function ConnectionsPage() {
             token you create. Use a read-only token limited to those repositories. It is stored encrypted, only ever
             sent to GitHub, and never shown again.
           </p>
+          <Feeds feeds={gh.feeds} />
           <p>
             <strong>{STATUS_LABEL[gh.status]}</strong>
             {gh.configured && <span className="muted"> {gh.hint}</span>}

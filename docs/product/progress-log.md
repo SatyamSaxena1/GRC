@@ -295,6 +295,12 @@ step is in a tamper-evident log; the DPDP Act pack for India.
   History tab with the auditor's reason, then the client's read-only view.
 - **Proof:** history shows VERDICT_REGISTERED with the reason, the person and the time.
 
+### 10 Nov 2026: More clauses fed by connected sources, and the Connections page says which
+- **Say:** "Connect AWS and it now counts toward two more clauses. Open the card and you see exactly which
+  clauses, and which are still waiting for a person to review them."
+- **Show:** Connections, AWS card, "Counts toward" list; the AI-drafted ones carry a note.
+- **Proof:** `GET /connections` returns `feeds` for each source, read from the content packs.
+
 ## Scenes still to film
 - Team card with Deactivate/Reactivate (needs an org admin session).
 - AI help (Explain, Ask AI) once the model has a stable address.

@@ -186,3 +186,26 @@ requirements:
         source: EXPERT
         delta_conditions:
           - {attribute: access_logging_enabled, operator: "==", value: true}
+
+  # DRAFT, awaiting human review (issue 82). Drafted by an AI from the public control title, so the mapping says
+  # source: AI, not EXPERT. It reads a connector snapshot and reuses an existing unified control and attribute.
+  # Deliberately not drafted: A.5.26 incident response and A.8.10 deletion (a POLICY clause asks every uploaded policy
+  # for incident and retention facts, so an access-control policy would start failing ISO), A.8.13 backup and A.8.20
+  # network security (they need a NEW unified control), A.6.5 (documented duties, which a leaver count cannot show: ADR-037).
+
+  # Evidenced by a connector snapshot, not a document: the same facts as A.8.15, read as monitoring.
+  - clause: "A.8.16"
+    title: Monitoring activities
+    text: >
+      Networks, systems and applications shall be monitored for anomalous behaviour and appropriate actions taken to
+      evaluate potential information security incidents.
+    evidence_requirements:
+      - artefact_type: AWS_SNAPSHOT
+        required_attributes: [access_logging_enabled]
+    mappings:
+      - uco: UCO-LOG-001
+        coverage: SUPPORTING
+        confidence: 0.5
+        source: AI
+        delta_conditions:
+          - {attribute: access_logging_enabled, operator: "==", value: true}

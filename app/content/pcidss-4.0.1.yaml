@@ -232,3 +232,23 @@ requirements:
         source: EXPERT
         delta_conditions:
           - {attribute: terminated_users_with_active_accounts, operator: "==", value: 0}
+
+  # DRAFT, awaiting human review (issue 82). Drafted by an AI from the public requirement title, so the mapping says
+  # source: AI, not EXPERT. Not drafted: 3.2.1 retention and 12.10.1 incident response (POLICY clauses that would fail
+  # every access-control policy) and 4.2.1 encryption in transit (we collect no such evidence).
+  # Evidenced by a connector snapshot, not a document. AWS reports encryption at rest only, so this stays PARTIAL.
+  - clause: "3.5.1"
+    title: Primary account number is rendered unreadable where stored
+    text: >
+      PAN is rendered unreadable anywhere it is stored by using strong cryptography, truncation, tokenization or
+      hashing.
+    evidence_requirements:
+      - artefact_type: AWS_SNAPSHOT
+        required_attributes: [encryption_at_rest]
+    mappings:
+      - uco: UCO-DATA-001
+        coverage: PARTIAL
+        confidence: 0.5
+        source: AI
+        delta_conditions:
+          - {attribute: encryption_at_rest, operator: "==", value: true}
