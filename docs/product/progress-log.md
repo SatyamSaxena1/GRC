@@ -409,6 +409,12 @@ step is in a tamper-evident log; the DPDP Act pack for India.
   upload is getting old.
 - **Proof:** ADR-061; a 31-day-old snapshot reads stale in the tests.
 
+### 11 Nov 2026: Look around before talking to us
+- **Say:** "Click Try the demo on the sign-in page: a sample company's real workspace, read-only, no account. When you
+  are ready, your own workspace is free for one framework."
+- **Show:** sign-in page, Try the demo, the banner on Overview, a refused change.
+- **Proof:** ADR-062; tests show the demo sees only its own organisation and every change is refused.
+
 ## Scenes still to film
 - Team card with Deactivate/Reactivate (needs an org admin session).
 - AI help (Explain, Ask AI) once the model has a stable address.

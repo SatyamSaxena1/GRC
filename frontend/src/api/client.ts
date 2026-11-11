@@ -14,7 +14,9 @@ export type Identity =
   // `persona` names the demo role this identity was picked as (src/lib/roles.ts)
   // — it only chooses the colour scheme; the backend never sees it.
   | { kind: "org" | "user" | "auditor" | "firm"; id: string; label: string; engagementId?: string; role?: string; persona?: string }
-  | { kind: "oidc"; token: string; label: string; engagementId?: string; role?: string };
+  | { kind: "oidc"; token: string; label: string; engagementId?: string; role?: string }
+  // The public read-only demo (ADR-062): the server picks the organisation; every change is refused there.
+  | { kind: "demo"; id: "demo"; label: string; role: "COMPLIANCE_VIEWER"; engagementId?: string };
 
 const STORAGE_KEY = "grc.identity";
 
@@ -33,6 +35,10 @@ export function saveIdentity(identity: Identity | null): void {
   else localStorage.removeItem(STORAGE_KEY);
 }
 
+export const getDemoAvailable = () =>
+  fetch("/public/demo").then((r) => (r.ok ? r.json() : { available: false })).catch(() => ({ available: false })) as Promise<{ available: boolean }>;
+export const DEMO_IDENTITY: Identity = { kind: "demo", id: "demo", label: "Demo organisation (read-only)", role: "COMPLIANCE_VIEWER" };
+
 export class ApiError extends Error {
   status: number;
   detail: unknown;
@@ -46,6 +52,7 @@ export class ApiError extends Error {
 function authHeaders(as?: Identity): Record<string, string> {
   const identity = as ?? loadIdentity();
   if (!identity) throw new ApiError(401, "no identity selected");
+  if (identity.kind === "demo") return { Authorization: "demo" };
   if (identity.kind === "oidc") {
     const headers: Record<string, string> = { Authorization: `Bearer ${identity.token}` };
     if (identity.engagementId) headers["x-engagement-id"] = identity.engagementId;

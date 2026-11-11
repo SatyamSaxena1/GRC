@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { createAuditFirm, createEngagement, createFirmUser, createOrganization, submitOnboardingRequest } from "../api/client";
+import { createAuditFirm, createEngagement, createFirmUser, createOrganization, DEMO_IDENTITY, getDemoAvailable, submitOnboardingRequest } from "../api/client";
 import { useSession } from "../lib/session";
 import { Hint } from "../components/Hint";
 import { LoginTour } from "../components/LoginTour";
@@ -51,6 +51,9 @@ function RoleGate({ production }: { production: boolean }) {
   const [error, setError] = useState<string | null>(null);
   const [manual, setManual] = useState(false);
   const demoOn = useDemoEnabled();
+  // The public read-only demo (ADR-062): offered only when this server has one.
+  const [publicDemo, setPublicDemo] = useState(false);
+  useEffect(() => { void getDemoAvailable().then((d) => setPublicDemo(d.available)); }, []);
 
   const reach = useMemo(
     () => Object.fromEntries(ROLES.map((r) => [r.id, reachOf(r.identity(SHAPE))])),
@@ -105,6 +108,12 @@ function RoleGate({ production }: { production: boolean }) {
             : "Acme Corp is being audited by Meridian Assurance. Pick whose eyes to look through — one click, no password."}
         </span>
         <Link to="/pitch">What is this?</Link>
+        {publicDemo && (
+          <button type="button" className="gate-link"
+            onClick={() => { setIdentity(DEMO_IDENTITY); navigate("/overview"); }}>
+            Try the demo, no account
+          </button>
+        )}
         <button type="button" className="gate-link" aria-pressed={demoOn} onClick={() => setDemoEnabled(!demoOn)}>
           Demo tools: {demoOn ? "on" : "off"}
         </button>

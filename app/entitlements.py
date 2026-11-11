@@ -18,6 +18,7 @@ from app.models import CollectionRun, Evidence, Organization, User
 
 # plan -> (frameworks, seats). The operator may override either number for one organisation.
 PLANS: dict[str, tuple[int | None, int | None]] = {
+    "FREE": (1, 3),   # never ends: one framework, three people (ADR-062)
     "TRIAL": (3, 5), "DPDP_STARTER": (1, 5), "GROWTH": (3, 15), "SCALE": (10, 50),
 }
 TRIAL_DAYS = 14
