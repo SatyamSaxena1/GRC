@@ -2,7 +2,7 @@
 
 Additive: one new table. Nothing existing changes.
 
-Revision ID: d5e6f7a8b9c0
+Revision ID: a7c3e9d15f20
 Revises: c4d5e6f7a8b9
 """
 
@@ -11,7 +11,7 @@ from __future__ import annotations
 import sqlalchemy as sa
 from alembic import op
 
-revision = "d5e6f7a8b9c0"
+revision = "a7c3e9d15f20"
 down_revision = "c4d5e6f7a8b9"
 branch_labels = None
 depends_on = None
