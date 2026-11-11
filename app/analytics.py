@@ -24,7 +24,7 @@ from sqlalchemy.orm import Session
 
 from app.content.load import Content
 from app.evaluate import evaluate
-from app.models import Evidence, EvidenceControlLink, OrgCommitment, Organization
+from app.models import ControlAttestation, Evidence, EvidenceControlLink, OrgCommitment, Organization
 
 # Hours of effort a single evidence artefact costs to locate, prepare and upload.
 # Deliberately conservative; the spec makes this organisation-configurable, so it
@@ -94,9 +94,10 @@ class FrameworkReadiness:
     evaluated: int          # requirements the evidence pool could speak to at all
     satisfied: int
     partial: int
-    readiness: float        # 0.0 - 1.0, satisfied / total
+    readiness: float        # 0.0 - 1.0, (satisfied + attested) / total
     already_subscribed: bool
     clauses: tuple[dict, ...] = ()
+    attested: int = 0       # clauses no rule judges, met by a person's statement in force (ADR-060)
 
     def to_dict(self) -> dict:
         return {
@@ -106,6 +107,7 @@ class FrameworkReadiness:
             "evaluated": self.evaluated,
             "satisfied": self.satisfied,
             "partial": self.partial,
+            "attested": self.attested,
             "readiness": round(self.readiness, 4),
             "clauses": list(self.clauses),
         }
@@ -192,17 +194,26 @@ def framework_readiness(
     satisfied = sum(1 for v in best.values() if v == SATISFIED)
     partial = sum(1 for v in best.values() if v == "PARTIAL")
 
+    # A rule-less clause is never in `best` (no evidence is matched to it); a person's statement in force
+    # reads ATTESTED. Counted toward readiness, never as satisfied by the rules (ADR-060).
+    rule_less = {req.clause for req in requirements if req.attestation_only}
+    today = as_of or date.today()
+    attested_clauses = {
+        a.clause for a in db.query(ControlAttestation).filter_by(org_id=org_id, framework=framework, revoked_at=None)
+        if a.clause in rule_less and a.valid_until >= today}
+
     return FrameworkReadiness(
         framework=framework,
         total_requirements=total,
         evaluated=len(best),
         satisfied=satisfied,
         partial=partial,
-        readiness=(satisfied / total) if total else 0.0,
+        readiness=((satisfied + len(attested_clauses)) / total) if total else 0.0,
+        attested=len(attested_clauses),
         already_subscribed=framework in (subscribed or []),
         clauses=tuple(
-            {"clause": req.clause, "title": req.title,
-             "verdict": best.get(req.clause, "NO_EVIDENCE")}
+            {"clause": req.clause, "title": req.title, "attestation_only": req.attestation_only,
+             "verdict": "ATTESTED" if req.clause in attested_clauses else best.get(req.clause, "NO_EVIDENCE")}
             for req in requirements
         ) + tuple(
             {"clause": clause, "title": next((r.title for r in pack.requirements if r.clause == clause), clause),

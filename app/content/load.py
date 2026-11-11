@@ -85,8 +85,10 @@ class Requirement(_Model):
     clause: str
     title: str
     text: str
-    evidence_requirements: tuple[EvidenceRequirement, ...]
-    mappings: tuple[Mapping, ...]
+    # Both present (a rule), or both absent: a clause no rule judges yet, met only by a person's
+    # dated statement (ADR-060, app/routers/attestations.py), never passed by the engine.
+    evidence_requirements: tuple[EvidenceRequirement, ...] = ()
+    mappings: tuple[Mapping, ...] = ()
     # Framework-authored remediation advice, appended to the generic per-gap-kind
     # wording in app/service.py::_remediation. Optional: only packs whose source
     # publishes actionable guidance (the AI RMF Playbook) have anything real to
@@ -96,6 +98,14 @@ class Requirement(_Model):
     # app/exceptions.py::rule_hash (ADR-022) is unchanged for every existing clause,
     # and attaching a source_ref later never flags verdicts "rules changed since".
     source_ref: SourceRef | None = Field(default=None, exclude=True)
+
+    def model_post_init(self, _context: Any) -> None:
+        if bool(self.evidence_requirements) != bool(self.mappings):
+            raise ValueError(f"{self.clause}: give both evidence_requirements and mappings (a rule), or neither")
+
+    @property
+    def attestation_only(self) -> bool:
+        return not self.evidence_requirements
 
 
 class FrameworkRef(_Model):

@@ -12,7 +12,7 @@ def test_load_is_deterministic_and_references_resolve():
     for pack in content.packs:
         assert pack.requirements
         for req in pack.requirements:
-            assert req.mappings and req.evidence_requirements
+            assert bool(req.mappings) == bool(req.evidence_requirements)  # a rule, or attested only
             assert all(m.uco in known for m in req.mappings)
 
 

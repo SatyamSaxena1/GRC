@@ -127,15 +127,24 @@ step is in a tamper-evident log; the DPDP Act pack for India.
 - **Proof:** tests cover bad input, write-only storage, no token in audit or errors, the access check's failure
   reasons, per-organisation isolation, and that a sync uses the organisation's own token and repositories.
 
-### 4 Nov 2026: A tool to clean up old duplicate gaps (PR 88, closes issue 85)
-- **Say:** "Gaps that an old bug duplicated can be cleaned up safely. We checked the live system and none exist,
-  so nothing needed changing."
-- **Show:** run `python -m app.gap_repair` (report only), then with `--apply` on a database that has duplicates.
-- **Honest detail:** it never deletes. The earliest gap stays open, the copies are marked closed with a reason
-  naming the one kept, and each closure is in the audit log. It is safe to run twice.
-- **Proof:** tests for report-only, apply, no deletion, audit event, second run, and task handling; a read-only
-  count on the live database found zero duplicate groups.
-
+### 4 Nov 2026: A tool to clean up old duplicate gaps (PR 88, closes issue 85)
+
+- **Say:** "Gaps that an old bug duplicated can be cleaned up safely. We checked the live system and none exist,
+
+  so nothing needed changing."
+
+- **Show:** run `python -m app.gap_repair` (report only), then with `--apply` on a database that has duplicates.
+
+- **Honest detail:** it never deletes. The earliest gap stays open, the copies are marked closed with a reason
+
+  naming the one kept, and each closure is in the audit log. It is safe to run twice.
+
+- **Proof:** tests for report-only, apply, no deletion, audit event, second run, and task handling; a read-only
+
+  count on the live database found zero duplicate groups.
+
+
+
 ### 4 Nov 2026: Overdue vendor reviews show up in the daily list (PR 86, closes issue 83)
 - **Say:** "A vendor whose review is overdue, or was never done, now appears in the same daily list as expiring
   evidence and breach deadlines, with a link straight to the Vendors page."
@@ -384,6 +393,14 @@ step is in a tamper-evident log; the DPDP Act pack for India.
   acceptance stays, and you can bring it back."
 - **Show:** Policies, open one, Archive, tick "Show archived policies instead", Restore.
 - **Proof:** the Activity page shows who archived and who restored it.
+
+### 11 Nov 2026: Every ISO 27001 and SOC 2 control, with a statement for the ones no rule can check
+- **Say:** "All 93 ISO 27001 controls and the SOC 2 security criteria are listed now. Where no rule can read a document,
+  like staff screening, a named person writes how it is done and until when. It shows as Attested, never as passed by
+  the rules, and your auditor judges it."
+- **Show:** Frameworks, ISO-27001, All clauses, find A.6.1 Screening, Attest, write the statement, save; the badge turns
+  Attested and the count goes up. Withdraw puts it back.
+- **Proof:** the Activity page shows who attested and who withdrew; ADR-060.
 
 ## Scenes still to film
 - Team card with Deactivate/Reactivate (needs an org admin session).

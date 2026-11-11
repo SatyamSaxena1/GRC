@@ -900,8 +900,21 @@ export type FrameworkReadiness = {
   satisfied: number;
   partial: number;
   readiness: number;
-  clauses: { clause: string; title: string; verdict: string }[];
+  /** Clauses no rule judges yet, met by a person's statement in force (ADR-060). */
+  attested?: number;
+  clauses: { clause: string; title: string; verdict: string; attestation_only?: boolean }[];
 };
+export type Attestation = {
+  id: string; framework: string; clause: string; statement: string; evidence_id: string | null;
+  attested_by: string; attested_by_display?: string; attested_at: string; valid_until: string;
+  revoked_by: string | null; revoked_at: string | null; current: boolean;
+};
+export const listAttestations = (framework: string) =>
+  request<Attestation[]>("GET", "/attestations", { query: { framework } });
+export const attestControl = (body: { framework: string; clause: string; statement: string; valid_until: string; evidence_id?: string }) =>
+  request<Attestation>("POST", "/attestations", { json: body });
+export const revokeAttestation = (id: string) =>
+  request<Attestation>("POST", `/attestations/${encodeURIComponent(id)}/revoke`);
 export const getReadinessAll = () => request<FrameworkReadiness[]>("GET", "/analytics/readiness");
 export const getReadiness = (framework: string) =>
   request<FrameworkReadiness>("GET", `/analytics/readiness/${encodeURIComponent(framework)}`);
