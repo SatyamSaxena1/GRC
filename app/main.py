@@ -19,7 +19,7 @@ from app.routers import (
     activity, admin, analytics, assistant, audit, breach, ciso, findings, connections, connectors, ingest, content, controls, evidence, exceptions, export, firm,
     glossary, notifications, review, questionnaire, reports, policies, rights_requests, risks, templates, trust, vendors,
 )
-from app.routers import onboarding
+from app.routers import attestations, onboarding
 
 logging.basicConfig(
     level=os.environ.get("LOG_LEVEL", "INFO"),
@@ -149,6 +149,7 @@ app.include_router(risks.router)
 app.include_router(review.router)
 app.include_router(assistant.router)
 app.include_router(findings.router)
+app.include_router(attestations.router)
 
 
 @app.get("/health/live")

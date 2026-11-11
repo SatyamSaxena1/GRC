@@ -245,3 +245,78 @@ requirements:
         source: AI
         delta_conditions:
           - {attribute: affected_person_notification, operator: "==", value: true}
+
+# ---------------------------------------------------------------------------
+# Attested clauses (ADR-060): no rule judges these yet. No evidence is matched against
+# them; a person states the control is in place, with a date and optional proof, and the
+# clause reads ATTESTED, never PASS. AI-drafted wording in our own words: review before
+# relying on it, and replace a clause with a rule when one can be written.
+  - clause: CC1.1
+    title: Commitment to integrity and ethical values
+    text: The organisation shows a commitment to integrity and ethical values, for example through a code of conduct
+      that staff acknowledge.
+  - clause: CC1.2
+    title: Board oversight
+    text: The board or equivalent is independent of management and oversees how internal control is developed and
+      performs.
+  - clause: CC1.3
+    title: Structures, reporting lines and authority
+    text: Management sets up structures, reporting lines and suitable authorities and responsibilities, under board
+      oversight.
+  - clause: CC1.4
+    title: Commitment to competence
+    text: The organisation attracts, develops and keeps competent people in line with its objectives.
+  - clause: CC1.5
+    title: Accountability
+    text: People are held accountable for their internal control responsibilities.
+  - clause: CC2.1
+    title: Quality information
+    text: The organisation obtains or produces relevant, quality information to support internal control.
+  - clause: CC2.2
+    title: Internal communication
+    text: Information about internal control objectives and responsibilities is communicated inside the organisation.
+  - clause: CC2.3
+    title: External communication
+    text: The organisation communicates with outside parties about matters that affect internal control.
+  - clause: CC3.1
+    title: Clear objectives
+    text: Objectives are stated clearly enough that risks to them can be identified and assessed.
+  - clause: CC3.2
+    title: Risk identification and analysis
+    text: Risks to objectives are identified across the organisation and analysed to decide how to manage them.
+  - clause: CC3.3
+    title: Fraud risk
+    text: The possibility of fraud is considered when assessing risks.
+  - clause: CC3.4
+    title: Changes that affect internal control
+    text: Changes that could significantly affect internal control are identified and assessed.
+  - clause: CC4.1
+    title: Ongoing and separate evaluations
+    text: The organisation runs ongoing or separate evaluations to confirm the parts of internal control are present
+      and working.
+  - clause: CC4.2
+    title: Communicating deficiencies
+    text: Internal control deficiencies are evaluated and reported in time to those responsible for fixing them.
+  - clause: CC5.1
+    title: Control activities that reduce risk
+    text: Control activities are chosen and developed to bring risks to objectives down to acceptable levels.
+  - clause: CC5.2
+    title: Technology general controls
+    text: General controls over technology are chosen and developed to support the objectives.
+  - clause: CC5.3
+    title: Policies and procedures
+    text: Control activities are put in place through policies that state what is expected and procedures that carry
+      them out.
+  - clause: CC6.4
+    title: Physical access
+    text: Physical access to facilities and protected assets, such as data centres and backup media, is restricted
+      to authorised people.
+  - clause: CC6.8
+    title: Unauthorised or malicious software
+    text: Controls prevent or detect, and act on, unauthorised or malicious software.
+  - clause: CC9.1
+    title: Business disruption risk
+    text: Risk mitigation activities are identified and developed for risks from potential business disruption.
+  - clause: CC9.2
+    title: Vendor and business partner risk
+    text: Risks from vendors and business partners are assessed and managed.

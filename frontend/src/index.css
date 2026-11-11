@@ -353,6 +353,7 @@ table.data-table.static td { vertical-align: top; }
 .badge-locked, .badge-waived, .badge-revoked, .badge-rejected, .badge-expired, .badge-rule_changed, .badge-value_changed { background: #eef0f6; color: #4b5170; }
 .badge-low { background: var(--neutral-bg); color: var(--text-muted); }
 .badge-medium { background: #eef1fb; color: var(--primary-dark); }
+.badge-attested { background: #eef1fb; color: var(--primary-dark); }
 .badge-high, .badge-critical { background: var(--danger-bg); color: var(--danger); }
 .badge-info { background: #eef1fb; color: var(--primary-dark); }
 

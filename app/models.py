@@ -158,6 +158,23 @@ class PolicyAcceptance(Base):
     accepted_at: Mapped[datetime] = mapped_column(default=_now)
 
 
+class ControlAttestation(Base):
+    """A person's dated statement that a control no rule judges yet is in place (ADR-060). Never deleted: a
+    newer statement supersedes, and a withdrawal sets `revoked_at`. Read as ATTESTED, never as PASS."""
+    __tablename__ = "control_attestations"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"))
+    framework: Mapped[str]
+    clause: Mapped[str]
+    statement: Mapped[str] = mapped_column(Text)
+    evidence_id: Mapped[str | None] = mapped_column(ForeignKey("evidence.id"), default=None)
+    attested_by: Mapped[str]
+    attested_at: Mapped[datetime] = mapped_column(default=_now)
+    valid_until: Mapped[date]
+    revoked_by: Mapped[str | None] = mapped_column(default=None)
+    revoked_at: Mapped[datetime | None] = mapped_column(default=None)
+
+
 class Connection(Base):
     """Something an organisation connects itself, e.g. its chat webhook (ADR-044). The secret exists only as
     ciphertext; hint, status and last_error are the non-secret facts the page shows."""
