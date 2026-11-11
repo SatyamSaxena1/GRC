@@ -28,6 +28,26 @@ function Feeds({ feeds }: { feeds: ConnectionView["feeds"] }) {
   );
 }
 
+// A script's snapshot counts for 30 days (ADR-061, the evidence_validity on every *_SNAPSHOT rule); warn from 14, when
+// the weekly digest also calls the source quiet (app/drift.py CONNECTOR_STALE_DAYS).
+const SNAPSHOT_DAYS = 30;
+const QUIET_DAYS = 14;
+const SCHEDULE_TEMPLATE = "https://github.com/SatyamSaxena1/GRC/blob/main/deploy/evidence-schedule/grc-evidence.yml";
+
+function Freshness({ at }: { at: string | null }) {
+  if (!at) return null;
+  const days = Math.floor((Date.now() - new Date(at).getTime()) / 86_400_000);
+  if (days >= SNAPSHOT_DAYS) {
+    return <div className="alert alert-error">The last upload is {days} days old, so its answers no longer count: the
+      controls it covered read as stale until the script runs again.</div>;
+  }
+  if (days >= QUIET_DAYS) {
+    return <div className="alert alert-info">The last upload is {days} days old. Its answers stop counting after
+      {" "}{SNAPSHOT_DAYS} days; run the script again before then.</div>;
+  }
+  return null;
+}
+
 /** A source whose evidence the customer uploads from their own script (ADR-049, ADR-050). The upload token is
  *  shown once; only a fingerprint is kept on the server. */
 function UploadCard({ conn, source, title, blurb, permissions, permissionsWhere, script, command, keyOn, busy, run }: {
@@ -45,6 +65,7 @@ function UploadCard({ conn, source, title, blurb, permissions, permissionsWhere,
         {conn.configured && <span className="muted"> {conn.hint}</span>}
         {conn.last_tested_at && <span className="muted"> last received {new Date(conn.last_tested_at).toLocaleString()}</span>}
       </p>
+      <Freshness at={conn.last_tested_at} />
       {token && (
         <div className="alert alert-info">
           <p>Copy this upload token now. It is shown once and only a fingerprint is kept. Making a new one ends this one.</p>
@@ -57,7 +78,10 @@ function UploadCard({ conn, source, title, blurb, permissions, permissionsWhere,
           <li>{permissionsWhere}{permissions ? ` ${permissions}.` : ""}</li>
           <li>Download the script <span className="mono">app/collectors/{script}</span> from the project repository.</li>
           <li>Run it (the token goes in the environment, not on the command line, so it is not left in your shell history or process list): <div className="mono" style={{ whiteSpace: "pre-wrap" }}>{command}</div></li>
-          <li>Add <span className="mono">--dry-run</span> first to see the answers without uploading. Run it again whenever you want fresh evidence.</li>
+          <li>Add <span className="mono">--dry-run</span> first to see the answers without uploading.</li>
+          <li>Each upload counts for {SNAPSHOT_DAYS} days. Run it every week{source === "hrms"
+            ? " (this one reads lists you export, so it stays a manual step)"
+            : <>: <a href={SCHEDULE_TEMPLATE} target="_blank" rel="noreferrer">a GitHub Actions template</a> does it for you, in your own account, with your own keys</>}.</li>
         </ol>
       )}
       <div style={{ marginTop: 8 }}>

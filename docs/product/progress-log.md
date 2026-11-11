@@ -402,6 +402,13 @@ step is in a tamper-evident log; the DPDP Act pack for India.
   Attested and the count goes up. Withdraw puts it back.
 - **Proof:** the Activity page shows who attested and who withdrew; ADR-060.
 
+### 11 Nov 2026: Script evidence stays fresh, or says it is not
+- **Say:** "Your AWS, Microsoft 365 and Google checks now count for 30 days. A free GitHub template runs them every
+  Monday in your own account, with your own keys, so your controls stay green only while they are still true."
+- **Show:** Connections, the AWS card: "Each upload counts for 30 days", the template link, and the warning when the last
+  upload is getting old.
+- **Proof:** ADR-061; a 31-day-old snapshot reads stale in the tests.
+
 ## Scenes still to film
 - Team card with Deactivate/Reactivate (needs an org admin session).
 - AI help (Explain, Ask AI) once the model has a stable address.

@@ -1,0 +1,73 @@
+# Run the GRC evidence scripts every week, in your own GitHub account (ADR-061).
+#
+# Copy this file to .github/workflows/grc-evidence.yml in a private repository of yours. It runs every Monday at
+# 07:00 IST, and on demand from the Actions tab. Each job runs only if you set it up below, so start with one source.
+#
+# The scripts are read from the GRC repository at the commit you name in GRC_SCRIPTS_REF: read them at that commit
+# first, then pin it. A new commit is never run until you change the pin.
+#
+# Repository variables (Settings > Secrets and variables > Actions > Variables):
+#   GRC_URL            your GRC address, e.g. https://grc.blinkedit.me
+#   GRC_SCRIPTS_REF    the full commit id of the GRC repository whose scripts you reviewed
+#   AWS_ROLE_ARN       AWS: a role this repository may assume through GitHub's OIDC, with the read-only permissions
+#                      the Connections page lists. Leave unset to skip AWS.
+#   AWS_REGION         AWS: the region where your databases and logging trail live
+#   M365_TENANT_ID     Microsoft 365: your Entra tenant id. Leave unset to skip Microsoft 365.
+#   M365_CLIENT_ID     Microsoft 365: the read-only app's id
+#   GOOGLE_ENABLED     Google Workspace: set to true to run it
+#
+# Repository secrets (one upload token per source, from the Connections page):
+#   GRC_AWS_TOKEN, GRC_M365_TOKEN, M365_CLIENT_SECRET,
+#   GRC_GOOGLE_TOKEN, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN
+#
+# The HR leavers check is not here: it reads two lists someone exports by hand. Run it yourself each month.
+
+name: GRC evidence
+
+on:
+  schedule:
+    - cron: "30 1 * * 1"      # Mondays 01:30 UTC, 07:00 IST
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  id-token: write              # only for the AWS role; nothing here writes to your repository
+
+jobs:
+  aws:
+    if: ${{ vars.AWS_ROLE_ARN != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - run: pip install --quiet boto3
+      - run: curl -fsSLO "https://raw.githubusercontent.com/SatyamSaxena1/GRC/${{ vars.GRC_SCRIPTS_REF }}/app/collectors/aws_readonly.py"
+      - run: python aws_readonly.py --url "${{ vars.GRC_URL }}" --region "${{ vars.AWS_REGION }}"
+        env:
+          GRC_UPLOAD_TOKEN: ${{ secrets.GRC_AWS_TOKEN }}
+
+  m365:
+    if: ${{ vars.M365_TENANT_ID != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: curl -fsSLO "https://raw.githubusercontent.com/SatyamSaxena1/GRC/${{ vars.GRC_SCRIPTS_REF }}/app/collectors/m365_readonly.py"
+      - run: python m365_readonly.py --url "${{ vars.GRC_URL }}"
+        env:
+          GRC_UPLOAD_TOKEN: ${{ secrets.GRC_M365_TOKEN }}
+          M365_TENANT_ID: ${{ vars.M365_TENANT_ID }}
+          M365_CLIENT_ID: ${{ vars.M365_CLIENT_ID }}
+          M365_CLIENT_SECRET: ${{ secrets.M365_CLIENT_SECRET }}
+
+  google-workspace:
+    if: ${{ vars.GOOGLE_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: curl -fsSLO "https://raw.githubusercontent.com/SatyamSaxena1/GRC/${{ vars.GRC_SCRIPTS_REF }}/app/collectors/gworkspace_readonly.py"
+      - run: python gworkspace_readonly.py --url "${{ vars.GRC_URL }}"
+        env:
+          GRC_UPLOAD_TOKEN: ${{ secrets.GRC_GOOGLE_TOKEN }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
