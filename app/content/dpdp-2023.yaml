@@ -30,6 +30,9 @@ requirements:
     evidence_requirements:
       - artefact_type: AWS_SNAPSHOT
         required_attributes: [encryption_at_rest, privileged_access_mfa, access_logging_enabled, backup_enabled]
+        # A script snapshot is evidence for the month it was taken (ADR-061). Optional: a snapshot from
+        # before collection dates were recorded is judged as it was.
+        evidence_validity: {issued_attribute: collected_at, max_age_days: 30, required: false}
     mappings:
       - uco: UCO-DATA-001
         coverage: FULL
@@ -49,6 +52,9 @@ requirements:
     evidence_requirements:
       - artefact_type: M365_SNAPSHOT
         required_attributes: [privileged_access_mfa, access_logging_enabled]
+        # A script snapshot is evidence for the month it was taken (ADR-061). Optional: a snapshot from
+        # before collection dates were recorded is judged as it was.
+        evidence_validity: {issued_attribute: collected_at, max_age_days: 30, required: false}
     mappings:
       - uco: UCO-IAM-012
         coverage: FULL
@@ -66,6 +72,9 @@ requirements:
     evidence_requirements:
       - artefact_type: GOOGLE_WORKSPACE_SNAPSHOT
         required_attributes: [privileged_access_mfa, access_logging_enabled]
+        # A script snapshot is evidence for the month it was taken (ADR-061). Optional: a snapshot from
+        # before collection dates were recorded is judged as it was.
+        evidence_validity: {issued_attribute: collected_at, max_age_days: 30, required: false}
     mappings:
       - uco: UCO-IAM-012
         coverage: FULL
@@ -83,6 +92,9 @@ requirements:
     evidence_requirements:
       - artefact_type: HRMS_SNAPSHOT
         required_attributes: [terminated_users_with_active_accounts]
+        # A script snapshot is evidence for the month it was taken (ADR-061). Optional: a snapshot from
+        # before collection dates were recorded is judged as it was.
+        evidence_validity: {issued_attribute: collected_at, max_age_days: 30, required: false}
     mappings:
       - uco: UCO-PRIV-004
         coverage: FULL

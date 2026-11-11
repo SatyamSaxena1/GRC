@@ -549,7 +549,12 @@ def _run_pipeline(db: Session, content: Content, evidence: Evidence, actor_label
     if evidence.mime_type == "application/vnd.grc.connector+json":
         payload = json.loads(data)
         source = str(payload["source"])
-        supplied = payload["attributes"]
+        supplied = dict(payload["attributes"])
+        # When the facts were collected, so a rule can say how long a snapshot stays evidence (ADR-061). Set by the
+        # server on receipt (routers/connectors._snapshot), never by the customer's script.
+        if payload.get("collected_at"):
+            supplied["collected_at"] = str(payload["collected_at"])[:10]   # the UTC day; an ISO timestamp starts with it
+            attr_names = list(dict.fromkeys([*attr_names, "collected_at"]))
         text, method = data.decode("utf-8"), "connector"
         run = ExtractionRun(
             fields={
