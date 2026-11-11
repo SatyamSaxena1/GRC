@@ -124,6 +124,12 @@ app.include_router(connections.router)
 app.include_router(questionnaire.router)
 app.include_router(trust.router)
 app.include_router(trust.public_router)
+
+
+@app.get("/public/demo", tags=["demo"])
+def public_demo() -> dict:
+    """Whether this server has the public read-only demo (ADR-062), so the sign-in page shows the button only then."""
+    return {"available": bool(os.environ.get("DEMO_ORG_ID"))}
 app.include_router(firm.router)
 app.include_router(evidence.router)
 app.include_router(audit.router)

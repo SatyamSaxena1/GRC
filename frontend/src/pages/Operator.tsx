@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ApiError, operatorListOrgs, operatorSetPlan, type OperatorOrg } from "../api/client";
 
-const PLANS = ["TRIAL", "DPDP_STARTER", "GROWTH", "SCALE"];
+const PLANS = ["FREE", "TRIAL", "DPDP_STARTER", "GROWTH", "SCALE"];
 const message = (err: unknown) => (err instanceof ApiError ? String(err.detail) : (err as Error).message);
 
 /** Operator-only: set an organisation's plan (ADR-054). Not linked from any menu. The gate is the server's admin key,

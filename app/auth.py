@@ -44,6 +44,7 @@ class Actor:
     audit_firm_id: str | None = None  # set for firm-side callers
     role: str = "ORG_ADMIN"
     request_id: str = ""  # carried so every audit row can be traced to its request
+    demo: bool = False    # the public read-only demo (ADR-062): anyone, no account, the DEMO_ORG_ID organisation
 
     def label(self) -> str:
         if self.engagement_id:
@@ -55,6 +56,8 @@ class Actor:
             return f"user:{self.user_id}"
         if self.audit_firm_id:
             return f"firm:{self.audit_firm_id}"
+        if self.demo:
+            return "demo"
         return f"org:{self.org_id}"
 
     @property
@@ -89,8 +92,11 @@ def require_admin(x_admin_key: str | None = Header(None)) -> None:
 
 
 def _enforce_trial(request: Request, db: Session, actor: Actor) -> None:
-    """An ended trial is read-only (ADR-054). Imported late: entitlements builds on authorization, which imports this module."""
+    """An ended trial is read-only (ADR-054), and so is the public demo (ADR-062), whatever role a route would allow.
+    Imported late: entitlements builds on authorization, which imports this module."""
     if request.method not in ("GET", "HEAD", "OPTIONS"):
+        if actor.demo:
+            raise HTTPException(403, "this is the read-only demo: sign up to make changes")
         from app import entitlements
         entitlements.assert_writable(db, actor)
 
@@ -144,8 +150,18 @@ def current_actor(
     return actor
 
 
+DEMO_TOKEN = "demo"
+
+
 def _resolve(authorization: str, db: Session, engagement_header: str | None = None) -> Actor:
     token = authorization.removeprefix("Bearer ").strip()
+    if token == DEMO_TOKEN:
+        # The public demo (ADR-062): one sample organisation the operator seeded and named in DEMO_ORG_ID, seen as a
+        # compliance viewer, every write refused in _enforce_trial. Works with stub tokens off; absent unless configured.
+        org_id = os.environ.get("DEMO_ORG_ID", "")
+        if not org_id:
+            raise HTTPException(404, "there is no public demo on this server")
+        return Actor(org_id=org_id, role="COMPLIANCE_VIEWER", demo=True)
     if oidc.looks_like_jwt(token):
         return _resolve_oidc(token, db, engagement_header)
 

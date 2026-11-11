@@ -149,6 +149,13 @@ export function AppShell() {
         )}
       </nav>
       <main className="main" id="main-content" tabIndex={-1} key={viewKey}>
+        {identity?.kind === "demo" && (
+          <div className="alert alert-info" role="note">
+            You are looking at a sample company, read-only: nothing you click changes anything. To set up your own
+            workspace, free for one framework, <button type="button" className="btn btn-link" onClick={switchIdentity}>
+            leave the demo</button> and choose "Request an audit / other account", or write to us.
+          </div>
+        )}
         <Outlet />
       </main>
       <AssistantPanel />
