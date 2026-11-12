@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import hmac
 import os
+import time
 from dataclasses import dataclass, replace
 
 from fastapi import Depends, Header, HTTPException, Request
@@ -78,15 +79,36 @@ class Actor:
         return not self.is_auditor and self.role != "COMPLIANCE_VIEWER"
 
 
-def require_admin(x_admin_key: str | None = Header(None)) -> None:
+ADMIN_KEY_MAX_FAILS = 10      # wrong operator keys from one address within the window, then refused outright
+ADMIN_KEY_WINDOW_S = 300
+_admin_fails: dict[str, list[float]] = {}   # ponytail: in process, which suits the one-instance design; share it if that changes
+
+
+def _client_ip(request: Request) -> str:
+    """The caller's address. Behind Cloudflare, `cf-connecting-ip` is set by Cloudflare itself; `x-forwarded-for` can be
+    written by the caller, so it is not used to decide anything here."""
+    return request.headers.get("cf-connecting-ip") or (request.client.host if request.client else "unknown")
+
+
+def require_admin(request: Request, x_admin_key: str | None = Header(None)) -> None:
     """Gate for the /admin bootstrap routes (create orgs, firms, users...), which
     have no caller identity to check. With ADMIN_API_KEY set, the header must
     match. Without it, dev/test (stub auth on) stays open as before, while a
     production deploy (stub off) fails closed rather than exposing them."""
     expected = os.environ.get("ADMIN_API_KEY", "")
     if expected:
+        ip, now = _client_ip(request), time.monotonic()
+        recent = [t for t in _admin_fails.get(ip, []) if now - t < ADMIN_KEY_WINDOW_S]
+        if len(recent) >= ADMIN_KEY_MAX_FAILS:
+            # Refused before the key is even compared, so guessing faster than this gains nothing.
+            raise HTTPException(429, "too many wrong operator keys; try again in a few minutes",
+                                headers={"Retry-After": str(ADMIN_KEY_WINDOW_S)})
         if not x_admin_key or not hmac.compare_digest(x_admin_key, expected):
+            if len(_admin_fails) > 10_000:
+                _admin_fails.clear()
+            _admin_fails[ip] = [*recent, now]
             raise HTTPException(401, "admin key required")
+        _admin_fails.pop(ip, None)
     elif not STUB_ENABLED:
         raise HTTPException(403, "admin API is disabled: set ADMIN_API_KEY")
 
@@ -122,7 +144,7 @@ def admin_or_actor(
         set_firm(db, actor.audit_firm_id)
         _enforce_trial(request, db, actor)
         return actor
-    require_admin(x_admin_key)
+    require_admin(request, x_admin_key)
     return None
 
 

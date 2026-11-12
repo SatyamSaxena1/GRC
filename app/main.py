@@ -93,6 +93,27 @@ async def request_context(request: Request, call_next):
     return response
 
 
+# Standard browser protections on every response. No Content-Security-Policy yet: the app's 3D login page and inline
+# styles need a policy written and tried in report-only mode first (docs/product/soc2-readiness.md).
+SECURITY_HEADERS = {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "SAMEORIGIN",           # the app frames only itself (the pitch page, the document viewer)
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+}
+
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    response = await call_next(request)
+    for name, value in SECURITY_HEADERS.items():
+        response.headers.setdefault(name, value)
+    # Only over https (Render's proxy says so), so a local http run is not told to insist on it.
+    if request.headers.get("x-forwarded-proto") == "https" or request.url.scheme == "https":
+        response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+    return response
+
+
 @app.middleware("http")
 async def canonical_host(request: Request, call_next):
     """CANONICAL_HOST (e.g. grc.blinkedit.me) makes the platform's own *.onrender.com
