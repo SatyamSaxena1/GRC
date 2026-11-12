@@ -33,15 +33,18 @@ function Lessons({ course, onAnswered }: { course: TrainingCourse; onAnswered: (
   const [picked, setPicked] = useState<(number | undefined)[]>([]);
   const [marked, setMarked] = useState<TrainingMarked[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
   const lesson = lessons[at];
   const go = (i: number) => { setAt(i); setPicked([]); setMarked(null); setError(null); };
   const submit = async () => {
     setError(null);
+    setSending(true);  // lesson buttons stay disabled until the grade is back, so it lands on the lesson it is for
     try {
       const r = await answerTraining(course.id, at, course.version, picked as number[]);
       setMarked(r.marked);
       onAnswered(r.course);
     } catch (err) { setError(err instanceof ApiError ? String(err.detail) : (err as Error).message); }
+    finally { setSending(false); }
   };
   if (!lesson) return null;
   const ready = lesson.questions.every((_, i) => picked[i] !== undefined);
@@ -51,7 +54,7 @@ function Lessons({ course, onAnswered }: { course: TrainingCourse; onAnswered: (
         {lessons.map((l, i) => {
           const best = course.my_progress?.by_lesson[i];
           return (
-            <button key={i} className={`btn btn-sm${i === at ? " btn-primary" : ""}`} onClick={() => go(i)}>
+            <button key={i} className={`btn btn-sm${i === at ? " btn-primary" : ""}`} disabled={sending} onClick={() => go(i)}>
               {i + 1}. {l.title}{best ? ` (${best[0]}/${best[1]})` : ""}
             </button>
           );
@@ -88,7 +91,7 @@ function Lessons({ course, onAnswered }: { course: TrainingCourse; onAnswered: (
             {at + 1 < lessons.length && <button className="btn btn-sm btn-primary" onClick={() => go(at + 1)}>Next lesson</button>}
           </>
         ) : (
-          <button className="btn btn-primary" disabled={!ready} onClick={() => void submit()}>
+          <button className="btn btn-primary" disabled={!ready || sending} onClick={() => void submit()}>
             {lesson.questions.length ? "Check my answers" : "Mark this lesson read"}
           </button>
         )}
@@ -190,7 +193,10 @@ export function TrainingPage() {
               <pre style={{ whiteSpace: "pre-wrap", fontFamily: "inherit", fontSize: 14, maxHeight: 420, overflow: "auto" }}>{open.body}</pre>
               {(open.lessons ?? []).length > 0 && (
                 <Lessons key={`${open.id}-${open.version}`} course={open}
-                  onAnswered={(c) => { setOpen((cur) => (cur ? { ...cur, ...c } : cur)); state.reload(); }} />
+                  onAnswered={(c) => {
+                    setOpen((cur) => (cur && cur.id === c.id && cur.version === c.version ? { ...cur, ...c } : cur));
+                    state.reload();
+                  }} />
               )}
             </>
           )}
