@@ -25,7 +25,7 @@ jobs:
     steps:
       # The gate's own code comes from the base branch, never from the pull request it judges:
       # otherwise a PR could edit the gate to pass itself.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.base.sha }}
       # Only the pull request that introduces the gate can find it missing on its base. Say so
