@@ -1,6 +1,6 @@
 /** Public lessons: "SOC 2 in plain words" (ADR-065). Written in our own words. Drafted with AI help: the page shows a
  *  draft notice until the owner has reviewed the text, and then REVIEWED is set to true. */
-export const REVIEWED = false;
+export const REVIEWED = true;
 
 export type PublicQuestion = { scenario: string; choices: string[]; answer: number; why: string };
 export type PublicLesson = { slug: string; title: string; body: string; questions: PublicQuestion[] };
