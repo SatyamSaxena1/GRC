@@ -46,7 +46,14 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="GRC vertical slice", lifespan=lifespan)
+# The interactive API pages list every route to anyone who asks, so production (stub auth off) hides them unless
+# API_DOCS=on. The local stub-auth development setup keeps them. (ADR-067)
+_DOCS_ON = auth.STUB_ENABLED or os.environ.get("API_DOCS", "").lower() in {"1", "on", "true", "yes"}
+app = FastAPI(
+    title="GRC vertical slice", lifespan=lifespan,
+    docs_url="/docs" if _DOCS_ON else None, redoc_url="/redoc" if _DOCS_ON else None,
+    openapi_url="/openapi.json" if _DOCS_ON else None,
+)
 
 app.add_middleware(
     CORSMiddleware,

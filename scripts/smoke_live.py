@@ -57,7 +57,12 @@ def check(base: str, get=requests.get, timeout: float = 60) -> list[tuple[str, b
             missing = [p for p in REQUIRED_ROUTES if p not in paths]
             out.append(("api routes", not missing, "all present" if not missing else f"missing: {', '.join(missing)}"))
         except ValueError:
-            out.append(("api routes", False, f"openapi not JSON (HTTP {r.status_code})"))
+            # Production hides the route list (ADR-067), and the web-app fallback answers 200 with a page, so the only
+            # honest probe is a real route that must refuse an anonymous caller.
+            r = fetch("/findings")
+            ok = r is not None and r.status_code in (401, 403)
+            out.append(("api routes", ok, "route list hidden; /findings refuses anonymous callers" if ok
+                        else f"route list hidden and /findings answered HTTP {getattr(r, 'status_code', '?')}"))
     return out
 
 
