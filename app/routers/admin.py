@@ -90,13 +90,15 @@ def create_user(body: UserIn, actor: Actor | None = Depends(admin_or_actor),
     link = None
     if auth0_admin.enabled():
         try:
-            link = auth0_admin.invite(body.email, os.environ.get("NOTIFY_LINK_BASE_URL", ""))
+            link = auth0_admin.invite(body.email, os.environ.get("NOTIFY_LINK_BASE_URL", "")) or None
         except auth0_admin.Auth0Error as exc:
             raise HTTPException(502, f"could not create their login: {exc}") from None
     user = User(**body.model_dump())
     db.add(user)
     db.commit()
     out = {"id": user.id, "role": user.role}
+    if auth0_admin.enabled() and link is None:
+        out["existing_login"] = True  # they already sign in another way; no password link was made
     if mailer.enabled():
         # One welcome email, once, at sign-up (ADR-052): their first steps for their role, a way to reach a person, and the
         # one-time sign-in link when a login was just made. When it is sent, the admin never handles the link. If it cannot

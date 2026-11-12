@@ -75,9 +75,12 @@ def _find(email: str) -> dict | None:
 
 def invite(email: str, result_url: str = "") -> str:
     """Make sure a login exists for this email and return a one-time password-change link. An existing login is
-    reused, never overwritten. Raises Auth0Error."""
+    reused, never overwritten. A person who already signs in another way (Google, say) has no password to change, so
+    nothing is made and "" is returned: they sign in as they always do. Raises Auth0Error."""
     email = email.strip().lower()
     user = _find(email)
+    if user is not None and not str(user.get("user_id", "")).startswith("auth0|"):
+        return ""
     if user is None:
         user = _call("POST", "/users", json={"email": email, "connection": CONNECTION, "email_verified": False,
                                               "verify_email": False, "password": secrets.token_urlsafe(32)})

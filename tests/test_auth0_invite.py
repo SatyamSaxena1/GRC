@@ -103,6 +103,17 @@ def test_an_existing_login_is_reused_not_overwritten(client, bootstrap, auth0):
     assert not [c for c in auth0.calls if c[0] == "POST" and c[1].endswith("/api/v2/users")]
 
 
+def test_someone_who_signs_in_with_google_is_invited_without_a_password_link(client, bootstrap, auth0):
+    auth0.users["g@example.com"] = {"user_id": "google-oauth2|123", "email": "g@example.com", "blocked": False}
+    org, _ = bootstrap(client)
+    r = _invite(client, org, email="g@example.com")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["existing_login"] is True and "password_link" not in body
+    assert not any(c[1].endswith("/tickets/password-change") for c in auth0.calls)   # nothing was asked of the service
+    assert not any(c[0] == "POST" and c[1].endswith("/users") for c in auth0.calls)  # and no second login was made
+
+
 def test_if_the_service_fails_no_half_invited_person_is_left_behind(client, bootstrap, auth0):
     org, _ = bootstrap(client)
     auth0.fail_on = "/tickets/password-change"
