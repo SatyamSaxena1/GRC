@@ -53,3 +53,18 @@ def test_an_unreachable_host_fails_instead_of_raising():
     results = smoke.check("https://x", get=down)
     assert results and not any(ok for _, ok, _ in results)
     assert smoke.main(["--url", "http://127.0.0.1:9"]) == 1
+
+
+def test_hidden_route_list_passes_only_when_a_real_route_refuses_anonymous_callers():
+    def hidden(status):
+        def get(url, timeout=None):
+            if url.endswith("/openapi.json"):
+                return Resp(200, text="<html></html>")  # web-app fallback, not JSON
+            if url.endswith("/findings"):
+                return Resp(status)
+            return smoke_ok(url)
+        return get
+    smoke_ok = server()
+    ok = dict((n, o) for n, o, _ in smoke.check("https://x", get=hidden(401)))
+    bad = dict((n, o) for n, o, _ in smoke.check("https://x", get=hidden(200)))
+    assert ok["api routes"] and not bad["api routes"]
