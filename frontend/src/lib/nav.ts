@@ -88,6 +88,10 @@ export const ORG_NAV: NavItem[] = [
     to: "/risks", label: "Risks",
     hint: "What could go wrong, how bad it is by fixed rules, what you are doing about it, who owns it and when it is next reviewed. A model may suggest wording; it never sets a score.",
   },
+  {
+    to: "/training", label: "Training",
+    hint: "Short courses every person reads and confirms they understood, repeated every year. An admin writes them; the page shows who is up to date.",
+  },
 ];
 
 // Everyone on the organisation's side reads and accepts policies, so the owner menu carries it too.
@@ -108,6 +112,7 @@ export const OWNER_NAV: NavItem[] = [
   ORG_NAV[12],
   ORG_NAV[13],
   POLICIES,
+  ORG_NAV.find((item) => item.to === "/training")!,
   // By path, not index: a control owner sees only the risks that name them as owner (ADR-057).
   ORG_NAV.find((item) => item.to === "/risks")!,
 ];
@@ -157,7 +162,7 @@ export function navFor(identity: Identity | null): NavItem[] {
 const STAGE: Record<string, string> = {
   "/evidence": "Collect", "/map": "Collect",
   "/overview": "Assess", "/frameworks": "Assess", "/questionnaire": "Assure", "/vendors": "Assess", "/connections": "Act", "/risks": "Assess", "/controls": "Assess", "/gaps": "Assess", "/code-review": "Assess",
-  "/tasks": "Act", "/policies": "Act", "/notifications": "Act", "/dpdp/operations": "Act", "/admin": "Act",
+  "/tasks": "Act", "/policies": "Act", "/training": "Act", "/notifications": "Act", "/dpdp/operations": "Act", "/admin": "Act",
   "/firm": "Assure", "/activity": "Assure", "/ciso-sync": "Assure",
   "/ai-compliance": "Regulate", "/dpdp": "Regulate", "/glossary": "Regulate",
 };
