@@ -12,7 +12,7 @@ anyone. They list every route and load scripts from a CDN, so they also showed u
 - When stub auth is off (production), the app does not serve those three pages. `API_DOCS=on` brings them back for a
   debugging session. The local stub-auth setup keeps them.
 - `scripts/smoke_live.py` read `/openapi.json` to check a deploy carries the newest routes. With the list hidden, and the
-  web-app fallback answering 200 for unknown paths, it now checks that `/findings` refuses an anonymous caller (401 or 403).
+  web-app fallback answering 200 for unknown paths, it now checks that `/findings` refuses an anonymous caller (401, 403 or 422: the live API answers 422 for a missing Authorization header).
   That is weaker: it proves the API is there, not that every new route is.
 
 ## Consequences
