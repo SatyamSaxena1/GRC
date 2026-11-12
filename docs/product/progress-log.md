@@ -429,6 +429,12 @@ step is in a tamper-evident log; the DPDP Act pack for India.
   admin open Everyone's results.
 - **Proof:** ADR-064 (also says what a pass does and does not prove); fixed rules grade, and every try is on the Activity page.
 
+### 12 Nov 2026: Learn SOC 2 free, no account
+- **Say:** "Five short lessons on SOC 2 in plain words, each with a couple of situations to try. Free, no sign-up.
+  When you are ready to collect the evidence, start free."
+- **Show:** sign-in page, "learn SOC 2 free", lesson 2, pick the wrong answer and read why.
+- **Proof:** ADR-065; the page makes no server calls and records nothing.
+
 ## Scenes still to film
 - Team card with Deactivate/Reactivate (needs an org admin session).
 - AI help (Explain, Ask AI) once the model has a stable address.
