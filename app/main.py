@@ -12,7 +12,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from app import auth, oidc
+from app import auth, csp, oidc
 from app.ai.provider import make_gateway
 from app.db import engine, init_db
 from app.routers import (
@@ -93,8 +93,8 @@ async def request_context(request: Request, call_next):
     return response
 
 
-# Standard browser protections on every response. No Content-Security-Policy yet: the app's 3D login page and inline
-# styles need a policy written and tried in report-only mode first (docs/product/soc2-readiness.md).
+# Standard browser protections on every response, plus a Content-Security-Policy that starts in report-only mode
+# (app/csp.py, ADR-066): violations are reported to /csp-report and nothing is blocked until CSP_MODE=enforce.
 SECURITY_HEADERS = {
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "SAMEORIGIN",           # the app frames only itself (the pitch page, the document viewer)
@@ -108,6 +108,9 @@ async def security_headers(request: Request, call_next):
     response = await call_next(request)
     for name, value in SECURITY_HEADERS.items():
         response.headers.setdefault(name, value)
+    policy = csp.header()
+    if policy:
+        response.headers.setdefault(*policy)
     # Only over https (Render's proxy says so), so a local http run is not told to insist on it.
     if request.headers.get("x-forwarded-proto") == "https" or request.url.scheme == "https":
         response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
@@ -177,6 +180,7 @@ app.include_router(review.router)
 app.include_router(assistant.router)
 app.include_router(findings.router)
 app.include_router(attestations.router)
+app.include_router(csp.router)
 app.include_router(training.router)
 
 

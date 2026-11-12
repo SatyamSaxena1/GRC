@@ -1,0 +1,52 @@
+# Known-vulnerability scan of what we ship (ADR-066). Python packages with pip-audit, the shipped frontend packages with
+# npm audit. It runs weekly (new advisories appear without any change of ours), on demand, on main, and on a pull request
+# only when a dependency file changed, so an unrelated change is never held up by someone else's new advisory.
+#
+# What fails the job: any known advisory in the Python packages a fresh install pulls in, and a high or critical advisory in
+# the frontend packages that ship to the browser. Build-time tools (vite, esbuild) are reported but do not fail it: they
+# never reach a customer, and some fixes there need a major upgrade that is scheduled, not rushed.
+name: Security scan
+
+on:
+  schedule:
+    - cron: "30 2 * * 1"          # Mondays 02:30 UTC
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - "pyproject.toml"
+      - "frontend/package.json"
+      - "frontend/package-lock.json"
+      - ".github/workflows/security.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+      - run: pip install -e ".[ocr]" pip-audit
+      # The package itself is ours and is not on PyPI, so it is skipped; everything it pulled in is checked.
+      - run: pip-audit --skip-editable
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "20"
+      - name: Packages that ship to the browser (fails on high or critical)
+        run: npm audit --package-lock-only --omit=dev --audit-level=high
+      - name: Build tools (reported, does not fail)
+        continue-on-error: true
+        run: npm audit --package-lock-only --audit-level=high

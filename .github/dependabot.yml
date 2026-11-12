@@ -1,0 +1,24 @@
+# Automatic update pull requests (ADR-066). Weekly, grouped so a week's small updates arrive as one pull request, and capped
+# so they never pile up. Every one runs the same tests and change-control gate as any other change, and is merged by a person.
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: "/"
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 3
+    groups:
+      python-minor-and-patch: { update-types: [minor, patch] }
+  - package-ecosystem: npm
+    directory: "/frontend"
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 3
+    groups:
+      frontend-minor-and-patch: { update-types: [minor, patch] }
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 2
+  - package-ecosystem: docker
+    directory: "/"
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 2
