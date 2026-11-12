@@ -1,4 +1,4 @@
-"""Builds docs/product/GRC-Technical-Data-Sheet.pdf, a nine-page technical data sheet.
+"""Builds docs/product/GRC-Technical-Data-Sheet.pdf, a ten-page technical data sheet.
 
     python docs/product/build_data_sheet.py
 
@@ -27,7 +27,7 @@ def load_packs() -> dict:
     content = ROOT / "app" / "content"
     ucos = yaml.safe_load((content / "uco.yaml").read_text(encoding="utf-8"))["ucos"]
     dom = {u["code"]: u["domain"] for u in ucos}
-    out = {"fws": [], "reqs": {}, "M": {}, "U": {}, "dom": dom, "titles": {u["code"]: u["title"] for u in ucos},
+    out = {"cc": 0, "fws": [], "reqs": {}, "rule": {}, "M": {}, "U": {}, "dom": dom, "titles": {u["code"]: u["title"] for u in ucos},
            "coverage": collections.Counter()}
     reach = collections.defaultdict(set)
     for f in sorted(glob.glob(str(content / "*.yaml"))):
@@ -38,6 +38,10 @@ def load_packs() -> dict:
         code = d["framework"]["code"]
         out["fws"].append(code)
         out["reqs"][code] = len(d["requirements"])
+        # A requirement with no mappings has no rule yet: it is met by a named person's attestation (ADR-060).
+        out["rule"][code] = sum(1 for q in d["requirements"] if q.get("mappings"))
+        if code == "SOC-2":   # the Security (Common Criteria) clauses, CC1.1 to CC9.2: 33 in the standard
+            out["cc"] = sum(1 for q in d["requirements"] if str(q["clause"]).startswith("CC"))
         counts = collections.Counter()
         for q in d["requirements"]:
             for m in q.get("mappings", []):
@@ -52,6 +56,10 @@ def load_packs() -> dict:
 PACKS = load_packs()
 N_FW, N_REQ, N_UCO = len(PACKS["fws"]), sum(PACKS["reqs"].values()), len(PACKS["dom"])
 N_MAP = sum(PACKS["coverage"].values())
+N_RULE = sum(PACKS["rule"].values())     # requirements a rule judges from evidence
+N_ATT = N_REQ - N_RULE                    # requirements met by a person's attestation
+N_ISO, N_CC = PACKS["reqs"]["ISO-27001"], PACKS["cc"]   # ISO 27001 has 93 Annex A controls; SOC 2 has 33 CC criteria
+TOTAL_PAGES = 10
 MAX_REACH = max(len(v) for v in PACKS["U"].values())
 WORDS = {9: "nine", 10: "ten", 11: "eleven", 12: "twelve"}
 OUT = str(ROOT / "docs" / "product" / "GRC-Technical-Data-Sheet.pdf")
@@ -64,7 +72,8 @@ M = 36  # page margin
 
 NAME = "GRC Evidence Platform"
 REPO = "github.com/SatyamSaxena1/GRC"
-DEMO = "grc-demo-vu2u.onrender.com"
+DEMO = "grc-demo-vu2u.onrender.com"      # the role-switching demo on throwaway data
+LIVE = "grc.blinkedit.me"                 # the live service, with a read-only public demo (ADR-062)
 
 c = canvas.Canvas(OUT, pagesize=A4)
 c.setTitle(f"{NAME} - Technical Data Sheet")
@@ -112,7 +121,7 @@ def chrome(n):
     text(W - M - 138 + c.stringWidth("GRC", "Helvetica-Bold", 15) + 5, H - 34, "Evidence Platform", 10, "Helvetica-Bold", TEAL)
     c.setStrokeColor(RULE)
     c.line(M, 30, W - M, 30)
-    text(M, 18, f"{REPO}  |  Technical data sheet  |  built from the repository, {n}/9", 7, color=MUTED)
+    text(M, 18, f"{REPO}  |  Technical data sheet  |  built from the repository, {n}/{TOTAL_PAGES}", 7, color=MUTED)
 
 
 def table(x, y, widths, rows, head=None, size=8.2, pad=5, label_bold=True, zebra=False):
@@ -246,7 +255,7 @@ def page_architecture(n):
         ("Auditor workspace", "verdicts, locks, exceptions, messages"),
         ("Audit log", "per-tenant hash chain, signed checkpoints"),
         ("Review engine", "Review Standards for code review"),
-        ("Connector sync", "snapshots and change-control evidence"),
+        ("Connections", "uploaded snapshots and change-control evidence"),
     ]
     bw = (W - 2 * M - 24 - 2 * 8) / 3
     for i, (t1, t2) in enumerate(inner):
@@ -258,9 +267,9 @@ def page_architecture(n):
     # data row
     ry = top - ch - 16
     store = [
-        ("PostgreSQL 16", "row-level security, FORCE; append-only audit trigger"),
+        ("PostgreSQL", "row-level security, FORCE; append-only audit trigger"),
         ("Object storage", "S3-compatible (MinIO, R2, Supabase) or local disk"),
-        ("Model host", "Ollama · LM Studio · OpenAI-compatible"),
+        ("Model host", "Ollama · LM Studio · any OpenAI-compatible host"),
         ("Identity provider", "OIDC, RS256 JWT verified against its keys"),
     ]
     sw = (W - 2 * M - 3 * 7) / 4
@@ -268,7 +277,7 @@ def page_architecture(n):
         box(M + i * (sw + 7), ry - 56, sw, 56, t1, t2, fill=white, fg=NAVY, subfg=MUTED, tsize=8.6, ssize=7, stroke=TEAL)
     # externals
     ey = ry - 56 - 14
-    box(M, ey - 40, (W - 2 * M) / 2 - 4, 40, "Read-only collectors", "GitHub · GitLab · Bitbucket · AWS · M365 · Google Workspace · HRMS",
+    box(M, ey - 40, (W - 2 * M) / 2 - 4, 40, "Read-only collectors and uploads", "GitHub · GitLab · Bitbucket pulled; AWS · M365 · Google Workspace · HR by customer-run script",
         fill=TINT, fg=NAVY, subfg=MUTED, tsize=8.6, ssize=7)
     box(M + (W - 2 * M) / 2 + 4, ey - 40, (W - 2 * M) / 2 - 4, 40, "Outputs", "CSV / XLSX report · OSCAL export · CISO Assistant sync · signed checkpoints",
         fill=TINT, fg=NAVY, subfg=MUTED, tsize=8.6, ssize=7)
@@ -316,19 +325,20 @@ def page_reuse(n):
     total_req = sum(req.values()); maps = sum(len(v) for v in U.values())
     # KPI tiles
     y -= 10
-    kp = [(str(N_FW), "frameworks"), (str(total_req), "requirements"), (str(len(PACKS["dom"])), "unified objectives"), (str(N_MAP), "mappings to objectives")]
-    kw = (W - 2 * M - 3 * 8) / 4
+    kp = [(str(N_FW), "frameworks"), (str(total_req), "requirements listed"), (str(N_RULE), "judged by rules"),
+          (str(len(PACKS["dom"])), "unified objectives"), (str(N_MAP), "mappings")]
+    kw = (W - 2 * M - 4 * 8) / 5
     for i, (big, small) in enumerate(kp):
         x = M + i * (kw + 8)
         c.setFillColor(NAVY); c.roundRect(x, y - 52, kw, 52, 6, fill=1, stroke=0)
-        label(x + 12, y - 30, big, 24, white, "Helvetica-Bold")
+        label(x + 12, y - 30, big, 22, white, "Helvetica-Bold")
         label(x + 12, y - 45, small, 7.8, PALE)
     y -= 52 + 22
 
     # chart A: reach
     half = (W - 2 * M - 20) / 2
     label(M, y, "Objectives that reach the most frameworks", 9.4, NAVY, "Helvetica-Bold")
-    label(M, y - 11, "frameworks mapping to the objective, out of 9", 7.4)
+    label(M, y - 11, f"frameworks mapping to the objective, out of {N_FW}", 7.4)
     reach = sorted(((len(v), k) for k, v in U.items()), reverse=True)[:8]
     by = y - 20
     for i, (cnt, code) in enumerate(reach):
@@ -370,14 +380,14 @@ def page_reuse(n):
     cellw = (W - 2 * M - lw - rw) / cols
     for j, (_, short) in enumerate(DOMS):
         label(M + lw + rw + j * cellw + cellw / 2, y - 8, short, 6.8, NAVY, "Helvetica-Bold", True)
-    label(M + lw + rw / 2 - 2, y - 8, "Reqs", 6.8, NAVY, "Helvetica-Bold", True)
+    label(M + lw + rw / 2 - 2, y - 8, "Rule/all", 6.4, NAVY, "Helvetica-Bold", True)
     y -= 14
     vmax = max(v for row in PACKS["M"].values() for v in row.values())
     for i, fw in enumerate(sorted(PACKS["M"], key=lambda f: -req[f])):
         yy = y - i * 19
         label(M, yy - 12, SHORT[fw], 8, NAVY, "Helvetica-Bold")
         c.setFillColor(TINT2); c.rect(M + lw, yy - 16, rw - 4, 16, fill=1, stroke=0)
-        label(M + lw + (rw - 4) / 2, yy - 12, str(req[fw]), 8, NAVY, "Helvetica-Bold", True)
+        label(M + lw + (rw - 4) / 2, yy - 12, f"{PACKS['rule'][fw]}/{req[fw]}", 7.4, NAVY, "Helvetica-Bold", True)
         for j, (dk, _) in enumerate(DOMS):
             v = PACKS["M"][fw].get(dk, 0)
             c.setFillColor(heat(v, vmax)); c.setStrokeColor(white)
@@ -388,7 +398,9 @@ def page_reuse(n):
     para(M, y, "Reading it: the AI RMF pack maps only to AI governance, while the security frameworks share identity and access, data protection "
          "and vulnerability objectives, "
          f"so the most widely shared objectives reach {WORDS.get(MAX_REACH, MAX_REACH)} of the {WORDS.get(N_FW, N_FW)} frameworks. "
-         f"These are focused starter packs ({N_REQ} requirements), not full catalogs, and the counts are of the packs as shipped.",
+         f"Every ISO 27001 Annex A control and almost every SOC 2 Security criterion is now listed, but a rule judges only {N_RULE} of the "
+         f"{N_REQ} requirements; the other {N_ATT} are met by a named person's dated attestation until a rule can be written. "
+         f"The mapping counts above are of the {N_RULE} rule-judged requirements, as shipped.",
          W - 2 * M, 8.4, "Helvetica-Oblique", MUTED)
 
 
@@ -477,6 +489,34 @@ def page_integrity(n):
     label(M + 158, ey - 14, "waives the gap while valid", 7, MUTED, "Helvetica-Oblique", True)
 
 
+# ------------------------------------------------------------------ page: running the programme
+def page_programme(n):
+    c.showPage(); chrome(n)
+    header_bar("Running the Programme")
+    y = para(M, H - 84, "Beyond the audit loop, the boundary holds: where a number or a grade is produced (a risk score, a vendor tier, a "
+             "training result), fixed rules produce it and a person signs. A model may suggest wording, never a score.",
+             W - 2 * M, 9.2)
+    rows = [
+        ("Policy library", ["An admin writes and approves each version; every person accepts it for themselves",
+                            "Editing the text is a new version that everyone accepts again; archiving keeps every version and acceptance",
+                            "Templates whose figures already meet the frameworks' rules (ADR-038, ADR-056)"]),
+        ("Training", ["Courses with lessons and graded scenario questions; fixed rules grade them, and the right answer and its reason appear after you answer",
+                      "Best try per lesson counts: 80% or more is PASS, 50% or more PARTIAL; it repeats every year",
+                      "An admin sees everyone's result and who is behind; every try is kept. A pass shows a person was given the material and answered, not that they are competent (ADR-063, ADR-064)"]),
+        ("Risk register", ["A fixed five-by-five scale scores each risk; a person signs; heat map, treatment, owner and next review date",
+                           "A model may suggest wording and never sets a score (ADR-057)"]),
+        ("Vendors", ["A register with a rule-decided risk tier from data access, criticality and attestation",
+                     "A current SOC 2 or ISO 27001 report on file lowers the tier only while its valid-until date has not passed (ADR-042, ADR-043)"]),
+        ("Trust page and questionnaires", ["A public trust page, off by default and content-free (ADR-039)",
+                                           "Security questionnaire answers drawn from stored verdicts (ADR-040)"]),
+        ("First week and drift", ["A first-week checklist read from real data, never hand-ticked",
+                                  "A weekly digest of controls that turned worse and sources that went quiet (ADR-041, ADR-058)"]),
+        ("Plans and demo", ["Plans set by hand with limits on frameworks and people, a FREE plan, and no payment code; an ended trial is read-only (ADR-054, ADR-062)",
+                            "A public read-only demo organisation: anyone can look, every change is refused by the server (ADR-062)"]),
+    ]
+    table(M, y - 12, [118, W - 2 * M - 118], rows, head=["Area", "What it does"], size=8.4, pad=7)
+
+
 # ------------------------------------------------------------------ page 1: cover
 c.setFillColor(CYAN)
 c.rect(0, 160, 40, 290, fill=1, stroke=0)
@@ -529,8 +569,8 @@ y = para(
     W - 88 - M, 10)
 c.setFillColor(TINT)
 c.rect(60, 96, W - 60 - M, 3, fill=1, stroke=0)
-text(88, 76, f"{REPO}   |   live demo: {DEMO}", 8.6, color=MUTED)
-text(88, 62, f"Data sheet generated from the repository, {date.today():%B %Y}. See page 8 for what is not yet covered.", 8, color=MUTED)
+text(88, 76, f"{REPO}   |   read-only demo: {LIVE}", 8.6, color=MUTED)
+text(88, 62, f"Data sheet generated from the repository, {date.today():%B %Y}. See page 9 for what is not yet covered.", 8, color=MUTED)
 
 # ------------------------------------------------------------------ page 2: how it works
 c.showPage(); chrome(2)
@@ -601,6 +641,7 @@ mods = [
     ("Compliance Engine", ["Nine content packs: ISO/IEC 27001:2022, PCI DSS 4.0.1, SOC 2, HIPAA Security Rule, GDPR, "
                            "DPDP 2023, NIST CSF 2.0, NIST AI RMF 1.0, CIS Controls v8",
                            f"Unified control objectives ({N_UCO}) so one fact satisfies several frameworks",
+                           f"{N_ISO} of 93 ISO 27001 Annex A controls and {N_CC} of 33 SOC 2 Security criteria are listed; a requirement with no rule yet is met by a named person's dated attestation, shown as Attested, never as passed",
                            "Gaps carry the exact missing or short attribute and what to fix",
                            "Draft requirements from a law's own text (parsed deterministically), with a human review gate and an advisory model critique"]),
     ("Controls, Gaps & Tasks", ["Per-control verdicts, remediation tasks created from gaps, manual tasks and priorities",
@@ -618,25 +659,28 @@ mods = [
     ("Gap Exceptions", ["Time-bound (180 days at most), approved by an auditor, never by the requester",
                         "Bound to the rule and the gap value: a changed rule or a bigger gap retires the exception",
                         "Computed at read time, so no scheduler is needed to expire one"]),
-    ("Connectors & Change Control", ["AWS, Microsoft 365, Google Workspace and HRMS snapshots; GitHub, GitLab and Bitbucket change control",
+    ("Connectors & Change Control", ["AWS, Microsoft 365, Google Workspace and HR-leaver evidence comes from the customer's own read-only script, as yes/no answers uploaded with a token: we hold no cloud keys. A snapshot counts for 30 days, and a weekly GitHub Actions template runs them",
+                                     "GitHub, GitLab and Bitbucket change control, pulled with a token the organisation saves encrypted",
                                      "Pre-merge change-control gate that runs the audit's own rules in CI",
                                      "Every run recorded as complete, partial or failed; a partial run is never read as a pass",
                                      "AI code review recorded as evidence, never as approval"]),
     ("Privacy & AI Governance", ["DPDP readiness, breach events and data-subject request log",
                                  "NIST AI RMF starter pack, AI policy and inventory artefact types",
                                  "Auditor-only AI summaries, clearly labelled as narration"]),
-    ("Reporting & Integration", ["Compliance report as CSV or XLSX; OSCAL export",
+    ("Reporting & Integration", ["Compliance report as CSV or XLSX; OSCAL export; a weekly compliance report from what is already stored",
                                  "CISO Assistant sync of verdicts",
                                  "Optional webhook notices (Slack, Discord or your own endpoint) and a de-duplicated daily digest",
+                                 "Ask AI: a helper that answers from stored data with read-only tools",
                                  "Evidence map, activity feed, glossary and guided tours"]),
 ]
-table(M, H - 84, [118, W - 2 * M - 118], mods, head=["Module", "Key highlights"], size=8.7, pad=8)
+table(M, H - 84, [118, W - 2 * M - 118], mods, head=["Module", "Key highlights"], size=8.3, pad=6)
 
-page_reuse(5)
-page_integrity(6)
+page_programme(5)
+page_reuse(6)
+page_integrity(7)
 
 # ------------------------------------------------------------------ page 4: features + security
-c.showPage(); chrome(7)
+c.showPage(); chrome(8)
 header_bar("Distinctive Features")
 y = para(M, H - 84, "What sets the platform apart from a document-store GRC tool is that the result is reproducible, "
          "attributable and tamper-evident.", W - 2 * M, 9.2)
@@ -649,7 +693,7 @@ tiles = [
     ("Expiring exceptions", "Waivers lapse on time, on rule change or when the gap grows"),
     ("Tenant isolation in the DB", "Postgres row-level security, forced, not only app filters"),
     ("Segregation of duties", "Uploader cannot judge; exception requester cannot reopen"),
-    ("Your own model", "Local or remote LLM; nothing is sent to a vendor by default"),
+    ("Your own model", "Local, or any OpenAI-compatible host you choose; the model never decides a verdict"),
     ("Change-control evidence", "Collected from GitHub, GitLab and Bitbucket as it happens"),
     ("Findings workflow", "Raised by an auditor, answered by the auditee, closed on the record"),
     ("Alerts where you work", "Optional webhook notices and a daily digest; content-free by design"),
@@ -673,11 +717,15 @@ rows = [
     ("Upload handling", "Size, filename, MIME sniff, extension agreement, allowlist, SHA-256 and a malware-scan hook "
                         "(ClamAV supported; the default scanner is a no-op)."),
     ("Roles and access", "Role-based access plus engagement scoping; read-only roles cannot write; unstaffed clients return 404."),
+    ("Browser and operator", "Standard security headers on every response, and a Content-Security-Policy in report-only mode (not yet enforced). "
+                             "Wrong operator keys are limited to ten per address in five minutes (ADR-065, ADR-066)."),
+    ("Supply chain", "A weekly scan of known vulnerabilities in what ships (pip-audit, npm audit) and Dependabot update pull requests; "
+                     "every change is a reviewed pull request behind a change-control gate."),
 ]
-table(M, y, [112, W - 2 * M - 112], rows, size=8.7, pad=7)
+table(M, y, [112, W - 2 * M - 112], rows, size=8.3, pad=5)
 
 # ------------------------------------------------------------------ page 5: benefits + deployment + boundaries
-c.showPage(); chrome(8)
+c.showPage(); chrome(9)
 header_bar("Key Benefits")
 ben = [
     ("Defensible results", ["A verdict names its rules, engine and inputs and can be replayed",
@@ -698,32 +746,36 @@ header_bar("Deployment Model", y - 28)
 y -= 36
 dep = [
     ("Full stack, one command", "docker compose up brings up Postgres, MinIO (S3 storage), Ollama and the API serving the web app."),
-    ("Managed pilot", "A Render blueprint (web service plus Postgres) with the model hosted elsewhere; a separate stub-auth "
-                      "demo service for sharing, with throwaway data."),
+    ("Managed pilot", "A Render blueprint: one web service with managed Postgres and S3-compatible storage (the live pilot uses Supabase for "
+                      "both), the model hosted elsewhere; a separate stub-auth demo service for sharing, with throwaway data."),
     ("Your storage, your model", "S3-compatible object storage or local disk; Ollama, LM Studio or OpenAI-compatible endpoints."),
-    ("Scheduled collection", "Connector sync and expiry monitoring run from cron, Task Scheduler or CI; there is no in-process scheduler."),
+    ("Scheduled collection", "Expiry monitoring and connector sync run from cron, Task Scheduler or CI, and the customer's upload scripts from their own "
+                             "scheduler or a GitHub Actions template; there is no in-process scheduler."),
 ]
 y = table(M, y, [128, W - 2 * M - 128], dep, size=8.8, pad=7)
 
 y -= 18
 c.setFillColor(HexColor("#fff6e3"))
-bh = 186
+bh = 252
 c.rect(M, y - bh, W - 2 * M, bh, fill=1, stroke=0)
 c.setFillColor(AMBER)
 c.rect(M, y - bh, 4, bh, fill=1, stroke=0)
 text(M + 14, y - 17, "Boundaries — what this sheet does not claim", 10.5, "Helvetica-Bold", NAVY)
 bullets(M + 14, y - 22, [
-    f"The content packs are focused starter sets: {N_REQ} requirements across {WORDS.get(N_FW, N_FW)} frameworks, not full catalogs.",
+    f"{N_REQ} requirements are listed across {WORDS.get(N_FW, N_FW)} frameworks, but a rule judges only {N_RULE}; the other {N_ATT} (most of ISO 27001 and SOC 2) are a named person's attestation, which an auditor judges and the platform does not verify.",
+    f"Of SOC 2, {N_CC} of the 33 Security (CC) criteria are listed; the availability, confidentiality, processing-integrity and privacy categories are covered only in part or not at all.",
     "Encryption at rest, backups and multi-factor sign-in depend on the hosting, storage and identity provider you choose.",
-    "No third-party penetration test or security certification is claimed for the platform itself.",
+    "No third-party penetration test or security certification is claimed for the platform itself, and it has not had its own SOC 2 audit.",
+    "The Content-Security-Policy is report-only: it reports violations and blocks nothing yet.",
+    "The hosted pilot runs on free-tier hosting that sleeps when idle (a first request can take about a minute) and carries no uptime promise.",
     "The default malware scanner is a no-op; run ClamAV to scan uploads.",
-    "Single web instance only: live updates and background uploads run in-process.",
+    "Single web instance only: live updates, background uploads and request limits run in-process.",
     "Model-backed features (extraction, Ask AI, draft review help) need a reachable model. The hosted demo runs without one, so its evidence comes from collector snapshots.",
     "AWS, M365, Google Workspace and HRMS connectors have no totals to check against; completeness checks apply from the second run.",
 ], W - 2 * M - 28, 8.8, 3.4)
 
 # ------------------------------------------------------------------ page 6: audience + CTA
-c.showPage(); chrome(9)
+c.showPage(); chrome(10)
 header_bar("Who Should Use It?")
 aud = [
     ("Audit firms", "Run client engagements with staffed auditors, scoped access and verdicts that lock."),
@@ -738,11 +790,11 @@ y = table(M, H - 84, [140, W - 2 * M - 140], aud, size=9, pad=7)
 y -= 22
 header_bar("See It In Action", y - 28)
 y -= 42
-y = para(M, y, "A public demo runs with one-click personas for each of the five roles, on throwaway data. "
-         "Nothing you do there touches real data, and it resets.", W - 2 * M, 9.4)
+y = para(M, y, "Two demos run. The live service has a read-only demo organisation anyone can look around: every change is refused. "
+         "A separate demo has one-click personas for each of the five roles, on throwaway data that resets.", W - 2 * M, 9.4)
 y -= 10
-for i, (a, b) in enumerate([("Open the demo", f"https://{DEMO}"),
-                            ("Choose a role", "Org admin, control owner, compliance viewer, auditor or firm admin"),
+for i, (a, b) in enumerate([("Look around, read-only", f"https://{LIVE} — choose Try the demo on the sign-in page, no account"),
+                            ("Play every role", f"https://{DEMO} — org admin, control owner, compliance viewer, auditor or firm admin"),
                             ("Read the source", f"https://{REPO} — start with the README and docs/adr")]):
     yy = y - i * 30
     c.setFillColor(CYAN)
