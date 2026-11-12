@@ -20,6 +20,12 @@ could not simply be switched on.
 - Dependabot opens grouped weekly update pull requests for pip, npm, GitHub Actions and Docker, capped at a few; a person
   merges each after the same tests and gate as any change.
 - The lock file's `source-map-js` is updated to its fixed version.
+- **First run:** it failed on `setuptools 79.0.1` (three advisories; fixes in 83 and 84), a build tool that ships pre-installed
+  on GitHub's Python runner, not one of our dependencies. The scan now upgrades pip, setuptools and wheel first, then audits
+  what the project pulls in. **The production image is probably the same:** `python:3.11-slim` likely carries an older
+  setuptools, which is unused at runtime but is shipped. I did not check the exact version, and upgrading it in the
+  `Dockerfile` (one line) is left for a change that can be verified with a real image build, because Render builds that file
+  on every deploy.
 
 **Content-Security-Policy** (`app/csp.py`)
 - Sent as `Content-Security-Policy-Report-Only` by default, so nothing can break. `CSP_MODE=enforce` makes it enforcing;
