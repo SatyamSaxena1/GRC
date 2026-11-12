@@ -18,7 +18,7 @@ ARG VITE_OIDC_REDIRECT_URI
 RUN npm run build            # -> /frontend/dist
 
 # --- stage 2: api ----------------------------------------------------------
-FROM python:3.11-slim AS api
+FROM python:3.15-slim AS api
 WORKDIR /app
 
 # System deps kept minimal; pymupdf (ocr extra) ships manylinux wheels.
