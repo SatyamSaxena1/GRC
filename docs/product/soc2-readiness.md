@@ -29,7 +29,7 @@ Most of the work for ourselves is therefore **statements with proof behind them*
 | Hosting and uptime | Render free instance, Cloudflare in front | Free instances sleep after idle and can delay a request by 50+ seconds, with no uptime promise. Customers need a plan with a stated availability |
 | Database and backups | Supabase project `grc-prod` | Backups and a **tested restore** are not documented anywhere. I have not checked the Supabase plan. `render.yaml` still describes a Render free database that is deleted after 30 days, which may not match what is live: check |
 | Logging | The app's own audit log is hash-chained and tamper-evident | The request access log is written to a file on the server's temporary disk, which is lost on every deploy. DPDP asks for logs kept at least a year. Logs need to go to a durable place |
-| Vulnerabilities | Tests and a change-control gate | **No dependency or code scanning in CI** (no Dependabot, pip-audit, npm audit or similar). Cheap to add |
+| Vulnerabilities | Tests, a change-control gate, and (from 12 Nov, ADR-066) a weekly dependency scan with Dependabot update pull requests | Scanning covers packages, not our own code: no code scanner yet. Two moderate `react-router` advisories and one build-tool (`vite`) advisory wait on major upgrades |
 | Secrets | Held in Render's environment settings | No written rotation schedule. The operator key, the connections key and the database login need one |
 | Incident response | A template policy exists | Our own approved plan, a contact route, and a practice run (a "tabletop") written down |
 | Vendors | A vendor register exists in the product | Enter our own suppliers (Render, Supabase, Cloudflare, Auth0, GitHub, Brevo, OpenRouter), with each one's security report on file |
@@ -49,10 +49,11 @@ Most of the work for ourselves is therefore **statements with proof behind them*
 
 ## 4. Still open, in the order I would do them
 
-1. **Content-Security-Policy**, run in report-only mode first, because the 3D sign-in page and inline styles would break
-   under a strict one.
+1. **Content-Security-Policy: now running in report-only mode (ADR-066).** Leave it for a quiet week of real use, then set
+   `CSP_MODE=enforce` on Render. The API docs pages (`/docs`, `/redoc`) are public and will show in the reports; consider
+   switching them off in production.
 2. **Backups and a written restore test**, then paid tiers for hosting and the database (needs your decision, below).
-3. **Dependency and code scanning in CI**, so known-vulnerable packages fail the build.
+3. **Code scanning**, to go with the dependency scan that now runs weekly (done, ADR-066).
 4. **Durable logs**: send request logs to a service that keeps them for a year.
 5. **Confirm multi-factor sign-in** on every admin account of ours, and write down how often secrets are rotated.
 6. **Our own organisation in the product**, with these policies approved and these controls attested, so the product is
