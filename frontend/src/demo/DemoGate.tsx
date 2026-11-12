@@ -42,7 +42,7 @@ export function DemoGate() {
   // The pitch page embeds this whole app in an iframe; a second pill in there
   // would be noise, and /pitch has its own scripted demo.
   const embedded = window.self !== window.top;
-  if (!enabled || embedded || pathname.startsWith("/pitch")) return null;
+  if (!enabled || embedded || pathname.startsWith("/pitch") || pathname.startsWith("/learn")) return null;
 
   return createPortal(
     <>

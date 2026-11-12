@@ -33,6 +33,7 @@ import { CisoSyncPage } from "./pages/CisoSync";
 import { EvidenceMapPage } from "./pages/EvidenceMap";
 import { CodeReviewPage } from "./pages/CodeReview";
 import { DemoGate } from "./demo/DemoGate";
+import { LearnPage } from "./pages/Learn";
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   const { identity } = useSession();
@@ -61,6 +62,7 @@ export function App() {
       <Route path="/trust/:token" element={<PublicTrustPage />} />
       <Route path="/operator" element={<OperatorPage />} />
       <Route path="/pitch" element={<PitchPage />} />
+      <Route path="/learn/soc-2/:slug?" element={<LearnPage />} />
       <Route path="/jeff" element={<JeffDemoPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/oidc-callback" element={<OidcCallbackPage />} />

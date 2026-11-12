@@ -228,7 +228,7 @@ function ClassicLogin({ embedded = false }: { embedded?: boolean }) {
               Turn one evidence document into verdicts across every compliance framework. Try it with a demo organisation — no account needed.
             </p>
             <p className="muted">
-              New here? <Link to="/pitch">See what this is, with a live demo</Link>.
+              New here? <Link to="/pitch">See what this is, with a live demo</Link>, or <Link to="/learn/soc-2">learn SOC 2 free</Link>.
             </p>
           </>
         )}
