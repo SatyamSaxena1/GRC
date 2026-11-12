@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
-  addTraining, ApiError, completeTraining, editTraining, getTraining, listTraining, listTrainingTemplates,
-  type TrainingCourse,
+  addTraining, answerTraining, ApiError, completeTraining, editTraining, getTraining, listTraining, listTrainingTemplates,
+  type TrainingCourse, type TrainingMarked, type TrainingProgress,
 } from "../api/client";
 import { useApi } from "../lib/useApi";
 
@@ -11,6 +11,91 @@ const STATE_LABEL: Record<TrainingCourse["my_state"], string> = {
 const STATE_BADGE: Record<TrainingCourse["my_state"], string> = {
   NOT_DONE: "badge-fail", DONE: "badge-pass", DUE_SOON: "badge-partial", OVERDUE: "badge-fail",
 };
+const RESULT_LABEL: Record<TrainingProgress["result"], [string, string]> = {
+  NOT_STARTED: ["Not started", "badge-fail"], IN_PROGRESS: ["In progress", "badge-partial"],
+  PASS: ["Pass", "badge-pass"], PARTIAL: ["Partial", "badge-partial"], FAIL: ["Fail", "badge-fail"],
+};
+
+function ResultBadge({ p }: { p: TrainingProgress }) {
+  const [label, badge] = RESULT_LABEL[p.result];
+  return (
+    <span className={`badge ${badge}`}>
+      {label}{p.score !== null ? ` ${p.score}%` : ` ${p.done} of ${p.lessons} lessons`}
+    </span>
+  );
+}
+
+/** One course's lessons (ADR-064): read a lesson, answer its situations, see the right answer and why. The server
+ *  grades with the stored answers and keeps every try; the best try at each lesson counts. */
+function Lessons({ course, onAnswered }: { course: TrainingCourse; onAnswered: (c: TrainingCourse) => void }) {
+  const lessons = course.lessons ?? [];
+  const [at, setAt] = useState(0);
+  const [picked, setPicked] = useState<(number | undefined)[]>([]);
+  const [marked, setMarked] = useState<TrainingMarked[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const lesson = lessons[at];
+  const go = (i: number) => { setAt(i); setPicked([]); setMarked(null); setError(null); };
+  const submit = async () => {
+    setError(null);
+    try {
+      const r = await answerTraining(course.id, at, course.version, picked as number[]);
+      setMarked(r.marked);
+      onAnswered(r.course);
+    } catch (err) { setError(err instanceof ApiError ? String(err.detail) : (err as Error).message); }
+  };
+  if (!lesson) return null;
+  const ready = lesson.questions.every((_, i) => picked[i] !== undefined);
+  return (
+    <div style={{ marginTop: 12 }}>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        {lessons.map((l, i) => {
+          const best = course.my_progress?.by_lesson[i];
+          return (
+            <button key={i} className={`btn btn-sm${i === at ? " btn-primary" : ""}`} onClick={() => go(i)}>
+              {i + 1}. {l.title}{best ? ` (${best[0]}/${best[1]})` : ""}
+            </button>
+          );
+        })}
+      </div>
+      <pre style={{ whiteSpace: "pre-wrap", fontFamily: "inherit", fontSize: 14, marginTop: 10 }}>{lesson.body}</pre>
+      {lesson.questions.map((q, qi) => {
+        const m = marked?.[qi];
+        return (
+          <fieldset key={`${at}-${qi}`} style={{ border: "1px solid var(--border, #ddd)", borderRadius: 6, padding: 10, marginTop: 8 }}>
+            <legend style={{ fontSize: 13 }}>Situation {qi + 1}</legend>
+            <p style={{ margin: "0 0 6px" }}>{q.scenario}</p>
+            {q.choices.map((choice, ci) => (
+              <label key={ci} style={{ display: "block", fontWeight: m && ci === m.answer ? 600 : undefined }}>
+                <input type="radio" name={`q-${at}-${qi}`} disabled={!!marked} checked={picked[qi] === ci}
+                  onChange={() => setPicked((p) => { const n = [...p]; n[qi] = ci; return n; })} /> {choice}
+              </label>
+            ))}
+            {m && (
+              <p className="stat-sub" style={{ marginTop: 6 }}>
+                <span className={`badge ${m.right ? "badge-pass" : "badge-fail"}`}>{m.right ? "Right" : "Not quite"}</span>{" "}
+                {!m.right && <>The answer is “{q.choices[m.answer]}”. </>}{m.why}
+              </p>
+            )}
+          </fieldset>
+        );
+      })}
+      {error && <div className="alert alert-error" style={{ marginTop: 8 }}>{error}</div>}
+      <div style={{ marginTop: 8 }}>
+        {marked ? (
+          <>
+            <strong>{marked.filter((m) => m.right).length} of {marked.length} right.</strong>{" "}
+            <button className="btn btn-sm" onClick={() => go(at)}>Try again</button>{" "}
+            {at + 1 < lessons.length && <button className="btn btn-sm btn-primary" onClick={() => go(at + 1)}>Next lesson</button>}
+          </>
+        ) : (
+          <button className="btn btn-primary" disabled={!ready} onClick={() => void submit()}>
+            {lesson.questions.length ? "Check my answers" : "Mark this lesson read"}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
 
 /** Training (ADR-063): short courses each person reads and confirms they understood, repeated on a cycle. It is a
  *  statement, not a test. The server decides who may do what; `can_manage` only chooses which buttons to draw. */
@@ -67,6 +152,7 @@ export function TrainingPage() {
               <td>
                 <span className={`badge ${STATE_BADGE[c.my_state]}`}>{STATE_LABEL[c.my_state]}</span>
                 {c.my_due && c.my_state !== "NOT_DONE" && <span className="muted"> next by {c.my_due}</span>}
+                {c.my_progress && <> <ResultBadge p={c.my_progress} /></>}
               </td>
               <td>{c.up_to_date} of {c.people}</td>
               <td>
@@ -100,7 +186,13 @@ export function TrainingPage() {
               <button className="btn" onClick={() => setDraft(null)}>Cancel</button>
             </>
           ) : (
-            <pre style={{ whiteSpace: "pre-wrap", fontFamily: "inherit", fontSize: 14, maxHeight: 420, overflow: "auto" }}>{open.body}</pre>
+            <>
+              <pre style={{ whiteSpace: "pre-wrap", fontFamily: "inherit", fontSize: 14, maxHeight: 420, overflow: "auto" }}>{open.body}</pre>
+              {(open.lessons ?? []).length > 0 && (
+                <Lessons key={`${open.id}-${open.version}`} course={open}
+                  onAnswered={(c) => { setOpen((cur) => (cur ? { ...cur, ...c } : cur)); state.reload(); }} />
+              )}
+            </>
           )}
           {!draft && (
             <div style={{ marginTop: 8 }}>
@@ -116,6 +208,20 @@ export function TrainingPage() {
             <details style={{ marginTop: 10 }}>
               <summary>Still to do or overdue: {open.waiting_on!.length}</summary>
               <ul style={{ fontSize: 13, margin: "6px 0 0 18px" }}>{open.waiting_on!.map((e) => <li key={e}>{e}</li>)}</ul>
+            </details>
+          )}
+          {admin && open.results && (
+            <details style={{ marginTop: 10 }}>
+              <summary>Everyone's results</summary>
+              <p className="stat-sub">
+                Best try at each lesson. 80% or more is a pass, 50% a partial. A pass shows the person picked the set
+                answers, with retries allowed; it does not prove they are competent.
+              </p>
+              <table className="data-table static">
+                <tbody>
+                  {open.results.map((r) => <tr key={r.email}><td>{r.email}</td><td><ResultBadge p={r} /></td></tr>)}
+                </tbody>
+              </table>
             </details>
           )}
         </div>

@@ -422,6 +422,13 @@ step is in a tamper-evident log; the DPDP Act pack for India.
   admin: 1 of 2 up to date and who is still to do it.
 - **Proof:** ADR-063; the Activity page shows each completion with who and when.
 
+### 12 Nov 2026: Courses with lessons, and a pass, partial or fail
+- **Say:** "A course can now have lessons, each ending with a few real situations. Pick an answer, and it tells you if
+  you were right and why. Your best try counts: 80% is a pass, 50% a partial. Your manager sees everyone's result."
+- **Show:** Training, add "Using GRC: the basics", answer lesson 1 with one wrong, read the explanation, then as the
+  admin open Everyone's results.
+- **Proof:** ADR-064 (also says what a pass does and does not prove); fixed rules grade, and every try is on the Activity page.
+
 ## Scenes still to film
 - Team card with Deactivate/Reactivate (needs an org admin session).
 - AI help (Explain, Ask AI) once the model has a stable address.
