@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
-from app.models import AuditEvent, TrainingCompletion
+from app.models import AuditEvent, TrainingAttempt, TrainingCompletion
 from app.routers import training
 
 TEXT = "Lock your screen when you leave your desk, and report anything odd to the security contact straight away."
@@ -93,4 +93,71 @@ def test_roles_tenants_and_input_are_enforced(client):
     assert client.post("/training", json={"title": "Short", "body": TEXT, "cycle_days": 5},
                        headers=_as(admin)).status_code == 422
     assert client.get("/training/templates", headers=_as(owner)).status_code == 403
-    assert len(client.get("/training/templates", headers=_as(admin)).json()) == 2
+    assert len(client.get("/training/templates", headers=_as(admin)).json()) == 3
+
+
+# --------------------------------------------------------------------------- lessons and graded scenarios (ADR-064)
+
+def _lesson(title, answers):
+    return {"title": title, "body": "Read this first.",
+            "questions": [{"scenario": f"Situation {i}", "choices": ["a", "b", "c"], "answer": a, "why": f"because {i}"}
+                          for i, a in enumerate(answers)]}
+
+
+def test_result_is_read_from_each_lessons_best_try_alone():
+    assert training.result({}, 2) == ("NOT_STARTED", None)
+    assert training.result({0: (2, 2)}, 2) == ("IN_PROGRESS", None)
+    assert training.result({0: (4, 5), 1: (4, 5)}, 2) == ("PASS", 80)
+    assert training.result({0: (3, 5), 1: (2, 5)}, 2) == ("PARTIAL", 50)
+    assert training.result({0: (1, 5), 1: (3, 5)}, 2) == ("FAIL", 40)
+    assert training.result({0: (0, 0)}, 1) == ("PASS", 100)                                 # a reading-only lesson
+
+
+def test_answers_are_graded_kept_and_explained_only_after_answering(client, db):
+    org, admin, owner = _team(client)
+    c = client.post("/training", json={"title": "Desk rules", "body": TEXT,
+                                       "lessons": [_lesson("One", [0, 1]), _lesson("Two", [2])]}, headers=_as(admin)).json()
+    assert c["lesson_count"] == 2 and "answer" not in c["lessons"][0]["questions"][0]          # no answer key up front
+    url = f"/training/{c['id']}/lessons/0/answer"
+
+    first = client.post(url, json={"version": 1, "answers": [0, 0]}, headers=_as(owner)).json()
+    assert (first["right"], first["of"]) == (1, 2) and first["marked"][1] == {
+        "picked": 0, "answer": 1, "right": False, "why": "because 1"}
+    assert first["course"]["my_progress"]["result"] == "IN_PROGRESS"
+    client.post(url, json={"version": 1, "answers": [1, 1]}, headers=_as(owner))                # worse try: best still counts
+    done = client.post(f"/training/{c['id']}/lessons/1/answer", json={"version": 1, "answers": [2]}, headers=_as(owner)).json()
+    assert done["course"]["my_progress"] == {"done": 2, "lessons": 2, "result": "PARTIAL", "score": 66,
+                                             "by_lesson": [[1, 2], [1, 1]]}
+    assert db.query(TrainingAttempt).count() == 3 and db.query(AuditEvent).filter_by(action="TRAINING_ANSWERED").count() == 3
+
+    client.post(url, json={"version": 1, "answers": [0, 1]}, headers=_as(owner))                # a retry lifts it to a pass
+    seen = client.get(f"/training/{c['id']}", headers=_as(admin)).json()
+    by_email = {r["email"]: r for r in seen["results"]}
+    assert by_email["owner@acme.test"]["result"] == "PASS" and by_email["admin@acme.test"]["result"] == "NOT_STARTED"
+    assert "results" not in client.get(f"/training/{c['id']}", headers=_as(owner)).json()      # a member sees only their own
+
+
+def test_a_change_to_the_lessons_is_a_new_version_and_old_tries_stop_counting(client):
+    org, admin, owner = _team(client)
+    c = client.post("/training", json={"title": "Desk rules", "body": TEXT, "lessons": [_lesson("One", [0])]},
+                    headers=_as(admin)).json()
+    client.post(f"/training/{c['id']}/lessons/0/answer", json={"version": 1, "answers": [0]}, headers=_as(owner))
+    edited = client.put(f"/training/{c['id']}", json={"lessons": [_lesson("One", [1])]}, headers=_as(admin)).json()
+    assert edited["version"] == 2 and edited["my_progress"]["result"] == "NOT_STARTED"
+    assert client.post(f"/training/{c['id']}/lessons/0/answer", json={"version": 1, "answers": [1]},
+                       headers=_as(owner)).status_code == 409
+
+
+def test_answers_and_lessons_are_checked(client):
+    org, admin, owner = _team(client)
+    other = _user(client, "x@other.test", _org(client, "Other"), "ORG_ADMIN")
+    c = client.post("/training", json={"template_id": "using-grc"}, headers=_as(admin)).json()
+    assert c["lesson_count"] == 3 and all(l["questions"] for l in c["lessons"])
+    url = f"/training/{c['id']}/lessons/0/answer"
+    assert client.post(url, json={"version": 1, "answers": [1]}, headers=_as(owner)).status_code == 422   # too few
+    assert client.post(f"/training/{c['id']}/lessons/9/answer", json={"version": 1, "answers": []},
+                       headers=_as(owner)).status_code == 404
+    assert client.post(url, json={"version": 1, "answers": [1, 1, 1]}, headers=_as(other)).status_code == 404
+    bad = {"title": "Bad", "body": TEXT, "lessons": [{"title": "One", "body": "x",
+                                                      "questions": [{"scenario": "Situation", "choices": ["a", "b"], "answer": 2}]}]}
+    assert client.post("/training", json=bad, headers=_as(admin)).status_code == 422          # answer is not a choice

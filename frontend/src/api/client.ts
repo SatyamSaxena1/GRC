@@ -922,10 +922,21 @@ export const attestControl = (body: { framework: string; clause: string; stateme
   request<Attestation>("POST", "/attestations", { json: body });
 export const revokeAttestation = (id: string) =>
   request<Attestation>("POST", `/attestations/${encodeURIComponent(id)}/revoke`);
+export type TrainingProgress = {
+  done: number; lessons: number; result: "NOT_STARTED" | "IN_PROGRESS" | "PASS" | "PARTIAL" | "FAIL";
+  score: number | null; by_lesson: ([number, number] | null)[];
+};
+export type TrainingLesson = { title: string; body: string; questions: { scenario: string; choices: string[] }[] };
 export type TrainingCourse = {
   id: string; title: string; version: number; cycle_days: number; people: number; up_to_date: number;
   my_state: "NOT_DONE" | "DONE" | "DUE_SOON" | "OVERDUE"; my_due: string | null; waiting_on?: string[]; body?: string;
+  lesson_count: number; my_progress?: TrainingProgress; results?: (TrainingProgress & { email: string })[];
+  lessons?: TrainingLesson[];
 };
+export type TrainingMarked = { picked: number; answer: number; right: boolean; why: string };
+export const answerTraining = (id: string, lesson: number, version: number, answers: number[]) =>
+  request<{ right: number; of: number; marked: TrainingMarked[]; course: TrainingCourse }>(
+    "POST", `/training/${id}/lessons/${lesson}/answer`, { json: { version, answers } });
 export const listTraining = () => request<{ can_manage: boolean; courses: TrainingCourse[] }>("GET", "/training");
 export const getTraining = (id: string) => request<TrainingCourse>("GET", `/training/${id}`);
 export const listTrainingTemplates = () => request<{ id: string; title: string }[]>("GET", "/training/templates");

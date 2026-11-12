@@ -167,7 +167,25 @@ class TrainingCourse(Base):
     body: Mapped[str] = mapped_column(Text)
     version: Mapped[int] = mapped_column(default=1)
     cycle_days: Mapped[int] = mapped_column(default=365)
+    # Ordered lessons (ADR-064): [{title, body, questions: [{scenario, choices, answer, why}]}]. Part of the text:
+    # changing them is a new version.
+    lessons: Mapped[list[dict]] = mapped_column(JSON, default=list)
     created_by: Mapped[str] = mapped_column(String, default="")
+    created_at: Mapped[datetime] = mapped_column(default=_now)
+
+
+class TrainingAttempt(Base):
+    """One try at one lesson's questions, graded against the stored answers (ADR-064). Insert-only."""
+    __tablename__ = "training_attempts"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"))
+    course_id: Mapped[str] = mapped_column(ForeignKey("training_courses.id"))
+    version: Mapped[int]
+    lesson: Mapped[int]  # index into the course's lessons
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    answers: Mapped[list[int]] = mapped_column(JSON, default=list)
+    correct: Mapped[int]
+    total: Mapped[int]
     created_at: Mapped[datetime] = mapped_column(default=_now)
 
 
