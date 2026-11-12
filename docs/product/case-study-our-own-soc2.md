@@ -31,8 +31,8 @@ The company does the work. The auditor checks it. Our product helps with steps 3
 |---|---|
 | 1. Scope | **Not decided.** Suggested: Security criteria only, Type 1 first |
 | 2. Readiness check | **Done** (docs/product/soc2-readiness.md) |
-| 3. Policies and controls | **In progress.** Five policies are written and waiting for the owner to read and approve them. Two statements are signed |
-| 4. Evidence | **Barely started.** Change history and weekly scans exist; our own organisation holds little yet |
+| 3. Policies and controls | **In progress.** Five policies are written and waiting for the owner to read and approve them. Two statements are signed (ISO A.8.25 and A.8.29). Seven suppliers and six risks are recorded |
+| 4. Evidence | **Barely started.** Change history and weekly scans exist; the GitHub change-control connection waits on a read-only token from the owner |
 | 5. Choose the auditor | **Not started** |
 | 6 to 8 | Not started |
 
@@ -51,24 +51,24 @@ green; before and after of the route list.*
 
 **Scene 3: Make our own organisation in the product.**
 We created "GRC Platform (our own company)" with SOC 2, ISO 27001 and DPDP, and one administrator. *On screen: the new
-organisation with every clause showing "no evidence", all red. This is the honest starting point.*
+organisation with every clause showing "no evidence", all red. This is the honest starting point.* (Shot 04.)
 
 **Scene 4: Write the policies.**
 Five policy templates were added as drafts (access, passwords, encryption, incident response, data retention). Their
 numbers come from the framework rules, not from guesswork. We filled in our company name, the approver's role, and what
-"in scope" means for us. *On screen: the policy list, five drafts, "not approved yet".*
+"in scope" means for us. *On screen: the policy list, five drafts, "not approved yet".* (Shot 03.)
 
 **Scene 5: Say only what is true.**
 Two clauses were attested by a named person: secure development (every change is a reviewed pull request that must pass
 the checks) and security testing (tests on every change, a weekly package scan, and an honest note that we have no code
 scanner yet). The product records who said it and until when (one year at most). It shows these as "attested", never as
 "passed", because a statement is not a test. *On screen: the clause turns from "no evidence" to "attested", with the
-wording.*
+wording.* (Shots 05 and 07.)
 
 **Scene 6: Leave the gaps visible.**
 Multi-factor sign-in, backups with a tested restore, durable logs and background checks stay open. We do not sign things
 we cannot prove. An auditor will find them anyway, and an honest open gap is better than a statement that falls apart.
-*On screen: the list of open items.*
+*On screen: the list of open items.* We also recorded our seven suppliers (shot 02) and six real risks with owners and review dates (shot 01); the GitHub box stays unconnected until the owner supplies a token (shot 06).
 
 **Scene 7 (next): Approve, then gather proof.**
 The owner reads each policy and approves it. The product then asks every person to accept it. Approval is a human act:
@@ -114,3 +114,21 @@ the Auth0 dashboard, or the database. Use the demo or our own organisation only,
 - Our policies are drafts until the owner approves them, and the multi-factor statement in the password policy has not
   been checked on our accounts yet.
 - The product helps organise the work. It does not make a company compliant by itself.
+
+## 9. Screenshots
+
+Stored in `docs/product/case-study-shots/`, 800 by 499 pixels, taken on 12 Nov 2026 from our own organisation. They are good for a
+storyboard; record the screen at full size for the final video. The sign-in panel in shot 07 shows only our own admin address.
+
+| File | Shows |
+|---|---|
+| 01-risk-register.jpg | Heat map and the six risks |
+| 02-vendor-register.jpg | The seven suppliers and their tiers |
+| 03-policies-draft.jpg | Five policies at version 2, all drafts |
+| 04-frameworks-overview.jpg | The framework cards, all near zero |
+| 05-iso-27001-attested-count.jpg | ISO 27001 "2 attested" |
+| 06-connections-github-not-connected.jpg | The GitHub box, not connected |
+| 07-iso-27001-two-attested-clauses.jpg | A.8.25 and A.8.29 attested, with wording |
+
+A mistake worth telling in the video: the second statement was first filed under the wrong clause (A.8.30), because two forms were open at
+once. It was withdrawn (kept in the history as withdrawn) and filed again under A.8.29, one form at a time.
