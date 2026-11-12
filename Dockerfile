@@ -4,7 +4,7 @@
 # frontend/src/api/client.ts), so no CORS config is needed in this mode.
 
 # --- stage 1: frontend -------------------------------------------------------
-FROM node:20-slim AS frontend
+FROM node:25-slim AS frontend
 WORKDIR /frontend
 COPY frontend/package.json frontend/package-lock.json* ./
 RUN npm ci
