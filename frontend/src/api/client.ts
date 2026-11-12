@@ -922,6 +922,19 @@ export const attestControl = (body: { framework: string; clause: string; stateme
   request<Attestation>("POST", "/attestations", { json: body });
 export const revokeAttestation = (id: string) =>
   request<Attestation>("POST", `/attestations/${encodeURIComponent(id)}/revoke`);
+export type TrainingCourse = {
+  id: string; title: string; version: number; cycle_days: number; people: number; up_to_date: number;
+  my_state: "NOT_DONE" | "DONE" | "DUE_SOON" | "OVERDUE"; my_due: string | null; waiting_on?: string[]; body?: string;
+};
+export const listTraining = () => request<{ can_manage: boolean; courses: TrainingCourse[] }>("GET", "/training");
+export const getTraining = (id: string) => request<TrainingCourse>("GET", `/training/${id}`);
+export const listTrainingTemplates = () => request<{ id: string; title: string }[]>("GET", "/training/templates");
+export const addTraining = (b: { template_id: string; cycle_days?: number } | { title: string; body: string; cycle_days?: number }) =>
+  request<TrainingCourse>("POST", "/training", { json: b });
+export const editTraining = (id: string, b: { title?: string; body?: string; cycle_days?: number }) =>
+  request<TrainingCourse>("PUT", `/training/${id}`, { json: b });
+export const completeTraining = (id: string, version: number) =>
+  request<TrainingCourse>("POST", `/training/${id}/complete`, { json: { version } });
 export const getReadinessAll = () => request<FrameworkReadiness[]>("GET", "/analytics/readiness");
 export const getReadiness = (framework: string) =>
   request<FrameworkReadiness>("GET", `/analytics/readiness/${encodeURIComponent(framework)}`);

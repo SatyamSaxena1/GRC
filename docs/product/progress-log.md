@@ -415,6 +415,13 @@ step is in a tamper-evident log; the DPDP Act pack for India.
 - **Show:** sign-in page, Try the demo, the banner on Overview, a refused change.
 - **Proof:** ADR-062; tests show the demo sees only its own organisation and every change is refused.
 
+### 12 Nov 2026: Training everyone can show an auditor
+- **Say:** "Add a short security course, and everyone confirms they read it. It repeats every year, and you can see who
+  is behind. When the auditor asks about staff training, this is the answer."
+- **Show:** Training, add Security awareness from the template, sign in as a team member and confirm it, then back as the
+  admin: 1 of 2 up to date and who is still to do it.
+- **Proof:** ADR-063; the Activity page shows each completion with who and when.
+
 ## Scenes still to film
 - Team card with Deactivate/Reactivate (needs an org admin session).
 - AI help (Explain, Ask AI) once the model has a stable address.

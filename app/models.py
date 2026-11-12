@@ -158,6 +158,30 @@ class PolicyAcceptance(Base):
     accepted_at: Mapped[datetime] = mapped_column(default=_now)
 
 
+class TrainingCourse(Base):
+    """Something every member reads and says they understood, on a cycle (ADR-063). Editing the text is a new version."""
+    __tablename__ = "training_courses"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"))
+    title: Mapped[str]
+    body: Mapped[str] = mapped_column(Text)
+    version: Mapped[int] = mapped_column(default=1)
+    cycle_days: Mapped[int] = mapped_column(default=365)
+    created_by: Mapped[str] = mapped_column(String, default="")
+    created_at: Mapped[datetime] = mapped_column(default=_now)
+
+
+class TrainingCompletion(Base):
+    """One person said they read and understood one version of one course, on one day. Insert-only."""
+    __tablename__ = "training_completions"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"))
+    course_id: Mapped[str] = mapped_column(ForeignKey("training_courses.id"))
+    version: Mapped[int]
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    completed_at: Mapped[datetime] = mapped_column(default=_now)
+
+
 class ControlAttestation(Base):
     """A person's dated statement that a control no rule judges yet is in place (ADR-060). Never deleted: a
     newer statement supersedes, and a withdrawal sets `revoked_at`. Read as ATTESTED, never as PASS."""

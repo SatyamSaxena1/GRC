@@ -11,6 +11,7 @@ import { VendorsPage } from "./pages/Vendors";
 import { RisksPage } from "./pages/Risks";
 import { FrameworksPage } from "./pages/Frameworks";
 import { PoliciesPage } from "./pages/Policies";
+import { TrainingPage } from "./pages/Training";
 import { ConnectionsPage } from "./pages/Connections";
 import { JeffDemoPage } from "./pages/jeff/JeffDemo";
 import { OverviewPage } from "./pages/Overview";
@@ -76,6 +77,7 @@ export function App() {
         <Route path="/evidence/:id" element={<EvidenceDetailPage />} />
         <Route path="/frameworks" element={<FrameworksPage />} />
         <Route path="/policies" element={<PoliciesPage />} />
+        <Route path="/training" element={<TrainingPage />} />
         <Route path="/controls" element={<ControlsListPage />} />
         <Route path="/controls/:id" element={<ControlDetailPage />} />
         <Route path="/gaps" element={<GapsListPage />} />
