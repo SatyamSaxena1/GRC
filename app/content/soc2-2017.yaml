@@ -200,7 +200,7 @@ requirements:
   # DRAFT, awaiting human review (issue 82). Drafted by an AI from the public criteria titles, so the mappings
   # below say source: AI, not EXPERT. They reuse existing unified controls and policy attributes; nothing here
   # needs new rules. Clauses that need a NEW unified control (CC6.4 physical access, CC6.8 malicious software,
-  # CC7.5 recovery, CC9.x) are deliberately not drafted yet. CC6.5 and CC7.4 read their own kinds of policy
+  # CC7.5 recovery, CC9.x) are deliberately not drafted as rules; they are attested clauses below. CC6.5 and CC7.4 read their own kinds of policy
   # (RETENTION_POLICY, INCIDENT_POLICY), moved off POLICY on 2026-11-10 (rules version 3).
   - clause: "CC6.5"
     title: Disposal of data and assets
@@ -320,6 +320,10 @@ requirements:
   - clause: CC6.8
     title: Unauthorised or malicious software
     text: Controls prevent or detect, and act on, unauthorised or malicious software.
+  - clause: CC7.5
+    title: Recovery from security incidents
+    text: Activities to recover from identified security incidents are identified, developed and carried out, for
+      example restoring affected systems and data and confirming they work.
   - clause: CC9.1
     title: Business disruption risk
     text: Risk mitigation activities are identified and developed for risks from potential business disruption.

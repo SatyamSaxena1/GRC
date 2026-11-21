@@ -236,7 +236,7 @@
    "expect": {
     "PCI-DSS 11.3.2": "PASS",
     "SOC-2 CC7.1": "PASS",
-    "NIST-CSF DE.CM-08": "PASS",
+    "NIST-CSF ID.RA-01": "PASS",
     "CIS-CONTROLS 7.5-7.6": "PASS",
     "GDPR Art.32(1)(d)": "PASS"
    }
@@ -276,7 +276,7 @@
    "expect": {
     "PCI-DSS 11.3.2": "FAIL",
     "SOC-2 CC7.1": "FAIL",
-    "NIST-CSF DE.CM-08": "FAIL",
+    "NIST-CSF ID.RA-01": "FAIL",
     "CIS-CONTROLS 7.5-7.6": "FAIL",
     "GDPR Art.32(1)(d)": "FAIL"
    }
