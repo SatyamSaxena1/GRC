@@ -55,8 +55,10 @@ requirements:
             operator: contains_all
             value: ["remote access", "administrative access"]
 
+  # Art.32(4) is about acting only on the controller's instructions; the access review
+  # below is the evidence we use for it, not the article's wording.
   - clause: "Art.32(4)"
-    title: Access is limited to what is necessary
+    title: People with access process personal data only on instruction
     text: >
       Any person acting under the controller's authority who has access to personal
       data only processes it on instruction, and access is reviewed to stay limited

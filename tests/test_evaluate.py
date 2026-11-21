@@ -179,15 +179,15 @@ def test_encryption_and_logging_gaps_are_named_precisely():
     assert enc["CC6.7"].verdict == "FAIL"
     assert {g.attribute for g in enc["CC6.7"].gaps} == {"encryption_at_rest", "encryption_in_transit"}
     log = {l.clause: l for l in evaluate({}, "LOGGING_POLICY", ["NIST-CSF"], CONTENT)}
-    assert log["PR.PT-01"].verdict == "FAIL"
-    assert [g.attribute for g in log["PR.PT-01"].gaps] == ["log_retention_days"]
+    assert log["PR.PS-04"].verdict == "FAIL"
+    assert [g.attribute for g in log["PR.PS-04"].gaps] == ["log_retention_days"]
 
     stated_enc = {l.clause: l for l in evaluate(
         {"encryption_at_rest": True, "encryption_in_transit": True}, "ENCRYPTION_POLICY", ["SOC-2"], CONTENT)}
     stated_log = {l.clause: l for l in evaluate(
         {"log_retention_days": 120}, "LOGGING_POLICY", ["NIST-CSF"], CONTENT)}
     assert stated_enc["CC6.7"].verdict == "PASS"
-    assert stated_log["PR.PT-01"].verdict == "PASS"
+    assert stated_log["PR.PS-04"].verdict == "PASS"
 
 
 def test_a_pass_shows_what_it_passed_on():

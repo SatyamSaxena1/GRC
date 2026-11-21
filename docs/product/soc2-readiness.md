@@ -15,7 +15,7 @@ Run against a fresh organisation subscribed to ISO 27001, SOC 2 and DPDP:
 | Framework | Clauses listed | Judged by a rule from evidence | Met by a named person's statement |
 |---|---|---|---|
 | ISO 27001:2022 | 93 | 12 | 81 |
-| SOC 2 (Security criteria) | 32 of 33 (CC7.5 is in draft PR 109) | 11 | 21 |
+| SOC 2 (Security criteria) | 33 of 33 (CC7.5 attested; a rule for it is drafted in PR 109) | 11 | 21 |
 | DPDP | 9 | 9 | 0 |
 
 Most of the work for ourselves is therefore **statements with proof behind them**, not rules, until more rules are written.

@@ -85,13 +85,13 @@ requirements:
         delta_conditions: []
 
   - clause: "PR.DS-01"
-    title: Data-at-rest and data-in-transit are protected
+    title: Data-at-rest is protected
     text: >
-      The confidentiality of data is protected while stored and while in transit,
+      The confidentiality, integrity and availability of stored data are protected,
       commensurate with its sensitivity.
     evidence_requirements:
       - artefact_type: ENCRYPTION_POLICY
-        required_attributes: [encryption_at_rest, encryption_in_transit]
+        required_attributes: [encryption_at_rest]
     mappings:
       - uco: UCO-DATA-001
         coverage: FULL
@@ -101,15 +101,33 @@ requirements:
           - attribute: encryption_at_rest
             operator: "=="
             value: true
+
+  # Data in transit is its own subcategory in CSF 2.0 (it was folded into PR.DS-01 here before).
+  - clause: "PR.DS-02"
+    title: Data-in-transit is protected
+    text: >
+      The confidentiality, integrity and availability of data in transit are protected,
+      commensurate with its sensitivity.
+    evidence_requirements:
+      - artefact_type: ENCRYPTION_POLICY
+        required_attributes: [encryption_in_transit]
+    mappings:
+      - uco: UCO-DATA-001
+        coverage: FULL
+        confidence: 1.0
+        source: EXPERT
+        delta_conditions:
           - attribute: encryption_in_transit
             operator: "=="
             value: true
 
-  - clause: "DE.CM-08"
-    title: Vulnerability scans are performed
+  # CSF 1.1 DE.CM-8 was withdrawn in 2.0 and incorporated into ID.RA-01
+  # (sources/nist-csf/csf-2.0.json, WR-DE.CM-08).
+  - clause: "ID.RA-01"
+    title: Vulnerabilities in assets are identified, validated and recorded
     text: >
-      External-facing systems are scanned for vulnerabilities on a recurring basis,
-      and findings are tracked until remediated.
+      Vulnerabilities in assets are identified, validated and recorded, here shown by
+      recurring vulnerability scans whose findings are tracked until remediated.
     evidence_requirements:
       - artefact_type: SCAN_REPORT
         required_attributes:
@@ -128,11 +146,13 @@ requirements:
             operator: "=="
             value: true
 
-  - clause: "PR.PT-01"
-    title: Audit log records are generated and retained
+  # CSF 1.1 PR.PT-1 was withdrawn in 2.0 and moved to PR.PS-04
+  # (sources/nist-csf/csf-2.0.json, WR-PR.PT-01).
+  - clause: "PR.PS-04"
+    title: Log records are generated and made available for continuous monitoring
     text: >
-      Logs of security-relevant activity are generated and retained long enough to
-      support detection and investigation.
+      Logs of security-relevant activity are generated, made available for monitoring,
+      and retained long enough to support detection and investigation.
     evidence_requirements:
       - artefact_type: LOGGING_POLICY
         required_attributes: [log_retention_days]
