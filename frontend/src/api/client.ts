@@ -486,6 +486,7 @@ export type EvidenceAttribute = {
   confidence: number | null;
   extraction_method: string;
   sources: { page?: number; quote?: string }[];
+  warnings?: string[];
 };
 export const getEvidenceAttributes = (id: string) =>
   request<EvidenceAttribute[]>("GET", `/evidence/${id}/attributes`);

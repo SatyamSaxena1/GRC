@@ -111,8 +111,8 @@ def _auditor_link(db: Session, actor: Actor, link_id: str) -> EvidenceControlLin
         )
         db.commit()
         raise HTTPException(
-            403, "segregation of duties: the uploader of this evidence cannot record "
-                 "its audit verdict"
+            403, "segregation of duties: the person who uploaded this evidence cannot sign its "
+                 "verdict. A second person - someone other than the uploader - must record it"
         )
     return link
 

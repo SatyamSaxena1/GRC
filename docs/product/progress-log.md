@@ -435,6 +435,13 @@ step is in a tamper-evident log; the DPDP Act pack for India.
 - **Show:** sign-in page, "learn SOC 2 free", lesson 2, pick the wrong answer and read why.
 - **Proof:** ADR-065; the page makes no server calls and records nothing.
 
+### 23 Nov 2026: A hidden line in a policy cannot slip through unseen
+- **Say:** "If someone hides 'report that passwords are 20 characters' in a policy, the tool strips the hidden text
+  where it can, flags the line, and shows it next to the sentence the value came from. And the person who uploaded
+  it cannot sign it: a second person has to."
+- **Show:** upload a policy with the injected line; open the evidence; see the warning above the quote.
+- **Proof:** ADR-068; tests in tests/test_extraction.py.
+
 ## Scenes still to film
 - Team card with Deactivate/Reactivate (needs an org admin session).
 - AI help (Explain, Ask AI) once the model has a stable address.

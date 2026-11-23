@@ -349,9 +349,11 @@ def _sse(event: str, data: dict) -> str:
 def evidence_attributes(evidence_id: str, actor: Actor = Depends(current_actor),
                         db: Session = Depends(get_session)):
     evidence = _scoped_evidence(db, actor, evidence_id)
+    stored = evidence.extracted_attributes or {}
     return [
         {"name": a.name, "value": a.value, "confidence": a.confidence,
-         "extraction_method": a.extraction_method, "sources": a.sources}
+         "extraction_method": a.extraction_method, "sources": a.sources,
+         "warnings": (stored.get(a.name) or {}).get("warnings", [])}
         for a in db.query(EvidenceAttribute).filter_by(evidence_id=evidence.id)
     ]
 

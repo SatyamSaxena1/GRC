@@ -467,6 +467,9 @@ export function EvidenceDetailPage() {
                 </>
               )}
             </div>
+            {a.warnings?.map((w, i) => (
+              <p key={i} className="muted" role="alert">⚠ {w}</p>
+            ))}
             {a.sources.length > 0 && (
               <div className="attr-source">
                 {a.sources.map((src, i) => (
