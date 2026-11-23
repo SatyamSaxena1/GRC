@@ -70,13 +70,26 @@ def is_encrypted_pdf(filename: str, data: bytes) -> bool:
         return False
 
 
+def _visible_text(paragraph) -> str:
+    """Paragraph text without runs a reader cannot see: hidden text, or white text (an
+    instruction aimed at the model, not the reader). ponytail: white-only, not
+    'matches the background'; shaded cells are not checked."""
+    out = []
+    for run in paragraph.runs:
+        colour = run.font.color.rgb if run.font.color and run.font.color.type else None
+        if run.font.hidden or str(colour) == "FFFFFF":
+            continue
+        out.append(run.text)
+    return "".join(out)
+
+
 def _docx_pages(data: bytes) -> list[DocumentPage]:
     """DOCX has no page concept until rendered; paragraphs and tables become one
     logical page, with table cells kept as pipe-joined rows."""
     import docx
 
     document = docx.Document(io.BytesIO(data))
-    parts = [p.text for p in document.paragraphs if p.text.strip()]
+    parts = [t for p in document.paragraphs if (t := _visible_text(p)).strip()]
     for table in document.tables:
         for row in table.rows:
             cells = [c.text.strip() for c in row.cells]

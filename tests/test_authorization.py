@@ -157,6 +157,7 @@ def test_uploader_cannot_record_the_verdict_on_their_own_evidence(client, bootst
                           json={"verdict": "COMPLIANT", "reason": "reviewed the policy against this control and accept it"})
     assert blocked.status_code == 403
     assert "segregation of duties" in blocked.json()["detail"].lower()
+    assert "second person" in blocked.json()["detail"].lower()
 
     # Locking by the same route is refused too, not just the verdict endpoint.
     assert client.post(f"/audit/links/{link_id}/lock", headers=headers,

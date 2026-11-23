@@ -18,6 +18,7 @@ from app.ai.prompts import (
 )
 from app.ai.schemas import ExtractedField, ExtractionRun
 from app.ai.streaming import AttributeScanner
+from app.ai.untrusted import flag_fields, instruction_lines, normalise
 from app.ai.validators import parse_json_object
 
 logger = logging.getLogger("app.ai.extraction")
@@ -38,6 +39,8 @@ def extract_attributes(
     attribute_names: list[str],
     extraction_method: str = "native_text",
 ) -> ExtractionRun:
+    text = normalise(text)
+    flagged = instruction_lines(text)
     provider = getattr(gateway, "provider", "unknown")
     base = ExtractionRun(
         model=getattr(gateway, "model", ""),
@@ -103,7 +106,7 @@ def extract_attributes(
         fields[name] = field.model_copy(update={
             "extraction_method": extraction_method if field.value is not None else "none"
         })
-    return base.model_copy(update={"fields": fields, "latency_ms": latency_ms})
+    return base.model_copy(update={"fields": flag_fields(fields, flagged), "latency_ms": latency_ms})
 
 
 def extract_attributes_streaming(
@@ -118,6 +121,8 @@ def extract_attributes_streaming(
     a watching UI, never the persistence path. Any streaming failure falls back
     to the ordinary blocking call rather than losing the extraction.
     """
+    text = normalise(text)
+    flagged = instruction_lines(text)
     if not attribute_names or not gateway.available():
         return extract_attributes(gateway, text, attribute_names, extraction_method)
 
@@ -158,7 +163,7 @@ def extract_attributes_streaming(
 
     fields = {name: _field_from(raw.get(name), extraction_method) for name in attribute_names}
     return base.model_copy(update={
-        "fields": fields, "latency_ms": getattr(gateway, "last_latency_ms", 0),
+        "fields": flag_fields(fields, flagged), "latency_ms": getattr(gateway, "last_latency_ms", 0),
         "model": getattr(gateway, "model", base.model), "provider": getattr(gateway, "provider", base.provider),
     })
 

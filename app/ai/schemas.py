@@ -18,6 +18,7 @@ class ExtractedField(BaseModel):
     confidence: float | None = None
     sources: list[Source] = []
     extraction_method: str = "none"  # native_text | vlm | none
+    warnings: list[str] = []  # advisory flags for the signer (app/ai/untrusted.py)
 
     @field_validator("value")
     @classmethod
