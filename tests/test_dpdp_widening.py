@@ -46,8 +46,10 @@ def test_pack_keeps_the_original_nine_untouched_and_adds_the_duties():
     reqs = _pack()
     assert [r.clause for r in reqs[:9]] == ORIGINAL
     assert not any(r.attestation_only or r.guidance_only for r in reqs[:9])
-    assert len(reqs) == 76 and len({r.clause for r in reqs}) == 76
-    new = [r for r in reqs[9:] if not r.assessable]   # Phase 2 clauses are assessable, not attestation-only
+    assert len(reqs) == 77 and len({r.clause for r in reqs}) == 77
+    # Phase 2 clauses are assessable and Phase 3b's are fixed rules over our own records (ADR-071); the rest are attestation-only
+    new = [r for r in reqs[9:] if not r.assessable and not any(
+        e.artefact_type == "PLATFORM_RECORDS_SNAPSHOT" for e in r.evidence_requirements)]
     assert all(r.attestation_only and not r.mappings for r in new)      # ADR-060: no rule, no mapping
     assert sum(r.guidance_only for r in new) == 6
 
@@ -64,7 +66,7 @@ def test_attestation_only_reads_attested_never_pass_and_guidance_never_scores(cl
     before = _ready(client, admin)
     guidance = [c for c in before["clauses"] if c.get("guidance_only")]
     assert len(guidance) == 6 and {c["verdict"] for c in guidance} == {"GUIDANCE"}
-    assert before["total_requirements"] == 70   # 76 clauses less 6 guidance-only
+    assert before["total_requirements"] == 71   # 77 clauses less 6 guidance-only
     assert all(c["verdict"] != "PASS" for c in before["clauses"])
 
     ok = client.post("/attestations", headers=_as(admin), json={
