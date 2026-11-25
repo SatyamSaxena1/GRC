@@ -7,7 +7,7 @@
 // produce any framework links until a content pack maps them to one.
 export const ARTEFACT_TYPES = [
   "POLICY", "ENCRYPTION_POLICY", "LOGGING_POLICY", "INCIDENT_POLICY", "RETENTION_POLICY", "SCAN_REPORT", "REVIEW_RECORD", "REPORT", "CERTIFICATE", "SCREENSHOT",
-  "AI_POLICY", "AI_INVENTORY", "PRIVACY_NOTICE",
+  "AI_POLICY", "AI_INVENTORY", "PRIVACY_NOTICE", "VENDOR_CONTRACT",
 ];
 
 export const ARTEFACT_LABELS: Record<string, string> = {
@@ -24,4 +24,5 @@ export const ARTEFACT_LABELS: Record<string, string> = {
   AI_POLICY: "AI governance policies",
   AI_INVENTORY: "AI system inventories",
   PRIVACY_NOTICE: "Privacy notices",
+  VENDOR_CONTRACT: "Vendor contracts & agreements",
 };
