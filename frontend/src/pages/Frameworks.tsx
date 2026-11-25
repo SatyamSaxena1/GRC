@@ -9,11 +9,12 @@ import { useSession } from "../lib/session";
 import { useApi } from "../lib/useApi";
 import { Badge } from "../components/Badge";
 import { DataTable, type Column } from "../components/DataTable";
+import { DutyNaControl } from "../components/DutyNa";
 
 type Clause = FrameworkReadiness["clauses"][number];
 
 const NEEDS_WORK = new Set(["FAIL", "PARTIAL", "NO_EVIDENCE"]);
-const ORDER = ["FAIL", "NO_EVIDENCE", "PARTIAL", "AI_ASSESSED", "ATTESTED", "PASS", "NOT_APPLICABLE"];
+const ORDER = ["FAIL", "NO_EVIDENCE", "PARTIAL", "AI_ASSESSED", "ATTESTED", "PASS", "GUIDANCE", "NOT_APPLICABLE"];
 
 function inAYear(): string {
   const d = new Date();
@@ -44,6 +45,7 @@ function AttestCell({ framework, clause, current, subscribed, onDone }: {
       setBusy(false);
     }
   };
+  if (clause.guidance_only) return <span className="stat-sub">Guidance only: a change to watch, not scored</span>;
   if (!clause.attestation_only) return <span className="stat-sub">Rules check your evidence</span>;
   if (current) {
     return (
@@ -115,17 +117,21 @@ export function FrameworksPage() {
   if (!state.data) return <p className="muted">Loading…</p>;
 
   const attested = current?.attested ?? 0;
-  const ruleLess = current ? current.clauses.filter((c) => c.attestation_only).length : 0;
+  const ruleLess = current ? current.clauses.filter((c) => c.attestation_only && !c.guidance_only).length : 0;
   const missing = current ? current.total_requirements - current.satisfied - current.partial - attested - (current.ai_confirmed ?? 0) - (current.ai_awaiting ?? 0) : 0;
   const columns: Column<Clause>[] = [
     { key: "clause", header: "Clause", render: (c) => <span className="mono">{c.clause}</span> },
     { key: "title", header: "What it asks", render: (c) => c.title },
     { key: "verdict", header: "Verdict", render: (c) => <Badge value={c.verdict} /> },
-    { key: "how", header: "How it is checked", render: (c) => current && (c.ai_assessable ? (
+    { key: "how", header: "How it is checked", render: (c) => current && (c.verdict === "NOT_APPLICABLE" ? (
+      <DutyNaControl framework={current.framework} clause={c} isAdmin={isAdmin} onDone={reload} />
+    ) : c.ai_assessable ? (
       <AssessCell framework={current.framework} clause={c.clause} current={aiInForce.get(c.clause)} canWrite={canWrite}
         isAdmin={isAdmin} subscribed={current.already_subscribed} onDone={reload} />
     ) : <AttestCell framework={current.framework} clause={c} current={inForce.get(c.clause)}
         subscribed={current.already_subscribed} onDone={reload} />) },
+    { key: "na", header: "Applies to you?", render: (c) => current && c.verdict !== "NOT_APPLICABLE"
+      && <DutyNaControl framework={current.framework} clause={c} isAdmin={isAdmin} onDone={reload} /> },
   ];
 
   return (

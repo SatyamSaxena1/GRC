@@ -19,7 +19,7 @@ from app.routers import (
     activity, admin, analytics, assistant, audit, breach, ciso, findings, connections, connectors, ingest, content, controls, evidence, exceptions, export, firm,
     glossary, notifications, review, questionnaire, reports, policies, rights_requests, risks, templates, trust, vendors,
 )
-from app.routers import assessments, attestations, onboarding, training
+from app.routers import assessments, attestations, duty_na, onboarding, training
 
 logging.basicConfig(
     level=os.environ.get("LOG_LEVEL", "INFO"),
@@ -187,6 +187,7 @@ app.include_router(review.router)
 app.include_router(assistant.router)
 app.include_router(findings.router)
 app.include_router(attestations.router)
+app.include_router(duty_na.router)
 app.include_router(assessments.router)
 app.include_router(csp.router)
 app.include_router(training.router)
