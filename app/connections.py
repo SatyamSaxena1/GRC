@@ -10,8 +10,10 @@ from __future__ import annotations
 import json
 import os
 import re
-from urllib.parse import urlparse
+import time
+from urllib.parse import quote, urlparse
 
+import jwt
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
@@ -171,6 +173,118 @@ def github_test(token: str, repos: list[str], timeout: float = 10.0) -> tuple[bo
         if r.status_code != 200:
             return False, f"GitHub answered HTTP {r.status_code} for {repo}"
     return True, ""
+# ---- GitHub App (ADR-068): one click instead of a hand-made token. The platform is registered once as a GitHub App with
+# fixed read-only permissions; an organisation installs it on the repositories it chooses. Nothing long-lived is kept:
+# only the installation number. At collection time the server proves it is the App (a short signed request) and gets a
+# one-hour token for that installation. Every host is fixed (api.github.com, github.com), so nothing a customer types
+# can redirect the server.
+APP_ENV = ("GITHUB_APP_ID", "GITHUB_APP_PRIVATE_KEY", "GITHUB_APP_SLUG", "GITHUB_APP_CLIENT_ID", "GITHUB_APP_CLIENT_SECRET")
+STATE_TTL_S = 900
+_SLUG = re.compile(r"^[A-Za-z0-9-]{1,60}$")
+
+
+def app_available() -> bool:
+    """True only when every App setting and the connections key are present, and the App's slug is plain."""
+    return available() and all(os.environ.get(k) for k in APP_ENV) and bool(_SLUG.match(os.environ["GITHUB_APP_SLUG"]))
+
+
+def _app_jwt(now: float | None = None) -> str:
+    """A signed, nine-minute proof that this server is the App (RS256 over the App's private key)."""
+    t = int(now if now is not None else time.time())
+    key = os.environ["GITHUB_APP_PRIVATE_KEY"].replace("\\n", "\n")  # Render may store the PEM on one line
+    return jwt.encode({"iat": t - 60, "exp": t + 540, "iss": os.environ["GITHUB_APP_ID"]}, key, algorithm="RS256")
+
+
+def new_state(org_id: str) -> str:
+    """A tamper-proof, 15-minute value that ties an install to the organisation that started it."""
+    return encrypt(json.dumps({"org": org_id}))
+
+
+def read_state(state: str) -> str:
+    """The organisation id inside a state value, or ValueError when it is forged, old or unreadable."""
+    try:
+        return json.loads(_fernet().decrypt(state.encode(), ttl=STATE_TTL_S))["org"]
+    except (InvalidToken, ValueError, KeyError, TypeError, UnicodeError):
+        raise ValueError("this install link has expired or was not started here; start the install again") from None
+
+
+def install_url(org_id: str) -> str:
+    return f"https://github.com/apps/{os.environ['GITHUB_APP_SLUG']}/installations/new?state={quote(new_state(org_id))}"
+
+
+def user_owns_installation(code: str, installation_id: int, timeout: float = 10.0) -> bool:
+    """Did the person who came back from GitHub really get this installation? The installation number travels in the
+    browser address and could be swapped for someone else's, so GitHub is asked, with the person's own one-time code,
+    whether that installation is among theirs."""
+    r = requests.post("https://github.com/login/oauth/access_token", timeout=timeout, allow_redirects=False,
+                      headers={"Accept": "application/json"},
+                      data={"client_id": os.environ["GITHUB_APP_CLIENT_ID"],
+                            "client_secret": os.environ["GITHUB_APP_CLIENT_SECRET"], "code": code})
+    token = r.json().get("access_token") if r.status_code == 200 else None
+    if not token:
+        return False
+    session = github_session(token)
+    for page in range(1, 11):
+        resp = session.get(f"{GITHUB_API}/user/installations", params={"per_page": 100, "page": page},
+                           timeout=timeout, allow_redirects=False)
+        if resp.status_code != 200:
+            return False
+        found = resp.json().get("installations", [])
+        if any(i.get("id") == installation_id for i in found):
+            return True
+        if len(found) < 100:
+            return False
+    return False
+
+
+def installation_token(installation_id: int, timeout: float = 10.0) -> str:
+    """A one-hour read token for one installation. Raises ValueError with a short reason; never the key or the token."""
+    r = github_session(_app_jwt()).post(f"{GITHUB_API}/app/installations/{int(installation_id)}/access_tokens",
+                                        timeout=timeout, allow_redirects=False)
+    if r.status_code != 201:
+        raise ValueError(f"GitHub answered HTTP {r.status_code} when asked for access to the installation")
+    return r.json()["token"]
+
+
+def installation_repos(token: str, timeout: float = 10.0) -> list[str]:
+    """The repositories the installation was given, as owner/name."""
+    session, names = github_session(token), []
+    for page in range(1, 11):
+        r = session.get(f"{GITHUB_API}/installation/repositories", params={"per_page": 100, "page": page},
+                        timeout=timeout, allow_redirects=False)
+        if r.status_code != 200:
+            raise ValueError(f"GitHub answered HTTP {r.status_code} when listing the installation's repositories")
+        batch = r.json().get("repositories", [])
+        names += [x["full_name"] for x in batch if _REPO.match(x.get("full_name", ""))]
+        if len(batch) < 100:
+            break
+    return names
+
+
+def pack_github_app(installation_id: int, repos: list[str]) -> str:
+    return json.dumps({"installation_id": int(installation_id), "repos": repos}, separators=(",", ":"))
+
+
+def github_app_hint(repos: list[str]) -> str:
+    return f"GitHub App, {len(repos)} repositor{'y' if len(repos) == 1 else 'ies'}"
+
+
+def github_credentials(plain: str) -> tuple[str, list[str]]:
+    """(token, repositories) from a saved GitHub connection of either kind. A pasted-token connection returns what was
+    saved. An App connection asks GitHub for a fresh one-hour token and for the repositories it can see right now, so a
+    repository added or removed in GitHub is picked up without anyone editing anything here."""
+    data = json.loads(plain)
+    if "installation_id" not in data:
+        return data["token"], list(data["repos"])
+    if not app_available():
+        raise ValueError("the GitHub App is not set up on this server")
+    token = installation_token(data["installation_id"])
+    repos = installation_repos(token)[:MAX_REPOS]
+    if not repos:
+        raise ValueError("the GitHub App has no repositories shared with it")
+    return token, repos
+
+
 # ---- AWS by upload (ADR-049). The platform holds no AWS identity and calls nothing in AWS. The customer runs a small
 # read-only script in their own account; it posts four yes/no answers to us with an upload token. The token carries
 # the organisation id (not secret) so the right tenant can be selected before anything is read; only its SHA-256 is kept.

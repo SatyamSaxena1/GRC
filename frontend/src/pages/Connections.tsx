@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
-  ApiError, getConnections, removeChatWebhook, removeGithub, saveChatWebhook, saveGithub, testChatWebhook, testGithub,
+  ApiError, completeGithubApp, getConnections, getGithubApp, removeChatWebhook, removeGithub, saveChatWebhook, saveGithub, testChatWebhook, testGithub,
   makeUploadToken, removeUpload, type ConnectionView,
 } from "../api/client";
 import { useApi } from "../lib/useApi";
@@ -117,6 +117,16 @@ export function ConnectionsPage() {
       setError(err instanceof ApiError ? String(err.detail) : (err as Error).message);
     } finally { setBusy(false); }
   };
+  // Back from GitHub after the install: the address carries the installation number, a one-time code and the signed
+  // value. They are sent to the server to be checked, and removed from the address bar at once.
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    const id = Number(q.get("installation_id")), code = q.get("code"), st = q.get("state");
+    if (id > 0 && code && st) {
+      window.history.replaceState({}, "", window.location.pathname);
+      void run(() => completeGithubApp(id, code, st));
+    }
+  }, []);
   if (state.error) return <div className="alert alert-error">{state.error}</div>;
   if (!state.data) return <p className="muted">Loading…</p>;
 
@@ -201,6 +211,19 @@ export function ConnectionsPage() {
           </p>
           {gh.status === "FAILED" && gh.last_error && <p className="error">{gh.last_error}</p>}
 
+          {state.data.github_app_available && (
+            <div style={{ margin: "8px 0 16px" }}>
+              <button className="btn btn-primary" disabled={busy || !keyOn}
+                onClick={() => run(async () => { const r = await getGithubApp(); if (r.available) window.location.assign(r.install_url); })}>
+                {gh.configured ? "Reinstall or change repositories" : "Install the GitHub App"}
+              </button>
+              <p className="muted" style={{ fontSize: 12, marginTop: 6 }}>
+                One click. GitHub asks which repositories to share, read-only. There is no token to create or paste.
+                To stop sharing, remove the App in your GitHub settings as well as here.
+              </p>
+              <p className="muted" style={{ fontSize: 12 }}>Or use a token instead:</p>
+            </div>
+          )}
           <label htmlFor="gh-token">{gh.configured ? "Replace the token" : "Access token"}</label>
           <input id="gh-token" type="password" autoComplete="off" spellCheck={false} value={ghToken} disabled={!keyOn}
             onChange={(e) => setGhToken(e.target.value)} placeholder="ghp_… or github_pat_…" />
