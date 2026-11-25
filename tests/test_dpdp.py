@@ -35,7 +35,7 @@ def test_dpdp_pack_is_a_readiness_subset_with_all_four_sources():
     pack = load().framework("DPDP")
     types = {e.artefact_type for req in pack.requirements for e in req.evidence_requirements}
     assert {"AWS_SNAPSHOT", "M365_SNAPSHOT", "GOOGLE_WORKSPACE_SNAPSHOT", "HRMS_SNAPSHOT"} <= types
-    assert len(pack.requirements) == 75   # the original nine, then the widened duty list (tests/test_dpdp_widening.py)
+    assert len(pack.requirements) == 76   # the original nine, then the widened duty list (tests/test_dpdp_widening.py)
 
 
 def test_all_four_connectors_pull_structured_evidence(client, bootstrap, monkeypatch):

@@ -393,6 +393,11 @@ requirements:
         source: EXPERT
         delta_conditions: []
 
+  - clause: "Act s.6(6) / s.8(7)(b) - stop notices"
+    title: "When someone says stop, everyone the data went to is told and confirms"
+    text: >
+      A withdrawal reaches every processor we passed the data to, and we receive their confirmation.
+
   - clause: "Act s.6(4)-(5) - suppression"
     title: "People who refused or withdrew are blocked from every send"
     text: >
