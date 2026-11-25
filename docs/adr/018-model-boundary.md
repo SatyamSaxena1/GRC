@@ -1,5 +1,8 @@
 # ADR-018: What the model may do — witness, doubter, suggester, narrator; never a decider
 
+> **Amended by ADR-069 (25 Nov 2026):** a fifth role, *assessor*, for requirements with no fixed rule only; the
+> model is still never a decider where a rule exists. Read the four roles below with that exception.
+>
 > **Status:** Proposed. This records the boundary the code already keeps, so the next
 > model feature is measured against a written rule instead of re-derived from ADR-004.
 

@@ -27,3 +27,6 @@ true) live in Python, not in the prompt.
 - Content packs, not code, hold framework rules, so adding a framework is a data change.
 - The model's job is narrow enough that a small local model is viable for it, while the
   same model would be unusable as a judge.
+
+> Amended by ADR-069 (25 Nov 2026): where a requirement has no fixed rule, the model may propose an "AI-assessed" outcome that a
+> person confirms. Where a rule exists, the rule still decides, exactly as above.
