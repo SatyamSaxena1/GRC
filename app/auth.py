@@ -166,6 +166,7 @@ def current_actor(
     set_tenant call the policies would match nothing and every read would be empty."""
     actor = _resolve(authorization, db, x_engagement_id)
     actor = replace(actor, request_id=getattr(request.state, "request_id", ""))
+    request.state.org_id = actor.org_id or None   # for the durable request log (ADR-070)
     set_tenant(db, actor.org_id)
     set_firm(db, actor.audit_firm_id)
     _enforce_trial(request, db, actor)

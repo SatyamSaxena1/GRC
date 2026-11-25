@@ -28,6 +28,14 @@ step is in a tamper-evident log; the DPDP Act pack for India.
 
 ## Entries
 
+### 26 Nov 2026: Request logs kept for a year (ADR-070)
+- **Say:** "Every request to the app is now recorded in our own database (when, which page, the result, how the caller signed
+  in, the address, how long it took) and kept for 365 days. Never the contents, passwords, or email addresses."
+- **Show:** with the operator key, open `/admin/request-logs` and see the newest rows; try a wrong key (refused).
+- **Honest detail:** only requests from the deploy onward exist; health checks are counted, not stored. The policy template
+  "Logging and Monitoring Policy" is in the templates list. The privacy notice and SOC 2 readiness still say logs are not kept
+  until the owner updates them.
+
 ### 26 Nov 2026: DPDP checks widened from 9 to 72 lines, and "not applicable" for a single duty
 - **Say:** "Our DPDP page used to check nine things. It now lists 72 duties from the Act and Rules. Most are statements a named
   person makes, shown as 'attested' and never as 'passed'. Six are changes to watch and are not scored. And if a duty does not

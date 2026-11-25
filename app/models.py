@@ -940,6 +940,23 @@ class AuditEvent(Base):
     hash_version: Mapped[int | None] = mapped_column(Integer, default=None)
 
 
+class RequestLog(Base):
+    """One row per request (app/request_log.py, ADR-070). Not tenant-owned: a platform security record, readable only
+    through the operator endpoint. Never holds a query string, body, header, token or email address."""
+    __tablename__ = "request_logs"
+    __table_args__ = (Index("ix_request_logs_ts", "ts"),)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    ts: Mapped[datetime] = mapped_column(default=_now)
+    method: Mapped[str] = mapped_column(String(10))
+    path: Mapped[str] = mapped_column(String(200))
+    status: Mapped[int] = mapped_column(Integer)
+    request_id: Mapped[str] = mapped_column(String(64), default="")
+    auth: Mapped[str] = mapped_column(String(10))            # present | none | demo | operator
+    org_id: Mapped[str | None] = mapped_column(String, default=None)   # no foreign key: a log row must never block a write
+    ip: Mapped[str] = mapped_column(String(45), default="")
+    duration_ms: Mapped[int] = mapped_column(Integer, default=0)
+
+
 class ReviewStandard(Base):
     """One immutable version of an organisation's Review Standard (ADR-027). Editing publishes a
     new version; exactly one version per organisation is active. `body_hash` is the canonical
