@@ -28,6 +28,14 @@ step is in a tamper-evident log; the DPDP Act pack for India.
 
 ## Entries
 
+### 26 Nov 2026: Request logs kept for a year (ADR-070)
+- **Say:** "Every request to the app is now recorded in our own database (when, which page, the result, how the caller signed
+  in, the address, how long it took) and kept for 365 days. Never the contents, passwords, or email addresses."
+- **Show:** with the operator key, open `/admin/request-logs` and see the newest rows; try a wrong key (refused).
+- **Honest detail:** only requests from the deploy onward exist; health checks are counted, not stored. The policy template
+  "Logging and Monitoring Policy" is in the templates list. The privacy notice and SOC 2 readiness still say logs are not kept
+  until the owner updates them.
+
 ### 26 Nov 2026: Five more document duties go to the AI-assessed lane (DPDP Phase 2)
 **In plain words:** upload a vendor contract, and the product reads it for the points the law cares about, quotes the exact words and page, and waits for a named admin to confirm. It never shows PASS on its own.
 **New:** a "Vendor contracts & agreements" document type, and five checks: notice offered in English or an Eighth Schedule language; legally-kept records held apart; vendors told to erase; every vendor under a contract with security terms; recipients bound by a purpose limit, no onward passing, honouring a stop, and delete-or-return. Two Phase 1 attestations that covered the same duty were replaced, keeping their ids.

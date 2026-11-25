@@ -374,3 +374,24 @@ def set_plan(org_id: str, body: PlanIn, db: Session = Depends(get_session)):
                      after={"plan": org.plan, "frameworks_limit": org.frameworks_limit, "seats_limit": org.seats_limit})
     db.commit()
     return entitlements.usage(db, org)
+
+
+@router.get("/request-logs", dependencies=[Depends(require_admin)])
+def request_logs(limit: int = 100, status: int | None = None, since: datetime | None = None,
+                 db: Session = Depends(get_session)):
+    """Operator only, behind the same wrong-key lockout as the other operator routes (ADR-070). Newest first, at most
+    1000. The table is not readable by any tenant session: the database admits reads only inside this transaction."""
+    from sqlalchemy import select
+    from app import request_log
+    from app.models import RequestLog
+    request_log._scope_on(db)
+    q = select(RequestLog).order_by(RequestLog.id.desc()).limit(max(1, min(limit, 1000)))
+    if status is not None:
+        q = q.where(RequestLog.status == status)
+    if since is not None:
+        q = q.where(RequestLog.ts >= since.replace(tzinfo=None))
+    rows = db.execute(q).scalars().all()
+    return {"retention_days": request_log.retention_days(), "skipped_not_stored": dict(request_log._skipped),
+            "rows": [{"id": r.id, "ts": r.ts, "method": r.method, "path": r.path, "status": r.status,
+                      "request_id": r.request_id, "auth": r.auth, "org_id": r.org_id, "ip": r.ip,
+                      "duration_ms": r.duration_ms} for r in rows]}

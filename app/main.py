@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
+import time
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -12,7 +14,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from app import auth, csp, oidc
+from app import auth, csp, oidc, request_log
 from app.ai.provider import make_gateway
 from app.db import engine, init_db
 from app.routers import (
@@ -43,7 +45,12 @@ async def lifespan(app: FastAPI):
         # that would look healthy while losing every row on the next deploy.
         raise RuntimeError("production mode (AUTH_STUB_ENABLED=false) requires a PostgreSQL DATABASE_URL")
     init_db()
-    yield
+    logger_task = asyncio.create_task(request_log.run())   # durable request log: batches, daily prune (ADR-070)
+    try:
+        yield
+    finally:
+        logger_task.cancel()
+        request_log.flush()
 
 
 # The interactive API pages list every route to anyone who asks, so production (stub auth off) hides them unless
@@ -79,8 +86,14 @@ async def request_context(request: Request, call_next):
     auth_present = "present" if raw_auth else "N/A"
     ip_address = request.headers.get("x-forwarded-for", request.client.host if request.client else "unknown")
 
-    response = await call_next(request)
+    started = time.monotonic()
+    try:
+        response = await call_next(request)
+    except Exception:
+        request_log.record(request, 500, int((time.monotonic() - started) * 1000))
+        raise
     response.headers["x-request-id"] = request_id
+    request_log.record(request, response.status_code, int((time.monotonic() - started) * 1000))
 
     # Log detailed access info
     logger.info("request method=%s path=%s status=%s request_id=%s auth=%s ip=%s query=%s",

@@ -175,11 +175,36 @@ Any exception is approved in writing by the policy owner, time-limited, and reco
     return body, stated
 
 
+def _logging() -> tuple[str, dict]:
+    days = strictest("log_retention_days")
+    stated = {"log_retention_days": days}
+    body = HEAD.format(title="Logging and Monitoring Policy") + f"""## Purpose
+Security-relevant events are recorded, kept, and checked, so that misuse can be found and explained afterwards.
+
+## What is logged
+Each request to our systems is recorded with its time, method, path, result, how the caller signed in, and the
+caller's address. Sign-ins, changes to access, and changes to records are recorded in a tamper-evident audit log.
+Logs do not hold passwords, access tokens, request or response contents, or email addresses.
+
+## How long logs are kept
+Security logs are kept for at least {days} days and then deleted. Logs are kept somewhere that survives a
+redeployment of the system, and only the people responsible for security can read them.
+
+## Monitoring
+The security lead reviews logs when an alert fires or an incident is suspected, and records what was found.
+
+## Exceptions
+Any exception is approved in writing by the policy owner, time-limited, and recorded.
+"""
+    return body, stated
+
+
 TEMPLATES = {
     "access-control": ("Access Control Policy", "POLICY", _access_control),
     "password-and-mfa": ("Password and Authentication Policy", "POLICY", _password_and_mfa),
     "encryption": ("Encryption Policy", "ENCRYPTION_POLICY", _encryption),
     "incident-response": ("Incident Response Policy", "INCIDENT_POLICY", _incident),
+    "logging-and-monitoring": ("Logging and Monitoring Policy", "LOGGING_POLICY", _logging),
     "data-retention": ("Data Retention and Disposal Policy", "RETENTION_POLICY", _retention),
 }
 

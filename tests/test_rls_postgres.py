@@ -349,3 +349,17 @@ def test_one_tenant_cannot_read_or_write_another_tenants_risks_at_the_database(c
         conn.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": org_b})
         conn.execute(text("INSERT INTO risks (id, org_id, title, inherent_likelihood, inherent_impact, control_ids, "
                           "created_at) VALUES ('x', :o, 't', 1, 1, '[]', now())"), {"o": org_a})
+
+
+def test_request_logs_are_writable_by_anyone_but_readable_only_with_the_operator_setting(engine):
+    """ADR-070: the request log is not tenant-owned, yet a tenant session must read nothing from it."""
+    with engine.begin() as conn:
+        conn.execute(text("INSERT INTO request_logs (ts, method, path, status, auth) "
+                          "VALUES (now(), 'GET', '/x', 200, 'none')"))
+    with engine.begin() as conn:
+        conn.execute(text("SELECT set_config('app.tenant_id', 'some-org', true)"))
+        assert conn.execute(text("SELECT count(*) FROM request_logs")).scalar() == 0
+        assert conn.execute(text("DELETE FROM request_logs")).rowcount == 0
+    with engine.begin() as conn:
+        conn.execute(text("SELECT set_config('app.log_access', 'on', true)"))
+        assert conn.execute(text("SELECT count(*) FROM request_logs")).scalar() >= 1
