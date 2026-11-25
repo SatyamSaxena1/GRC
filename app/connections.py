@@ -204,6 +204,19 @@ def normalise_pem(raw: str) -> str:
     return f"-----BEGIN {m.group(1)}-----\n" + "\n".join(lines) + f"\n-----END {m.group(1)}-----\n"
 
 
+KEY_UNREADABLE = "the GitHub App private key on this server cannot be read; paste the whole .pem file again"
+
+
+def public_reason(exc: Exception) -> str:
+    """A fixed sentence safe to show a person, chosen from the kind of problem. The exception's own text is never passed on."""
+    text = str(exc)
+    if text == KEY_UNREADABLE:
+        return KEY_UNREADABLE
+    if text.startswith("GitHub answered HTTP"):
+        return "GitHub refused to give this server access to the installation"
+    return "GitHub could not confirm the installation"
+
+
 def _app_jwt(now: float | None = None) -> str:
     """A signed, nine-minute proof that this server is the App (RS256 over the App's private key). An unreadable key is
     reported as a ValueError with a plain reason, never as a crash and never with any part of the key."""
@@ -212,7 +225,7 @@ def _app_jwt(now: float | None = None) -> str:
         return jwt.encode({"iat": t - 60, "exp": t + 540, "iss": os.environ["GITHUB_APP_ID"]},
                           normalise_pem(os.environ["GITHUB_APP_PRIVATE_KEY"]), algorithm="RS256")
     except (jwt.PyJWTError, ValueError, TypeError):
-        raise ValueError("the GitHub App private key on this server cannot be read; paste the whole .pem file again") from None
+        raise ValueError(KEY_UNREADABLE) from None
 
 
 def app_check(timeout: float = 10.0) -> tuple[bool, str]:
@@ -221,12 +234,12 @@ def app_check(timeout: float = 10.0) -> tuple[bool, str]:
     one install, without installing anything."""
     try:
         token = _app_jwt()
-    except ValueError as exc:
-        return False, str(exc)
+    except ValueError:
+        return False, KEY_UNREADABLE
     try:
         r = github_session(token).get(f"{GITHUB_API}/app", timeout=timeout, allow_redirects=False)
-    except requests.RequestException as exc:
-        return False, f"could not reach GitHub ({type(exc).__name__})"
+    except requests.RequestException:
+        return False, "could not reach GitHub"
     if r.status_code == 200:
         return True, f"GitHub accepts this server as the App \"{r.json().get('slug', '')}\""
     hint = " (the private key or App ID does not match the App)" if r.status_code == 401 else ""

@@ -129,7 +129,7 @@ def test_replacing_resets_the_test_and_never_duplicates(client, bootstrap, key, 
     client.put("/connections/chat-webhook", json={"url": HOOK}, headers=H(org))
     assert client.post("/connections/chat-webhook/test", headers=H(org)).json()["connections"][0]["status"] == "OK"
     again = client.put("/connections/chat-webhook", json={"url": HOOK_B}, headers=H(org)).json()["connections"][0]
-    assert again["status"] == "UNTESTED" and again["last_tested_at"] is None and again["hint"].startswith("hooks.slack.com")
+    assert again["status"] == "UNTESTED" and again["last_tested_at"] is None and again["hint"].split()[0] == "hooks.slack.com"
     assert db.query(Connection).count() == 1
     assert db.query(AuditEvent).filter_by(action="CONNECTION_SET").count() == 2
 

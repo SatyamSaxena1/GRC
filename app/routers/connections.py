@@ -215,10 +215,10 @@ def complete_github_app(body: GithubAppIn, actor: Actor = Depends(current_actor)
         repos = connections.installation_repos(connections.installation_token(body.installation_id))[:connections.MAX_REPOS]
     except HTTPException:
         raise
-    except ValueError as exc:   # every message raised in app/connections.py is written to be safe to show
-        raise HTTPException(502, f"GitHub could not confirm the installation: {exc}") from None
-    except requests.RequestException as exc:
-        raise HTTPException(502, f"GitHub could not confirm the installation ({type(exc).__name__})") from None
+    except ValueError as exc:
+        raise HTTPException(502, f"GitHub could not confirm the installation: {connections.public_reason(exc)}") from None
+    except requests.RequestException:
+        raise HTTPException(502, "GitHub could not confirm the installation: it could not be reached") from None
     if not repos:
         raise HTTPException(422, "no repository was shared with the App; install it again and choose at least one")
     kind = connections.KIND_GITHUB

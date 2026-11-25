@@ -19,7 +19,9 @@ import ssl
 from email.message import EmailMessage
 
 TIMEOUT_S = 15.0
-_ADDRESS = re.compile(r"^[^\s@<>,;\"']+@[^\s@<>,;\"']+\.[^\s@<>,;\"']+$")
+# Each domain label excludes the dot, so there is exactly one way to split an address into labels (no backtracking blow-up,
+# found by CodeQL py/polynomial-redos). Empty labels ("a@b..c", "a@.b.c") are refused, which is also correct.
+_ADDRESS = re.compile(r"^[^\s@<>,;\"']+@[^\s@<>,;\"'.]+(?:\.[^\s@<>,;\"'.]+)+$")
 
 
 def enabled() -> bool:
@@ -28,7 +30,7 @@ def enabled() -> bool:
 
 def valid_address(address: str) -> bool:
     """One plain address: no spaces, no angle brackets, no line breaks (which would let a caller inject headers)."""
-    return bool(_ADDRESS.match(address or "")) and len(address) <= 254
+    return bool(_ADDRESS.fullmatch(address or "")) and len(address) <= 254  # fullmatch: "$" would let a trailing line break through
 
 
 def send(to: str, subject: str, body: str, reply_to: str | None = None) -> tuple[bool, str]:
