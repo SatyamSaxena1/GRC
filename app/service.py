@@ -64,6 +64,7 @@ ARTEFACT_TYPES = {
     "AI_POLICY": "An AI governance policy, separate from a general security policy.",
     "AI_INVENTORY": "A system/model inventory for AI systems.",
     "PRIVACY_NOTICE": "A public-facing notice describing personal data, purposes, rights, withdrawal, complaints, and the privacy contact.",
+    "VENDOR_CONTRACT": "A contract or data-processing agreement with a vendor or recipient that handles personal data for us — scope, security terms, use limits, onward passing, stop instructions, erasure or return.",
 }
 # Topic-specific policies split out of POLICY so an access-control policy is not failed for
 # saying nothing about encryption. They still state who approved them and when, which no

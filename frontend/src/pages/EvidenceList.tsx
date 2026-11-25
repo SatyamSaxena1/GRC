@@ -48,6 +48,7 @@ const ARTEFACT_HELP: Record<string, string> = {
   AI_POLICY: "An AI governance policy — separate from a general security policy so it only satisfies AI-specific clauses.",
   AI_INVENTORY: "A system/model inventory for NIST AI RMF evidence.",
   PRIVACY_NOTICE: "A public-facing notice describing personal data, purposes, rights, withdrawal, complaints, and the privacy contact.",
+  VENDOR_CONTRACT: "A contract or data-processing agreement with a vendor or recipient that handles personal data for us — scope, security terms, use limits, onward passing, stop instructions, erasure or return.",
 };
 const TERMINAL = new Set(["READY", "FAILED", "NEEDS_REVIEW"]);
 // Mirrors app/monitor.py's STUCK_AFTER_MINUTES — a display threshold only; the

@@ -4,7 +4,7 @@
 # verified against the official Act (2023) and the Rules (G.S.R. 846(E)) and reviewed by counsel before it is relied on.
 # This is readiness, not legal advice. Clauses with no rule are attestation-only (ADR-060): a named person states they are
 # met and the product shows ATTESTED, never PASS. Guidance-only clauses (guidance_only) are shown but not scored.
-# The five fixed-rule and eleven AI-assessed duties are Phase 2 and are not here yet.
+# The AI-assessed document duties (ADR-069) are marked assessable; the five fixed-rule duties are Phase 3 and are not here yet.
 
 framework:
   code: DPDP
@@ -178,6 +178,51 @@ requirements:
         source: EXPERT
         delta_conditions: []
 
+  - clause: "Act s.5(3) & s.6(3) - languages"
+    assessable: true   # no fixed rule: the model may propose, a person confirms (ADR-069)
+    title: "The notice is offered in English or any language of the Eighth Schedule"
+    text: >
+      People can read the privacy notice and consent request in English or in any of the 22 languages listed in the Eighth Schedule to the Constitution.
+    evidence_requirements:
+      - artefact_type: PRIVACY_NOTICE
+        required_attributes: [notice_languages_offered]
+    mappings:
+      - uco: UCO-PRIV-002
+        coverage: FULL
+        confidence: 1.0
+        source: EXPERT
+        delta_conditions: []
+
+  - clause: "Rule 8(3) / Act s.8(7) - held apart"
+    assessable: true   # no fixed rule: the model may propose, a person confirms (ADR-069)
+    title: "Records the law makes us keep are held apart and used for nothing else"
+    text: >
+      Personal data kept only because a law requires it is separated from working data and is not used for any other purpose.
+    evidence_requirements:
+      - artefact_type: RETENTION_POLICY
+        required_attributes: [legal_retention_records_separated, legal_hold_use_limited]
+    mappings:
+      - uco: UCO-PRIV-002
+        coverage: FULL
+        confidence: 1.0
+        source: EXPERT
+        delta_conditions: []
+
+  - clause: "Act s.8(2) / Rule 6(1)(f)"
+    assessable: true   # no fixed rule: the model may propose, a person confirms (ADR-069)
+    title: "Every vendor is under a valid contract with security terms"
+    text: >
+      Each processor that handles personal data for us is bound by a written contract in force that sets out security safeguards.
+    evidence_requirements:
+      - artefact_type: VENDOR_CONTRACT
+        required_attributes: [contract_in_force, security_safeguards_terms, processing_scope]
+    mappings:
+      - uco: UCO-PRIV-002
+        coverage: FULL
+        confidence: 1.0
+        source: EXPERT
+        delta_conditions: []
+
   # ---- Attestation-only duties (24): behaviour no document shows; a named person attests, with an expiry.
 
   - clause: "Act s.5(2)"
@@ -334,9 +379,19 @@ requirements:
       Each request for consent displays how to reach our contact person or our data protection officer.
 
   - clause: "Act s.6(6) / s.8(7)(b)"
-    title: "When someone says stop, everyone the data went to is told and confirms"
+    assessable: true   # no fixed rule: the model may propose, a person confirms (ADR-069)
+    title: "Vendors we pass data to are told to erase what we gave them"
     text: >
-      A withdrawal reaches every processor we passed the data to, and we receive their confirmation.
+      Our vendor terms tell each processor to erase the personal data we gave them when we ask, or when the purpose ends.
+    evidence_requirements:
+      - artefact_type: VENDOR_CONTRACT
+        required_attributes: [erasure_on_instruction, erasure_on_purpose_end]
+    mappings:
+      - uco: UCO-PRIV-002
+        coverage: FULL
+        confidence: 1.0
+        source: EXPERT
+        delta_conditions: []
 
   - clause: "Act s.6(4)-(5) - suppression"
     title: "People who refused or withdrew are blocked from every send"
@@ -389,9 +444,19 @@ requirements:
       For every person we can list the recipients their data was passed to.
 
   - clause: "Act s.8(1)-(2) - onward sharing"
-    title: "A recipient cannot quietly pass the data further"
+    assessable: true   # no fixed rule: the model may propose, a person confirms (ADR-069)
+    title: "Everyone we pass data to has signed an agreement that limits what they do with it"
     text: >
-      Our agreements and checks stop a recipient from passing personal data on without our knowledge.
+      The agreement limits use to our purpose, forbids passing the data on without our permission, requires the recipient to honour a stop instruction, and requires deletion or return at the end.
+    evidence_requirements:
+      - artefact_type: VENDOR_CONTRACT
+        required_attributes: [purpose_limitation, no_onward_transfer_without_permission, honours_stop_instruction, delete_or_return_at_end]
+    mappings:
+      - uco: UCO-PRIV-003
+        coverage: FULL
+        confidence: 1.0
+        source: EXPERT
+        delta_conditions: []
 
   - clause: "Act s.6(1) & s.7(a) - received data"
     title: "Data we receive is not used for offers without the person's own agreement"
