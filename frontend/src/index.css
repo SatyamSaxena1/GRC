@@ -1504,3 +1504,5 @@ html.deck-mode body { background: #0e1120; }
 .assistant__form textarea { flex: 1; resize: none; padding: 8px; border: 1px solid var(--border); border-radius: 8px; }
 .assistant__clear { margin: 0 14px 10px; align-self: flex-start; border: 0; background: none; color: var(--primary); cursor: pointer; font-size: 13px; text-decoration: underline; }
 .ask-ai-btn { white-space: nowrap; }
+
+.badge-ai_assessed { background: #f3ecfb; color: #5b2a86; }

@@ -217,6 +217,30 @@ class ControlAttestation(Base):
     revoked_at: Mapped[datetime | None] = mapped_column(default=None)
 
 
+class AiAssessment(Base):
+    """A model's proposed verdict for a clause no fixed rule judges (ADR-069). A record, never recomputed: a re-run is a
+    new row, and `confirmed_*` is set once by a named person and never changed. Read as AI-ASSESSED, never PASS."""
+    __tablename__ = "ai_assessments"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"))
+    framework: Mapped[str]
+    clause: Mapped[str]
+    evidence_id: Mapped[str] = mapped_column(ForeignKey("evidence.id"))
+    outcome: Mapped[str]  # MET | PARTIAL | NOT_MET | NEEDS_REVIEW
+    reason: Mapped[str] = mapped_column(Text, default="")
+    points: Mapped[list] = mapped_column(JSON, default=list)  # [{point, result, reason, quote, page}]
+    model: Mapped[str] = mapped_column(default="")
+    provider: Mapped[str] = mapped_column(default="")
+    prompt_version: Mapped[str] = mapped_column(default="")
+    document_sha256: Mapped[str] = mapped_column(default="")
+    created_by: Mapped[str] = mapped_column(default="")
+    created_at: Mapped[datetime] = mapped_column(default=_now)
+    confirmed_outcome: Mapped[str | None] = mapped_column(default=None)
+    confirmed_by: Mapped[str | None] = mapped_column(default=None)
+    confirmed_at: Mapped[datetime | None] = mapped_column(default=None)
+    confirm_note: Mapped[str] = mapped_column(Text, default="")
+
+
 class Connection(Base):
     """Something an organisation connects itself, e.g. its chat webhook (ADR-044). The secret exists only as
     ciphertext; hint, status and last_error are the non-secret facts the page shows."""

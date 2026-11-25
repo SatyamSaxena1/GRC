@@ -2,10 +2,12 @@ import { AskAIButton } from "../components/Assistant";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  ApiError, getReadiness, listConnectors, setConnectorNotApplicable, syncConnector,
+  ApiError, getReadiness, listAssessments, listConnectors, setConnectorNotApplicable, syncConnector,
   type ConnectorStatus,
 } from "../api/client";
 import { Badge } from "../components/Badge";
+import { AssessCell, roleFlags } from "../components/AiAssessment";
+import { useSession } from "../lib/session";
 import { CollectionStatus } from "../components/CollectionStatus";
 import { localTime } from "../lib/format";
 import { useApi } from "../lib/useApi";
@@ -13,6 +15,10 @@ import { useApi } from "../lib/useApi";
 export function DpdpPage() {
   const readiness = useApi(() => getReadiness("DPDP"), []);
   const connectors = useApi(() => listConnectors(), []);
+  const assessments = useApi(() => listAssessments("DPDP"), []);
+  const { identity } = useSession();
+  const { isAdmin, canWrite } = roleFlags(identity);
+  const reloadAi = () => { assessments.reload(); readiness.reload(); };
   const [syncing, setSyncing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
@@ -99,6 +105,28 @@ export function DpdpPage() {
           </div>
         </div>
       </div>
+
+      {report && report.clauses.some((c) => c.ai_assessable) && (
+        <>
+          <div className="section-title">Document checks the AI proposes and a person confirms</div>
+          <p className="stat-sub">
+            {report.ai_confirmed ?? 0} AI-assessed and confirmed, {report.ai_awaiting ?? 0} AI-assessed, awaiting confirmation.
+            These have no fixed rule. An AI assessment is never shown as passed by the rules.
+          </p>
+          <div className="card-grid">
+            {report.clauses.filter((c) => c.ai_assessable).map((c) => (
+              <div className="card" key={c.clause}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                  <strong>{c.title}</strong> <Badge value={c.verdict} />
+                </div>
+                <div className="stat-sub mono">{c.clause}</div>
+                <AssessCell framework="DPDP" clause={c.clause} canWrite={canWrite} isAdmin={isAdmin} subscribed
+                  current={assessments.data?.find((a) => a.clause === c.clause && a.current)} onDone={reloadAi} />
+              </div>
+            ))}
+          </div>
+        </>
+      )}
 
       <div className="section-title">Automatic evidence sources</div>
       <div className="card-grid">

@@ -916,8 +916,25 @@ export type FrameworkReadiness = {
   readiness: number;
   /** Clauses no rule judges yet, met by a person's statement in force (ADR-060). */
   attested?: number;
-  clauses: { clause: string; title: string; verdict: string; attestation_only?: boolean }[];
+  /** AI-assessed (ADR-069): proposals awaiting a person's confirmation, and ones confirmed MET. Never counted as PASS. */
+  ai_awaiting?: number;
+  ai_confirmed?: number;
+  clauses: { clause: string; title: string; verdict: string; attestation_only?: boolean;
+    ai_assessable?: boolean; ai_state?: "awaiting" | "confirmed" | null }[];
 };
+export type AssessmentPoint = { point: string; result: string; reason: string; quote: string; page: number | null };
+export type Assessment = {
+  id: string; framework: string; clause: string; evidence_id: string; outcome: string; reason: string;
+  points: AssessmentPoint[]; model: string; provider: string; prompt_version: string; document_sha256: string;
+  created_by: string; created_at: string; confirmed_outcome: string | null; confirmed_by: string | null;
+  confirmed_by_display?: string | null; confirmed_at: string | null; confirm_note: string; current: boolean;
+};
+export const listAssessments = (framework?: string) =>
+  request<Assessment[]>("GET", "/assessments", { query: framework ? { framework } : {} });
+export const runAssessment = (body: { framework: string; clause: string }) =>
+  request<Assessment>("POST", "/assessments", { json: body });
+export const confirmAssessment = (id: string, body: { outcome?: string; note?: string }) =>
+  request<Assessment>("POST", `/assessments/${encodeURIComponent(id)}/confirm`, { json: body });
 export type Attestation = {
   id: string; framework: string; clause: string; statement: string; evidence_id: string | null;
   attested_by: string; attested_by_display?: string; attested_at: string; valid_until: string;

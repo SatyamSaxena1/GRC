@@ -98,10 +98,21 @@ class Requirement(_Model):
     # app/exceptions.py::rule_hash (ADR-022) is unchanged for every existing clause,
     # and attaching a source_ref later never flags verdicts "rules changed since".
     source_ref: SourceRef | None = Field(default=None, exclude=True)
+    # A pack author's mark that the model may propose a verdict for this clause (ADR-069). Only legal where no
+    # mapping carries a delta condition, i.e. no fixed rule. Excluded for the same reason as source_ref.
+    assessable: bool = Field(default=False, exclude=True)
 
     def model_post_init(self, _context: Any) -> None:
         if bool(self.evidence_requirements) != bool(self.mappings):
             raise ValueError(f"{self.clause}: give both evidence_requirements and mappings (a rule), or neither")
+        if self.assessable and (self.attestation_only or any(m.delta_conditions for m in self.mappings)):
+            raise ValueError(f"{self.clause}: assessable needs evidence requirements and no fixed rule (delta conditions)")
+
+    @property
+    def ai_assessable(self) -> bool:
+        """Marked assessable AND has no fixed rule; checked again here so a mis-marked clause is never touched."""
+        return self.assessable and bool(self.evidence_requirements) and not any(
+            m.delta_conditions for m in self.mappings)
 
     @property
     def attestation_only(self) -> bool:

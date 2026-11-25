@@ -28,6 +28,18 @@ step is in a tamper-evident log; the DPDP Act pack for India.
 
 ## Entries
 
+### 25 Nov 2026: AI-assessed clauses, where no fixed rule exists (ADR-069)
+- **Say:** "For three DPDP clauses that no rule can judge (the privacy notice, rights and grievance routes, retention and
+  erasure) the model can now read your document and propose an answer, with the exact sentence and page behind every point.
+  It never says PASS. A named admin confirms or overrides it, and until then it reads 'AI-assessed, awaiting confirmation'."
+- **Show:** Frameworks, DPDP: on "Clear privacy notice" press "Assess with AI"; the card lists each point with its quote and
+  page, the model, and the prompt version. As an admin press Confirm (or choose a different outcome): it now reads
+  "AI-assessed and confirmed by <name>". Run it again: a new record appears, the confirmed one is unchanged. The DPDP page
+  and Gaps show the same state; the score moves only on a confirmed "met".
+- **Honest detail:** a model run is not repeatable, so the record is what stays the same, not the answer. A quote not found
+  word for word in the document sends the assessment to review. Instructions hidden in a document can only lower the result.
+  Only the three marked clauses use it; every clause with a rule is still decided by the rule alone.
+
 ### 10 Nov 2026: A first-week checklist, and "what got worse this week" (ADR-058)
 - **Say:** "A new admin now sees exactly what to do in their first week, and every tick is real: it comes from what they
   actually did, not a box they click. And every Monday the summary says how many controls turned worse, how much evidence

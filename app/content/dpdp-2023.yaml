@@ -8,6 +8,7 @@ framework:
 # separate statutory obligations.
 requirements:
   - clause: "Act s.5-6 / Rule 3"
+    assessable: true   # no fixed rule: the model may propose, a person confirms (ADR-069)
     title: Clear privacy notice and consent choices
     text: >
       The notice clearly identifies personal data and purposes, and provides
@@ -138,6 +139,7 @@ requirements:
           - {attribute: affected_person_notification, operator: "==", value: true}
 
   - clause: "Act s.8(7-8) / Rule 8"
+    assessable: true   # no fixed rule: the model may propose, a person confirms (ADR-069)
     title: Retention and erasure are governed
     text: >
       Personal data is erased when consent is withdrawn or its purpose is no
@@ -153,6 +155,7 @@ requirements:
         delta_conditions: []
 
   - clause: "Act s.11-13 / Rules 9 & 14"
+    assessable: true   # no fixed rule: the model may propose, a person confirms (ADR-069)
     title: Rights, grievance and privacy contact routes are published
     text: >
       People can find the privacy contact and the means to request access,
