@@ -920,8 +920,19 @@ export type FrameworkReadiness = {
   ai_awaiting?: number;
   ai_confirmed?: number;
   clauses: { clause: string; title: string; verdict: string; attestation_only?: boolean;
-    ai_assessable?: boolean; ai_state?: "awaiting" | "confirmed" | null }[];
+    ai_assessable?: boolean; ai_state?: "awaiting" | "confirmed" | null;
+    /** Shown, never scored (a change to watch). */
+    guidance_only?: boolean;
+    /** Set when the duty was marked not applicable by the organisation, with its written reason. */
+    na_id?: string; na_reason?: string; na_by?: string; na_at?: string }[];
 };
+export type DutyNa = {
+  id: string; framework: string; clause: string; reason: string; marked_by: string; marked_at: string;
+  reversed_by: string | null; reversed_at: string | null; current: boolean;
+};
+export const markDutyNa = (body: { clause: string; reason: string; framework?: string }) =>
+  request<DutyNa>("POST", "/duty-na", { json: body });
+export const reverseDutyNa = (id: string) => request<DutyNa>("POST", `/duty-na/${encodeURIComponent(id)}/reverse`);
 export type AssessmentPoint = { point: string; result: string; reason: string; quote: string; page: number | null };
 export type Assessment = {
   id: string; framework: string; clause: string; evidence_id: string; outcome: string; reason: string;

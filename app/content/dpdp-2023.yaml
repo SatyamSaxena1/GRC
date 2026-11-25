@@ -1,3 +1,11 @@
+# SOURCE AND STATUS OF THE DUTY LIST (read before relying on any clause below).
+# The list of duties added after the first nine clauses was taken, at the owner's direction, from the ConsentPal
+# register (docs/product/dpdp-widening-plan.md). The wording of every title and text is our own. EVERY citation must be
+# verified against the official Act (2023) and the Rules (G.S.R. 846(E)) and reviewed by counsel before it is relied on.
+# This is readiness, not legal advice. Clauses with no rule are attestation-only (ADR-060): a named person states they are
+# met and the product shows ATTESTED, never PASS. Guidance-only clauses (guidance_only) are shown but not scored.
+# The five fixed-rule and eleven AI-assessed duties are Phase 2 and are not here yet.
+
 framework:
   code: DPDP
   version: "Act 2023 / Rules 2025"
@@ -169,3 +177,338 @@ requirements:
         confidence: 1.0
         source: EXPERT
         delta_conditions: []
+
+  # ---- Attestation-only duties (24): behaviour no document shows; a named person attests, with an expiry.
+
+  - clause: "Act s.5(2)"
+    title: "People who agreed before the Act receive the new notice"
+    text: >
+      Anyone whose consent was collected before the Act applied is sent the current notice, so their earlier agreement is not relied on silently.
+
+  - clause: "Act s.6(2)"
+    title: "No consent wording takes away a person's legal rights"
+    text: >
+      Consent forms and terms contain nothing that asks a person to give up a right the law gives them.
+
+  - clause: "Act s.6(5)-(6)"
+    title: "After consent is withdrawn, we and our vendors stop within a reasonable time"
+    text: >
+      When a person withdraws consent, processing stops and the people who process for us are told to stop, within a time that can be defended.
+
+  - clause: "Act s.6 & s.8(1) - acquired contacts"
+    title: "Bought or partner-supplied contacts come with consent that covers us"
+    text: >
+      Before using contact details received from a partner or bought in, we hold proof that the person agreed to what we intend to do with them.
+
+  - clause: "Act s.8(3)"
+    title: "Data used for decisions or passed on is complete, accurate and consistent"
+    text: >
+      Where personal data feeds a decision about a person, or is handed to another business, we have a way to keep it complete, accurate and consistent.
+
+  - clause: "Rule 6(1)(d)"
+    title: "Backups let the business carry on after a loss or a lock-out"
+    text: >
+      Personal data can be restored, and systems recovered, after loss, damage or loss of access to it; the backups are tested.
+
+  - clause: "Rule 8(3) - vendor logs"
+    title: "Vendors that process our data also keep logs for a year"
+    text: >
+      Our processors keep the logs, and the personal data those logs concern, for at least one year, and the contract or an assurance says so.
+
+  - clause: "Act s.6(1) - data minimisation"
+    title: "We collect only the data the stated purpose needs"
+    text: >
+      Each collection point asks for the fields the purpose requires and no more, and this is reviewed when a form or feed changes.
+
+  - clause: "Act s.9(1) / Rule 10"
+    title: "A verified parent agrees before a child's data is processed"
+    text: >
+      Before processing the data of anyone under 18, we obtain the verifiable consent of a parent or lawful guardian.
+
+  - clause: "Rule 10(1)-(2)"
+    title: "The parent is checked as an identifiable adult"
+    text: >
+      The person giving consent for a child is checked, by a method we can describe, to be an adult who can be identified.
+
+  - clause: "Rule 12"
+    title: "We know which children's-data exemption applies to us and its conditions"
+    text: >
+      If we rely on an exemption from the children's-data rules, we have recorded which one, why it fits, and the conditions we keep to.
+
+  - clause: "Act s.9(3)"
+    title: "No tracking, behavioural monitoring or targeted advertising aimed at children"
+    text: >
+      We do not track or monitor the behaviour of children, or direct advertising at them, other than as the law permits.
+
+  - clause: "Act s.9(2)"
+    title: "Nothing we do is likely to harm a child's well-being"
+    text: >
+      We have considered how our processing could affect a child's well-being and found nothing likely to cause harm.
+
+  - clause: "Act s.9(1) / Rule 11"
+    title: "A guardian of a person with a disability is checked before we process that person's data"
+    text: >
+      Where a lawful guardian acts for a person with a disability, we confirm the guardian's authority before processing.
+
+  - clause: "Act s.16 / Rule 15"
+    title: "We know where data goes abroad and watch for restrictions"
+    text: >
+      We keep a list of the countries personal data is sent to and review it when the Government restricts a destination.
+
+  - clause: "Act s.16(2)"
+    title: "Sector rules that keep data in India are met"
+    text: >
+      Where a sector regulator requires certain data to stay in India, we have identified those rules and follow them.
+
+  - clause: "Act s.17(1)(d)"
+    title: "Foreign customers' data is marked so the exemption is applied correctly"
+    text: >
+      Data of people outside India processed under a contract with a foreign party is identifiable, so any exemption is used only where it applies.
+
+  - clause: "Act s.7(i)"
+    title: "Employee data is handled with a notice and the same safeguards"
+    text: >
+      Staff are told what we do with their personal data, and it receives the same security and care as customer data.
+
+  - clause: "Act s.10(2)(a)"
+    title: "A data protection officer based in India answers to the board"
+    text: >
+      Where we are a Significant Data Fiduciary, an India-based officer is appointed and reports to our board.
+
+  - clause: "Act s.10(2)(b)"
+    title: "An independent data auditor is appointed"
+    text: >
+      Where we are a Significant Data Fiduciary, an independent auditor is appointed to audit our compliance.
+
+  - clause: "Rule 13(3)"
+    title: "Algorithmic systems handling personal data do not put people's rights at risk"
+    text: >
+      Where we use automated systems on personal data, we have checked that they do not put people's rights at risk.
+
+  - clause: "Act s.17(2)(b) / Rule 16"
+    title: "Research, archiving or statistics use stays within the exemption's conditions"
+    text: >
+      If we process data for research, archiving or statistics under the exemption, we keep to the standards and conditions attached to it.
+
+  - clause: "Act s.32"
+    title: "We are ready to offer a voluntary undertaking to the Board"
+    text: >
+      We know how we would propose a voluntary undertaking to the Board, and who would sign it.
+
+  - clause: "Act s.36 / Rule 23"
+    title: "A Government request for information is answered, and kept confidential when we are told so"
+    text: >
+      We know who receives a Government information request, how it is answered, and how it is kept confidential if required.
+
+  # ---- Operational duties, attested for now (19): a consent tool would compute these from live data; we do not build
+  # that, so a person attests until a customer's export or a connector can replace the statement.
+
+  - clause: "Act s.4(1) & s.7"
+    title: "Every use of personal data rests on consent or a listed lawful use"
+    text: >
+      For each way we use personal data we can name the consent or the specific lawful use the Act allows.
+
+  - clause: "Act s.7(a)"
+    title: "Service messages are kept apart from marketing"
+    text: >
+      Messages a person needs to receive are separate from promotional messages, and marketing is sent only with consent.
+
+  - clause: "Act s.5(1)"
+    title: "A notice comes with or before every request for consent"
+    text: >
+      No consent request is shown without the notice, or a link to it, at the same time or earlier.
+
+  - clause: "Act s.6(10)"
+    title: "We can prove notice and consent for every person whose data we use"
+    text: >
+      For any person we can show what they were told, what they agreed to and when.
+
+  - clause: "Act s.6(4)"
+    title: "Withdrawing consent is as easy as giving it"
+    text: >
+      A person can withdraw consent by a route no harder than the one they used to agree.
+
+  - clause: "Act s.6(3)"
+    title: "Every consent request shows who to contact"
+    text: >
+      Each request for consent displays how to reach our contact person or our data protection officer.
+
+  - clause: "Act s.6(6) / s.8(7)(b)"
+    title: "When someone says stop, everyone the data went to is told and confirms"
+    text: >
+      A withdrawal reaches every processor we passed the data to, and we receive their confirmation.
+
+  - clause: "Act s.6(4)-(5) - suppression"
+    title: "People who refused or withdrew are blocked from every send"
+    text: >
+      A person who said no is excluded from every campaign and channel, through one list that all senders check.
+
+  - clause: "Act s.6 - telecom permission"
+    title: "Telecom permission is tracked separately from privacy-law consent"
+    text: >
+      Where messages are sent by phone or SMS, the telecom regulator's own permission is recorded apart from data-protection consent.
+
+  - clause: "Act s.11(1)-(2)"
+    title: "We can say what personal data we hold and who it was shared with"
+    text: >
+      On request we can give a person a summary of their data and the names of those we shared it with.
+
+  - clause: "Act s.14 / Rule 14(4)"
+    title: "People can nominate someone to act for them"
+    text: >
+      A person can name a representative to exercise their rights if they die or cannot act, and we honour it.
+
+  - clause: "Rule 14 - identity check"
+    title: "Identity is checked before we act, using the least information needed"
+    text: >
+      Before a rights request is carried out we confirm who is asking, asking for no more identification than necessary.
+
+  - clause: "Act s.11(1) & s.13 - self-service"
+    title: "People can see who holds their details and act on them themselves"
+    text: >
+      A person has a way to see who processes their details and to correct, erase or stop use without waiting for us.
+
+  - clause: "Act s.8(7) - deletions run"
+    title: "Scheduled deletions actually run"
+    text: >
+      The deletions our retention rules call for are carried out on schedule, and a failed run is noticed.
+
+  - clause: "Act s.6(1) & s.8(7) - link collection"
+    title: "Details requested through a link or QR code are only what the purpose needs"
+    text: >
+      Forms reached by a link or code ask for the minimum, and the data is not kept longer than that purpose requires.
+
+  - clause: "Act s.6(6) & s.8(7)(a)"
+    title: "When a person takes their details back, we delete our copy and confirm"
+    text: >
+      If someone withdraws their data, our copy is erased and we tell them it has been done.
+
+  - clause: "Act s.11(1)(b)"
+    title: "We record who each person's data was shared with"
+    text: >
+      For every person we can list the recipients their data was passed to.
+
+  - clause: "Act s.8(1)-(2) - onward sharing"
+    title: "A recipient cannot quietly pass the data further"
+    text: >
+      Our agreements and checks stop a recipient from passing personal data on without our knowledge.
+
+  - clause: "Act s.6(1) & s.7(a) - received data"
+    title: "Data we receive is not used for offers without the person's own agreement"
+    text: >
+      Details received from another business are not used to send offers unless the person has agreed to hear from us.
+
+  # ---- Guidance only (6): changes to watch. Shown, not scored.
+
+  - clause: "Act s.6(7)-(9) / Rule 4"
+    guidance_only: true   # shown, never scored, never attested
+    title: "Consent Managers may take over consent changes, so be ready when they register"
+    text: >
+      A Consent Manager can act for a person on consent. Watch for the first registrations and decide whether to accept requests through one.
+
+  - clause: "Rule 7(2)(b) - extension"
+    guidance_only: true   # shown, never scored, never attested
+    title: "A longer time for the 72-hour breach report needs a written request to the Board"
+    text: >
+      The Board can allow more than 72 hours for the full report if asked in writing. Know who would ask and when.
+
+  - clause: "CERT-In directions"
+    guidance_only: true   # shown, never scored, never attested
+    title: "CERT-In has its own, shorter reporting clock for some incidents"
+    text: >
+      Separate from this law, the national cyber agency requires some incidents to be reported much sooner. Track that duty alongside this one.
+
+  - clause: "Rule 8(1)-(2)"
+    guidance_only: true   # shown, never scored, never attested
+    title: "Three-year inactivity erasure with a 48-hour warning applies to some businesses"
+    text: >
+      Certain large online businesses must erase an inactive person's data after three years, warning them 48 hours before. Check whether the Third Schedule covers us.
+
+  - clause: "Rule 13(4)"
+    guidance_only: true   # shown, never scored, never attested
+    title: "The Government may require specified data to stay in India"
+    text: >
+      A Significant Data Fiduciary may be told to keep specified data inside India. Watch for any such notification.
+
+  - clause: "Act s.10, s.16 & s.17(3)"
+    guidance_only: true   # shown, never scored, never attested
+    title: "Changes that affect us arrive the day they happen"
+    text: >
+      Notifications on Significant Data Fiduciaries, restricted countries and exemptions can change what applies to us. Someone should watch the Gazette.
+
+  # ---- Our own records (10): attestation-only for now. Each names the product record that will later prove it with
+  # a rule (Phase 3): the rights-request log, vendor register, training module, policy library, breach log, or audit log.
+
+  - clause: "Act s.11-12 - requests on time"
+    title: "Access, correction and erasure requests are answered on time"
+    text: >
+      Each rights request is logged and answered within our published time. To be proved from the rights-request log.
+
+  - clause: "Act s.12(3)"
+    title: "Erasure requests are carried out, except what a law makes us keep"
+    text: >
+      Requested deletions are done in full, and anything kept is kept only because a law requires it. To be proved from the rights-request log.
+
+  - clause: "Act s.12(2)"
+    title: "Wrong or incomplete details are corrected"
+    text: >
+      Correction requests are acted on and the person's details are made accurate and complete. To be proved from the rights-request log.
+
+  - clause: "Act s.8(1) & s.8(5)"
+    title: "We have checked each vendor's security"
+    text: >
+      Every vendor that handles personal data has had a security review we can show. To be proved from the vendor register.
+
+  - clause: "Act s.8(4) - training"
+    title: "Staff are trained on the basics"
+    text: >
+      Everyone who handles personal data has completed training on how to do it properly. To be proved from the training module.
+
+  - clause: "Act s.8(4) - policies"
+    title: "Policies are published and acknowledged"
+    text: >
+      The policies that govern personal data are approved, published and acknowledged by staff. To be proved from the policy library.
+
+  - clause: "Act s.6(10) & s.33(2)"
+    title: "Every duty that applies has live evidence behind it"
+    text: >
+      For each duty that applies to us we can show current evidence, not a past statement. To be proved from this platform's own readiness record.
+
+  - clause: "Act s.33(2)(e)"
+    title: "Every incident has a time-stamped record of how it was fixed"
+    text: >
+      Each personal-data breach has a dated record of what happened and how it was put right. To be proved from the breach log.
+
+  - clause: "Act s.27(2) & s.28(7) / Rule 19(9)"
+    title: "Someone can answer the Board and carry out its directions"
+    text: >
+      A named person is able to respond to the Board and to act on what it directs. To be proved from the tasks and audit log.
+
+  - clause: "Act s.8(1) & s.33(2) - audit trail"
+    title: "Every action and decision by a person is on record"
+    text: >
+      Actions that touch personal data, and the decisions people make about it, are recorded with who and when. To be proved from the audit log.
+
+  # ---- Connector or attestation (4): technical safeguards. Attestation-only for now; where the organisation uses AWS,
+  # Microsoft 365 or Google Workspace, the Rule 6 baseline checks above already hold the snapshot evidence, and a rule
+  # over those snapshots can replace these statements later.
+
+  - clause: "Act s.8(5) / Rule 6(1)(a)"
+    title: "Personal data is encrypted, masked or replaced by tokens"
+    text: >
+      Personal data is protected by encryption, masking or tokenisation wherever it is stored or moved.
+
+  - clause: "Act s.8(5) / Rule 6(1)(b)"
+    title: "Access to the systems holding personal data is controlled"
+    text: >
+      Only people who need it can reach systems holding personal data, and strong sign-in is required for privileged access.
+
+  - clause: "Act s.8(5) / Rule 6(1)(c)"
+    title: "We can see who touched personal data, and we review it"
+    text: >
+      Access to personal data is logged, and the logs are looked at so that misuse is noticed.
+
+  - clause: "Act s.8(4) / Rule 6(1)(g)"
+    title: "Technical and organisational measures are in place"
+    text: >
+      We have chosen and applied technical and organisational measures that let us show the Act is being followed.

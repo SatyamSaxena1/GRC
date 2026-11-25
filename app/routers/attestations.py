@@ -93,6 +93,8 @@ def attest(body: AttestIn, actor: Actor = Depends(current_actor), db: Session = 
         raise HTTPException(404, "no such clause")
     if not req.attestation_only:
         raise HTTPException(409, "this clause is judged by rules from evidence; upload evidence instead")
+    if req.guidance_only:
+        raise HTTPException(409, "guidance-only items are not attested; they are not scored")
     _may_attest(db, actor, body.framework, body.clause)
     org = db.get(Organization, actor.org_id)
     if org is None or body.framework not in (org.frameworks or []):

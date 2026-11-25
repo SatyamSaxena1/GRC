@@ -28,6 +28,17 @@ step is in a tamper-evident log; the DPDP Act pack for India.
 
 ## Entries
 
+### 26 Nov 2026: DPDP checks widened from 9 to 72 lines, and "not applicable" for a single duty
+- **Say:** "Our DPDP page used to check nine things. It now lists 72 duties from the Act and Rules. Most are statements a named
+  person makes, shown as 'attested' and never as 'passed'. Six are changes to watch and are not scored. And if a duty does not
+  apply to you, an admin can say so in writing and it leaves your score."
+- **Show:** DPDP readiness, score report: new rows read NO EVIDENCE until attested; six read GUIDANCE. As an admin press "Mark
+  not applicable" on one, try fewer than six words (refused), then write a reason: the row reads NOT APPLICABLE with the reason,
+  your name and the date, and the total drops by one. Press Reverse and it returns. Frameworks, DPDP shows the same.
+- **Honest detail:** the list of duties comes from a third-party register at the owner's direction; every citation must be
+  checked against the Act and Rules (G.S.R. 846(E)) and reviewed by counsel before it is relied on. The wording is ours. The five
+  fixed-rule and eleven AI-assessed duties are not in yet (Phase 2). The original nine behave as before. Plan: docs/product/dpdp-widening-plan.md.
+
 ### 25 Nov 2026: AI-assessed clauses, where no fixed rule exists (ADR-069)
 - **Say:** "For three DPDP clauses that no rule can judge (the privacy notice, rights and grievance routes, retention and
   erasure) the model can now read your document and propose an answer, with the exact sentence and page behind every point.

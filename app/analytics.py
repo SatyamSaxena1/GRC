@@ -22,9 +22,10 @@ from datetime import date
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
+from app.actor_names import resolve_actors
 from app.content.load import Content
 from app.evaluate import evaluate
-from app.models import AiAssessment, ControlAttestation, Evidence, EvidenceControlLink, OrgCommitment, Organization
+from app.models import AiAssessment, ControlAttestation, DpdpDutyNa, Evidence, EvidenceControlLink, OrgCommitment, Organization
 
 # Hours of effort a single evidence artefact costs to locate, prepare and upload.
 # Deliberately conservative; the spec makes this organisation-configurable, so it
@@ -138,6 +139,11 @@ def ai_in_force(db: Session, org_id: str, framework: str) -> dict[str, AiAssessm
     return found
 
 
+def duty_na_in_force(db: Session, org_id: str, framework: str) -> dict[str, DpdpDutyNa]:
+    """clause -> the duty-level not-applicable mark in force (marked and not reversed)."""
+    return {r.clause: r for r in db.query(DpdpDutyNa).filter_by(org_id=org_id, framework=framework, reversed_at=None)}
+
+
 def framework_readiness(
     db: Session,
     org_id: str,
@@ -172,7 +178,14 @@ def framework_readiness(
         na_sources = set(org.dpdp_na_sources) if org else set()
         na_clauses = {clause for clause, source in clause_source.items() if source in na_sources}
 
-    requirements = [req for req in pack.requirements if req.clause not in na_clauses]
+    # A duty the org marked not applicable, with a written reason (app/routers/duty_na.py): out of the score too.
+    duty_na = duty_na_in_force(db, org_id, framework)
+    na_clauses |= set(duty_na)
+    na_names = resolve_actors(db, (r.marked_by for r in duty_na.values()))
+
+    # Guidance-only clauses are listed but never scored: not in the total, never attested, never passed.
+    guidance = [req for req in pack.requirements if req.guidance_only]
+    requirements = [req for req in pack.requirements if req.clause not in na_clauses and not req.guidance_only]
     total = len(requirements)
 
     evidence_pool = (
@@ -255,8 +268,14 @@ def framework_readiness(
              "verdict": verdict_of(req.clause)}
             for req in requirements
         ) + tuple(
+            {"clause": req.clause, "title": req.title, "attestation_only": True, "guidance_only": True,
+             "verdict": "GUIDANCE"}
+            for req in guidance
+        ) + tuple(
             {"clause": clause, "title": next((r.title for r in pack.requirements if r.clause == clause), clause),
-             "verdict": "NOT_APPLICABLE"}
+             "verdict": "NOT_APPLICABLE",
+             **({"na_id": duty_na[clause].id, "na_reason": duty_na[clause].reason, "na_by": na_names.get(duty_na[clause].marked_by, duty_na[clause].marked_by),
+                 "na_at": duty_na[clause].marked_at.isoformat()} if clause in duty_na else {})}
             for clause in sorted(na_clauses)
         ),
     )

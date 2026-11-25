@@ -6,6 +6,7 @@ import {
   type ConnectorStatus,
 } from "../api/client";
 import { Badge } from "../components/Badge";
+import { DutyNaControl } from "../components/DutyNa";
 import { AssessCell, roleFlags } from "../components/AiAssessment";
 import { useSession } from "../lib/session";
 import { CollectionStatus } from "../components/CollectionStatus";
@@ -90,7 +91,7 @@ export function DpdpPage() {
           <div className="stat-value">{report ? `${score}%` : "—"}</div>
           <div className="readiness-bar"><div style={{ width: `${score}%` }} /></div>
           <div className="stat-sub">
-            {report ? `${report.satisfied} of ${report.total_requirements} checks evidenced` : "Loading evidence…"}
+            {report ? `${report.satisfied} of ${report.total_requirements} checks evidenced by rules, ${report.attested ?? 0} attested` : "Loading evidence…"}
           </div>
         </div>
         <div className="card">
@@ -172,12 +173,14 @@ export function DpdpPage() {
       <div className="section-title">Score report</div>
       <div className="card">
         <table className="data-table">
-          <thead><tr><th>Requirement</th><th>Assessment</th></tr></thead>
+          <thead><tr><th>Requirement</th><th>Assessment</th><th>Applies to you?</th></tr></thead>
           <tbody>
             {report?.clauses.map((clause) => (
               <tr key={clause.clause}>
                 <td><strong>{clause.clause}</strong><div className="stat-sub">{clause.title}</div></td>
                 <td><Badge value={clause.verdict} /></td>
+                <td><DutyNaControl framework="DPDP" clause={clause} isAdmin={isAdmin}
+                  onDone={() => { readiness.reload(); }} /></td>
               </tr>
             ))}
           </tbody>

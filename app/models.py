@@ -217,6 +217,21 @@ class ControlAttestation(Base):
     revoked_at: Mapped[datetime | None] = mapped_column(default=None)
 
 
+class DpdpDutyNa(Base):
+    """An organisation's written reason that one DPDP duty does not apply to it. Never deleted: reversing sets
+    `reversed_at`, so who marked it and why stays on record. A duty in force here leaves the DPDP score."""
+    __tablename__ = "dpdp_duty_na"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"))
+    framework: Mapped[str]
+    clause: Mapped[str]
+    reason: Mapped[str] = mapped_column(Text)
+    marked_by: Mapped[str]
+    marked_at: Mapped[datetime] = mapped_column(default=_now)
+    reversed_by: Mapped[str | None] = mapped_column(default=None)
+    reversed_at: Mapped[datetime | None] = mapped_column(default=None)
+
+
 class AiAssessment(Base):
     """A model's proposed verdict for a clause no fixed rule judges (ADR-069). A record, never recomputed: a re-run is a
     new row, and `confirmed_*` is set once by a named person and never changed. Read as AI-ASSESSED, never PASS."""
