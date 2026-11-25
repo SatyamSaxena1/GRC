@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 
+import requests
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
@@ -64,7 +65,7 @@ def _view(row: Connection | None, kind: str = connections.KIND_CHAT) -> dict:
 
 
 def _state(db: Session, org_id: str) -> dict:
-    return {"key_configured": connections.available(),
+    return {"key_configured": connections.available(), "github_app_available": connections.app_available(),
             "connections": [_view(_row(db, org_id)),
                             _view(_row(db, org_id, connections.KIND_GITHUB), connections.KIND_GITHUB),
                             _view(_row(db, org_id, connections.KIND_AWS), connections.KIND_AWS),
@@ -174,6 +175,62 @@ def set_github(body: GithubIn, actor: Actor = Depends(current_actor), db: Sessio
     return _state(db, actor.org_id)
 
 
+@router.get("/github-app")
+def github_app_info(actor: Actor = Depends(current_actor)):
+    """Where the Install button sends the person. The link carries a signed value tied to this organisation."""
+    _admin(actor)
+    if not connections.app_available():
+        return {"available": False}
+    return {"available": True, "install_url": connections.install_url(actor.org_id)}
+
+
+class GithubAppIn(BaseModel):
+    installation_id: int = Field(gt=0, lt=10**12)
+    code: str = Field(min_length=5, max_length=200)
+    state: str = Field(min_length=20, max_length=600)
+
+
+@router.post("/github-app/complete")
+def complete_github_app(body: GithubAppIn, actor: Actor = Depends(current_actor), db: Session = Depends(get_session)):
+    """The person is back from GitHub. Three checks before anything is saved: the signed value is ours, fresh and for this
+    organisation; GitHub confirms the installation is the person's own; and the App can really reach it (ADR-068)."""
+    _admin(actor)
+    _need_key()
+    if not connections.app_available():
+        raise HTTPException(503, "the GitHub App is not set up on this server")
+    try:
+        started_by = connections.read_state(body.state)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from None
+    if started_by != actor.org_id:
+        raise HTTPException(403, "this install was started by a different organisation")
+    try:
+        if not connections.user_owns_installation(body.code, body.installation_id):
+            raise HTTPException(403, "GitHub does not show that installation as yours")
+        repos = connections.installation_repos(connections.installation_token(body.installation_id))[:connections.MAX_REPOS]
+    except HTTPException:
+        raise
+    except (ValueError, requests.RequestException) as exc:
+        raise HTTPException(502, f"GitHub could not confirm the installation ({type(exc).__name__})") from None
+    if not repos:
+        raise HTTPException(422, "no repository was shared with the App; install it again and choose at least one")
+    kind = connections.KIND_GITHUB
+    row = _row(db, actor.org_id, kind)
+    replaced = row is not None
+    if row is None:
+        row = Connection(org_id=actor.org_id, kind=kind, created_by=actor.label(), created_at=_now())
+        db.add(row)
+    row.config_encrypted = connections.encrypt(connections.pack_github_app(body.installation_id, repos))
+    row.hint = connections.github_app_hint(repos)
+    row.status, row.last_tested_at, row.last_error, row.updated_at = "UNTESTED", None, "", _now()
+    db.flush()
+    audit_log.record(db, actor=actor.label(), request_id=actor.request_id, action="CONNECTION_SET",
+                     entity_type="connection", entity=row.id, org_id=actor.org_id,
+                     detail={"kind": kind, "hint": row.hint, "replaced": replaced, "repositories": repos, "via": "github-app"})
+    db.commit()
+    return _state(db, actor.org_id)
+
+
 @router.delete("/github")
 def remove_github(actor: Actor = Depends(current_actor), db: Session = Depends(get_session)):
     _admin(actor)
@@ -194,7 +251,7 @@ def test_github(actor: Actor = Depends(current_actor), db: Session = Depends(get
     if row is None:
         raise HTTPException(404, "no GitHub connection is saved")
     try:
-        token, repos = connections.unpack_github(connections.decrypt(row.config_encrypted))
+        token, repos = connections.github_credentials(connections.decrypt(row.config_encrypted))
     except ValueError as exc:
         ok, reason = False, str(exc)
     else:

@@ -144,7 +144,7 @@ export type ConnectionView = {
   /** The clauses this source's evidence counts toward; `reviewed` is false while a mapping is an AI draft awaiting a person. */
   feeds: { framework: string; clause: string; title: string; reviewed: boolean }[];
 };
-export type ConnectionsState = { key_configured: boolean; connections: ConnectionView[] };
+export type ConnectionsState = { key_configured: boolean; github_app_available: boolean; connections: ConnectionView[] };
 export const getConnections = () => request<ConnectionsState>("GET", "/connections");
 export const saveChatWebhook = (url: string) => request<ConnectionsState>("PUT", "/connections/chat-webhook", { json: { url } });
 export const testChatWebhook = () => request<ConnectionsState>("POST", "/connections/chat-webhook/test");
@@ -152,6 +152,10 @@ export const removeChatWebhook = () => request<ConnectionsState>("DELETE", "/con
 export const saveGithub = (token: string, repos: string[]) => request<ConnectionsState>("PUT", "/connections/github", { json: { token, repos } });
 export const testGithub = () => request<ConnectionsState>("POST", "/connections/github/test");
 export const removeGithub = () => request<ConnectionsState>("DELETE", "/connections/github");
+/** The one-click GitHub App install (ADR-068). `install_url` carries a signed value tied to this organisation. */
+export const getGithubApp = () => request<{ available: false } | { available: true; install_url: string }>("GET", "/connections/github-app");
+export const completeGithubApp = (installation_id: number, code: string, state: string) =>
+  request<ConnectionsState>("POST", "/connections/github-app/complete", { json: { installation_id, code, state } });
 export const makeUploadToken = (source: "aws" | "m365" | "hrms" | "google-workspace") =>
   request<ConnectionsState & { new_token: string }>("POST", `/connections/${source}/token`);
 export const removeUpload = (source: "aws" | "m365" | "hrms" | "google-workspace") => request<ConnectionsState>("DELETE", `/connections/${source}`);

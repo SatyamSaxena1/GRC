@@ -155,7 +155,7 @@ def org_github_config(db: Session, org_id: str) -> tuple[str, list[str]] | None:
     if row is None:
         return None
     try:
-        return connections.unpack_github(connections.decrypt(row.config_encrypted))
+        return connections.github_credentials(connections.decrypt(row.config_encrypted))
     except ValueError as exc:
         raise HTTPException(502, f"github connection unreadable: {exc}") from None
 
