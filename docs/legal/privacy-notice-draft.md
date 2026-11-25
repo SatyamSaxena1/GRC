@@ -34,7 +34,7 @@ We do **not** knowingly collect sensitive categories such as health, financial-a
 ## 3. Why we use it (our purposes)
 - To **create and secure your account** and show you only your organisation's workspace.
 - To **run the service**: store your documents, work out compliance results from them, and keep the audit record.
-- To **help with drafting**: an automated language model may read an uploaded document or a question to suggest wording or point to a quote. It only **suggests**; a person approves, and it does not decide any result alone. **(confirm which model provider is in use today.)**
+- To **help with drafting**: an automated language model, run for us by **OpenRouter**, may read the text of an uploaded document or a question to suggest wording or point to a quote. It only **suggests**; a person approves, and it does not decide any result alone. Do not upload anything you do not want a language model to read.
 - To **send you messages about the service**: sign-in invitations, task and review alerts, and a weekly summary. These are service messages, not marketing. **(confirm: we send no marketing; remove this line if that changes.)**
 - To **keep the service safe and fix faults**, and to meet our legal duties.
 
@@ -42,25 +42,27 @@ We use your data for these purposes only. If we want to use it for anything else
 
 ## 4. Who else handles your data
 We use these service providers to run GRC Platform. They handle your data only to provide their service to us:
-- **Hosting:** Render, which runs the application. **(confirm region.)**
-- **Database:** Supabase, which stores the data. **(confirm region.)**
+- **Hosting:** Render, which runs the application, in **Singapore**.
+- **Database:** Supabase, which stores the data, in **Singapore**.
 - **Network protection:** Cloudflare, which passes web traffic to the service.
 - **Sign-in:** Auth0, which checks who you are.
 - **Email:** [email service, for example Brevo], which sends service messages.
-- **Language model:** [provider, if any], as described above.
+- **Language model:** OpenRouter, which passes text to the model that drafts suggestions, as described above. **(confirm with OpenRouter's terms where the text is processed and whether it is kept, and state that here.)**
 
-We do not sell your data. We share it with authorities only when the law requires. **(confirm: where the data is stored and whether any is processed outside India; if so, say where and why.)**
+We do not sell your data. We share it with authorities only when the law requires.
+
+**Where your data is stored.** Our application and our database are both in **Singapore**, so your personal data is stored and processed **outside India**. We do this because our providers run the service from there. The Act allows data to be sent abroad except to countries the Government restricts; counsel should confirm the current position for Singapore before this notice is published. The language-model provider named above may process text in other places as well.
 
 ## 5. How long we keep it
 - **Your account and activity record:** while you have access to your organisation's workspace, and for up to 90 days after your access ends, so we can trace who did what.
 - **Documents your organisation uploaded:** while the organisation's account is active, and then they are deleted within 90 days after it closes.
 - **The audit record of changes:** at least one year, because auditors and the law ask for it.
-- **Technical request logs:** [period]. **(confirm: our target is one year; today logs are not yet kept durably, so state only what is true.)**
+- **Technical request logs:** kept only briefly, for as long as our hosting keeps them, and **not stored long-term**. We will update this notice when we start keeping them for a year.
 - **Messages to us:** [period, for example two years].
 After that we delete the data or remove what identifies you. Where a law requires us to keep a record longer, we keep only that record and use it for nothing else.
 
 ## 6. How we protect it
-Data is encrypted while it travels (HTTPS) and while stored. Each organisation can see only its own workspace. Access to our systems needs a second sign-in step. **(confirm: today this is true for our hosting and code accounts but not yet for the service's own sign-in; remove or soften the last sentence until it is true for all.)** If a personal-data breach affects you, we will tell you without delay, and report it to the Data Protection Board of India as the law requires.
+Data is encrypted while it travels (HTTPS) and while stored. Each organisation can see only its own workspace. People who administer our systems use a second sign-in step. The service's own sign-in does not offer one yet. If a personal-data breach affects you, we will tell you without delay, and report it to the Data Protection Board of India as the law requires.
 
 ## 7. Your choices and rights
 You can, at any time and free of charge:
@@ -69,10 +71,10 @@ You can, at any time and free of charge:
 - **Ask us to correct** data that is wrong or incomplete.
 - **Ask us to delete** your data. We will, except for what a law makes us keep.
 - **Nominate someone** to exercise these rights for you if you die or cannot act.
-**How to ask:** email [contact email] or write to [address]. We may check who you are before acting, asking only for what is needed. We answer within [30] days.
+**How to ask:** email [contact email] or write to [address]. We may check who you are before acting, asking only for what is needed. We answer within **30 days**.
 
 ## 8. If you are unhappy
-Tell our contact person first: [name, email]. We will acknowledge your complaint within [7] days and give you a reply within [30] days, and in any case within the 90 days the law allows. If you are not satisfied, you may complain to the **Data Protection Board of India** once you have used our grievance route.
+Tell our contact person first: [name, email]. We will acknowledge your complaint within **7 days** and give you a reply within **30 days**, and in any case within the 90 days the law allows. If you are not satisfied, you may complain to the **Data Protection Board of India** once you have used our grievance route.
 
 ## 9. Changes to this notice
 If we change how we use your data, we will update this page and the date at the top, and tell you in the service before the change takes effect when it matters to you.
@@ -81,7 +83,7 @@ If we change how we use your data, we will update this page and the date at the 
 
 ## Checklist for the owner before publishing
 1. Fill the contact person, email, address and the date; decide the response times (30 days is suggested; the law's ceiling is 90).
-2. Confirm every item marked **(confirm)**: model provider, hosting and database regions, whether any data leaves India, request-log retention, and the second-sign-in sentence.
+2. Confirm the remaining **(confirm)** item: where OpenRouter processes text and whether it keeps it (read its terms). Counsel confirms the cross-border position for Singapore. The regions (Singapore for both app and database, read from Render and Supabase on 26 Nov 2026), the log wording and the second-sign-in sentence are already settled.
 3. Counsel reviews against Rule 3, s.5 to 6, Rules 9 and 14.
 4. Publish at a public address; link it from the sign-in page and the footer; then upload that page as a `PRIVACY_NOTICE` and run the AI assessment (ADR-069) for the two DPDP notice clauses.
 5. Keep this notice consistent with the approved Data Retention policy (v3) and the Incident Response policy; change one and you must check the other.
