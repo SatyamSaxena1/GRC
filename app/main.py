@@ -227,15 +227,15 @@ _SPA_DIR = Path(__file__).resolve().parent.parent / "frontend" / "dist"
 
 def _spa_file(requested: str) -> Path | None:
     """The built web-app file a request names, or None. An address such as /%2e%2e/%2e%2e/pyproject.toml decodes to dots that
-    climb out of the folder, so the name is resolved first and refused unless the result is still inside it (found by the
-    CodeQL path-injection check, 25 Nov 2026). Symlinks are resolved too, so a link cannot lead out either."""
-    try:
-        candidate = (_SPA_DIR / requested.lstrip("/")).resolve()
-    except (OSError, ValueError):
-        return None
-    if candidate.is_relative_to(_SPA_DIR.resolve()) and candidate.is_file():
-        return candidate
+    climb out of the folder, so the name is resolved to its real location first (this also follows any symbolic link) and
+    refused unless that location is still inside the folder (found by CodeQL's path-injection check, 25 Nov 2026)."""
+    base = os.path.realpath(_SPA_DIR)
+    full = os.path.realpath(os.path.join(base, requested.lstrip("/")))
+    if full.startswith(base + os.sep) and os.path.isfile(full):
+        return Path(full)
     return None
+
+
 # index.html names the hashed asset bundle, so it must be revalidated on every load
 # or a browser keeps serving the previous deploy's UI (the assets themselves are hashed).
 _NO_CACHE = {"Cache-Control": "no-cache"}
