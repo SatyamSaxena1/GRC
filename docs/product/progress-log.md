@@ -28,6 +28,12 @@ step is in a tamper-evident log; the DPDP Act pack for India.
 
 ## Entries
 
+### 26 Nov 2026: Five more document duties go to the AI-assessed lane (DPDP Phase 2)
+**In plain words:** upload a vendor contract, and the product reads it for the points the law cares about, quotes the exact words and page, and waits for a named admin to confirm. It never shows PASS on its own.
+**New:** a "Vendor contracts & agreements" document type, and five checks: notice offered in English or an Eighth Schedule language; legally-kept records held apart; vendors told to erase; every vendor under a contract with security terms; recipients bound by a purpose limit, no onward passing, honouring a stop, and delete-or-return. Two Phase 1 attestations that covered the same duty were replaced, keeping their ids.
+**Show on screen:** upload a contract on the Evidence page, run the assessment on the readiness page, see the quotes, confirm.
+**Proof:** tests/test_dpdp_phase2.py.
+
 ### 26 Nov 2026: DPDP checks widened from 9 to 72 lines, and "not applicable" for a single duty
 - **Say:** "Our DPDP page used to check nine things. It now lists 72 duties from the Act and Rules. Most are statements a named
   person makes, shown as 'attested' and never as 'passed'. Six are changes to watch and are not scored. And if a duty does not
