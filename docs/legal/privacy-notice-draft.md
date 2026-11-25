@@ -26,7 +26,7 @@ We collect only these kinds of data:
 - **Your account details:** your name, if you give it, and your work email address, so that we can create your sign-in and know who you are inside your organisation's workspace.
 - **What you do in the service:** which pages you open and which actions you take (for example approving a policy or attesting a control), with the time, because the service keeps a tamper-evident record of changes that auditors rely on.
 - **Documents and records you or your organisation upload** (policies, reports, screenshots, registers). These may contain personal data, such as names and email addresses, that your organisation chose to include. We do not ask for more than the service needs.
-- **Technical data:** your IP address, browser type and the time of each request, to keep the service secure and working.
+- **Technical data:** your IP address, the time and address of each page you request, the result, and how you signed in, to keep the service secure and working (see section 5 for how long).
 - **Messages you send us:** when you write to us, we keep the message and your reply address.
 
 We do **not** knowingly collect sensitive categories such as health, financial-account or biometric data, and we ask you not to upload them. The service is meant for working adults and organisations: **it is not directed at children**, and we do not knowingly collect data about anyone under 18.
@@ -57,7 +57,7 @@ We do not sell your data. We share it with authorities only when the law require
 - **Your account and activity record:** while you have access to your organisation's workspace, and for up to 90 days after your access ends, so we can trace who did what.
 - **Documents your organisation uploaded:** while the organisation's account is active, and then they are deleted within 90 days after it closes.
 - **The audit record of changes:** at least one year, because auditors and the law ask for it.
-- **Technical request logs:** kept only briefly, for as long as our hosting keeps them, and **not stored long-term**. We will update this notice when we start keeping them for a year.
+- **Security request log:** for **365 days**, then deleted automatically. It records the time, the page address (without anything after a "?"), the result code, how you signed in (never your password or token), your organisation, and your IP address. We keep it because the law asks for security logs of at least a year. Only our system administrators can read it.
 - **Messages to us:** [period, for example two years].
 After that we delete the data or remove what identifies you. Where a law requires us to keep a record longer, we keep only that record and use it for nothing else.
 
@@ -83,7 +83,7 @@ If we change how we use your data, we will update this page and the date at the 
 
 ## Checklist for the owner before publishing
 1. Fill the contact person, email, address and the date; decide the response times (30 days is suggested; the law's ceiling is 90).
-2. Confirm the remaining **(confirm)** item: where OpenRouter processes text and whether it keeps it (read its terms). Counsel confirms the cross-border position for Singapore. The regions (Singapore for both app and database, read from Render and Supabase on 26 Nov 2026), the log wording and the second-sign-in sentence are already settled.
+2. Confirm the remaining **(confirm)** item: where OpenRouter processes text and whether it keeps it (read its terms). Counsel confirms the cross-border position for Singapore. The regions (Singapore for both app and database, read from Render and Supabase on 26 Nov 2026), the log wording (365 days, ADR-070, deployed with PR 160) and the second-sign-in sentence are already settled. Do not publish until the 365-day log is live in production.
 3. Counsel reviews against Rule 3, s.5 to 6, Rules 9 and 14.
 4. Publish at a public address; link it from the sign-in page and the footer; then upload that page as a `PRIVACY_NOTICE` and run the AI assessment (ADR-069) for the two DPDP notice clauses.
 5. Keep this notice consistent with the approved Data Retention policy (v3) and the Incident Response policy; change one and you must check the other.
