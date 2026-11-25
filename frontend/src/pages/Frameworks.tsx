@@ -1,8 +1,11 @@
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
-  ApiError, attestControl, getReadinessAll, listAttestations, revokeAttestation, type Attestation, type FrameworkReadiness,
+  ApiError, attestControl, getReadinessAll, listAssessments, listAttestations, revokeAttestation, type Assessment,
+  type Attestation, type FrameworkReadiness,
 } from "../api/client";
+import { AssessCell, roleFlags } from "../components/AiAssessment";
+import { useSession } from "../lib/session";
 import { useApi } from "../lib/useApi";
 import { Badge } from "../components/Badge";
 import { DataTable, type Column } from "../components/DataTable";
@@ -10,7 +13,7 @@ import { DataTable, type Column } from "../components/DataTable";
 type Clause = FrameworkReadiness["clauses"][number];
 
 const NEEDS_WORK = new Set(["FAIL", "PARTIAL", "NO_EVIDENCE"]);
-const ORDER = ["FAIL", "NO_EVIDENCE", "PARTIAL", "ATTESTED", "PASS", "NOT_APPLICABLE"];
+const ORDER = ["FAIL", "NO_EVIDENCE", "PARTIAL", "AI_ASSESSED", "ATTESTED", "PASS", "NOT_APPLICABLE"];
 
 function inAYear(): string {
   const d = new Date();
@@ -92,7 +95,13 @@ export function FrameworksPage() {
     () => (current ? listAttestations(current.framework) : Promise.resolve([] as Attestation[])), [current?.framework]);
   const inForce = useMemo(
     () => new Map((attestations.data ?? []).filter((a) => a.current).map((a) => [a.clause, a])), [attestations.data]);
-  const reload = () => { state.reload(); attestations.reload(); };
+  const assessments = useApi(
+    () => (current ? listAssessments(current.framework) : Promise.resolve([] as Assessment[])), [current?.framework]);
+  const aiInForce = useMemo(
+    () => new Map((assessments.data ?? []).filter((a) => a.current).map((a) => [a.clause, a])), [assessments.data]);
+  const { identity } = useSession();
+  const { isAdmin, canWrite } = roleFlags(identity);
+  const reload = () => { state.reload(); attestations.reload(); assessments.reload(); };
 
   const rows = useMemo(() => {
     if (!current) return [];
@@ -107,13 +116,15 @@ export function FrameworksPage() {
 
   const attested = current?.attested ?? 0;
   const ruleLess = current ? current.clauses.filter((c) => c.attestation_only).length : 0;
-  const missing = current ? current.total_requirements - current.satisfied - current.partial - attested : 0;
+  const missing = current ? current.total_requirements - current.satisfied - current.partial - attested - (current.ai_confirmed ?? 0) - (current.ai_awaiting ?? 0) : 0;
   const columns: Column<Clause>[] = [
     { key: "clause", header: "Clause", render: (c) => <span className="mono">{c.clause}</span> },
     { key: "title", header: "What it asks", render: (c) => c.title },
     { key: "verdict", header: "Verdict", render: (c) => <Badge value={c.verdict} /> },
-    { key: "how", header: "How it is checked", render: (c) => current && (
-      <AttestCell framework={current.framework} clause={c} current={inForce.get(c.clause)}
+    { key: "how", header: "How it is checked", render: (c) => current && (c.ai_assessable ? (
+      <AssessCell framework={current.framework} clause={c.clause} current={aiInForce.get(c.clause)} canWrite={canWrite}
+        isAdmin={isAdmin} subscribed={current.already_subscribed} onDone={reload} />
+    ) : <AttestCell framework={current.framework} clause={c} current={inForce.get(c.clause)}
         subscribed={current.already_subscribed} onDone={reload} />) },
   ];
 
@@ -142,7 +153,7 @@ export function FrameworksPage() {
               </div>
               <div className="readiness-bar"><div style={{ width: `${Math.round(f.readiness * 100)}%` }} /></div>
               <div className="stat-sub" style={{ marginTop: 6 }}>
-                {Math.round(f.readiness * 100)}% · {f.satisfied + (f.attested ?? 0)} of {f.total_requirements} clauses met
+                {Math.round(f.readiness * 100)}% · {f.satisfied + (f.attested ?? 0) + (f.ai_confirmed ?? 0)} of {f.total_requirements} clauses met
               </div>
             </button>
           );
@@ -155,6 +166,8 @@ export function FrameworksPage() {
           <div className="card">
             <p>
               <strong>{current.satisfied}</strong> met by the rules, <strong>{attested}</strong> attested,{" "}
+              <strong>{current.ai_confirmed ?? 0}</strong> AI-assessed and confirmed,{" "}
+              <strong>{current.ai_awaiting ?? 0}</strong> AI-assessed, awaiting confirmation,{" "}
               <strong>{current.partial}</strong> partly met,{" "}
               <strong>{Math.max(missing, 0)}</strong> not met or without evidence, out of{" "}
               <strong>{current.total_requirements}</strong> clauses we track for this framework.

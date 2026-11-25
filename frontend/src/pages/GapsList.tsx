@@ -1,7 +1,9 @@
 import { AskAIButton } from "../components/Assistant";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ApiError, downloadGapsExport, getCisoSyncStatus, listGaps, listTasks, type GapRow } from "../api/client";
+import { ApiError, downloadGapsExport, getCisoSyncStatus, listAssessments, listGaps, listTasks, type GapRow } from "../api/client";
+import { AssessmentCard, roleFlags } from "../components/AiAssessment";
+import { useSession } from "../lib/session";
 import { useApi } from "../lib/useApi";
 import { DataTable, type Column } from "../components/DataTable";
 import { Badge } from "../components/Badge";
@@ -39,6 +41,11 @@ export function GapsListPage() {
   const [exportError, setExportError] = useState<string | null>(null);
   const gaps = useApi(() => listGaps(status || undefined), [status]);
   const cisoSync = useApi(() => getCisoSyncStatus(), []);
+  // AI-assessed clauses a person has not yet confirmed (ADR-069): open work, never a pass.
+  const assessments = useApi(() => listAssessments(), []);
+  const awaiting = (assessments.data ?? []).filter((a) => a.current && !a.confirmed_at && (!framework || a.framework === framework));
+  const { identity } = useSession();
+  const { isAdmin } = roleFlags(identity);
   // Owner, due date and priority live on the task each gap opens — join, don't duplicate.
   const tasks = useApi(() => listTasks(), []);
   const taskByGap = useMemo(
@@ -134,6 +141,17 @@ export function GapsListPage() {
       <ProcessingNotice onSettled={() => { gaps.reload(); tasks.reload(); }} />
       {exportError && <div className="alert alert-error">{exportError}</div>}
       {gaps.error && <div className="alert alert-error">{gaps.error}</div>}
+      {awaiting.length > 0 && (
+        <div className="card">
+          <strong>AI-assessed, awaiting confirmation ({awaiting.length})</strong>
+          {awaiting.map((a) => (
+            <div key={a.id} style={{ marginTop: 8 }}>
+              <span className="mono">{a.framework} {a.clause}</span>
+              <AssessmentCard a={a} isAdmin={isAdmin} onDone={() => assessments.reload()} />
+            </div>
+          ))}
+        </div>
+      )}
       <DataTable
         columns={columns}
         rows={rows}

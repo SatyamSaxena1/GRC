@@ -24,7 +24,7 @@ from sqlalchemy.orm import Session
 
 from app.content.load import Content
 from app.evaluate import evaluate
-from app.models import ControlAttestation, Evidence, EvidenceControlLink, OrgCommitment, Organization
+from app.models import AiAssessment, ControlAttestation, Evidence, EvidenceControlLink, OrgCommitment, Organization
 
 # Hours of effort a single evidence artefact costs to locate, prepare and upload.
 # Deliberately conservative; the spec makes this organisation-configurable, so it
@@ -98,6 +98,8 @@ class FrameworkReadiness:
     already_subscribed: bool
     clauses: tuple[dict, ...] = ()
     attested: int = 0       # clauses no rule judges, met by a person's statement in force (ADR-060)
+    ai_awaiting: int = 0    # AI-assessed, awaiting a person's confirmation (ADR-069): progress, not met
+    ai_confirmed: int = 0   # AI-assessed and confirmed MET by a named person: counted, never as PASS
 
     def to_dict(self) -> dict:
         return {
@@ -108,6 +110,8 @@ class FrameworkReadiness:
             "satisfied": self.satisfied,
             "partial": self.partial,
             "attested": self.attested,
+            "ai_awaiting": self.ai_awaiting,
+            "ai_confirmed": self.ai_confirmed,
             "readiness": round(self.readiness, 4),
             "clauses": list(self.clauses),
         }
@@ -117,6 +121,21 @@ class FrameworkReadiness:
 # stored link.verdict with the auditor's word (COMPLIANT...), so every count that reads stored
 # verdicts folds it through this map; an unknown value passes through rather than 500ing.
 AUDITOR_VERDICT = {"COMPLIANT": "PASS", "PARTIALLY_COMPLIANT": "PARTIAL", "NON_COMPLIANT": "FAIL"}
+
+
+def ai_in_force(db: Session, org_id: str, framework: str) -> dict[str, AiAssessment]:
+    """clause -> the AI assessment that counts (ADR-069): the newest CONFIRMED one if any, since a later re-run never
+    displaces a confirmation, else the newest unconfirmed proposal that is not NEEDS_REVIEW."""
+    rows = (db.query(AiAssessment).filter_by(org_id=org_id, framework=framework)
+            .order_by(AiAssessment.created_at.desc()).all())
+    found: dict[str, AiAssessment] = {}
+    for r in rows:
+        if r.confirmed_at is not None:
+            found.setdefault(r.clause, r)
+    for r in rows:
+        if r.clause not in found and r.outcome != "NEEDS_REVIEW":
+            found[r.clause] = r
+    return found
 
 
 def framework_readiness(
@@ -202,18 +221,38 @@ def framework_readiness(
         a.clause for a in db.query(ControlAttestation).filter_by(org_id=org_id, framework=framework, revoked_at=None)
         if a.clause in rule_less and a.valid_until >= today}
 
+    # AI-assessed (ADR-069): only a clause the pack marks assessable, never one a rule already passed. A confirmed MET
+    # counts toward readiness; an unconfirmed proposal is shown as its own bucket and counts as nothing yet.
+    assessable = {req.clause for req in requirements if req.ai_assessable}
+    ai_rows = {c: r for c, r in ai_in_force(db, org_id, framework).items()
+               if c in assessable and best.get(c) != SATISFIED}
+    ai_confirmed = {c for c, r in ai_rows.items() if r.confirmed_at is not None and r.confirmed_outcome == "MET"}
+    ai_awaiting = {c for c, r in ai_rows.items() if r.confirmed_at is None}
+
+    def verdict_of(clause: str) -> str:
+        if clause in attested_clauses:
+            return "ATTESTED"
+        return "AI_ASSESSED" if clause in ai_rows else best.get(clause, "NO_EVIDENCE")
+
+    def ai_state(clause: str) -> str | None:
+        r = ai_rows.get(clause)
+        return None if r is None else ("confirmed" if r.confirmed_at is not None else "awaiting")
+
     return FrameworkReadiness(
         framework=framework,
         total_requirements=total,
         evaluated=len(best),
         satisfied=satisfied,
         partial=partial,
-        readiness=((satisfied + len(attested_clauses)) / total) if total else 0.0,
+        readiness=((satisfied + len(attested_clauses) + len(ai_confirmed)) / total) if total else 0.0,
         attested=len(attested_clauses),
+        ai_awaiting=len(ai_awaiting),
+        ai_confirmed=len(ai_confirmed),
         already_subscribed=framework in (subscribed or []),
         clauses=tuple(
             {"clause": req.clause, "title": req.title, "attestation_only": req.attestation_only,
-             "verdict": "ATTESTED" if req.clause in attested_clauses else best.get(req.clause, "NO_EVIDENCE")}
+             "ai_assessable": req.ai_assessable, "ai_state": ai_state(req.clause),
+             "verdict": verdict_of(req.clause)}
             for req in requirements
         ) + tuple(
             {"clause": clause, "title": next((r.title for r in pack.requirements if r.clause == clause), clause),
