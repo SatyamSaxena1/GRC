@@ -46,8 +46,8 @@ def test_pack_keeps_the_original_nine_untouched_and_adds_the_duties():
     reqs = _pack()
     assert [r.clause for r in reqs[:9]] == ORIGINAL
     assert not any(r.attestation_only or r.guidance_only for r in reqs[:9])
-    assert len(reqs) == 72 and len({r.clause for r in reqs}) == 72
-    new = reqs[9:]
+    assert len(reqs) == 75 and len({r.clause for r in reqs}) == 75
+    new = [r for r in reqs[9:] if not r.assessable]   # Phase 2 clauses are assessable, not attestation-only
     assert all(r.attestation_only and not r.mappings for r in new)      # ADR-060: no rule, no mapping
     assert sum(r.guidance_only for r in new) == 6
 
@@ -64,7 +64,7 @@ def test_attestation_only_reads_attested_never_pass_and_guidance_never_scores(cl
     before = _ready(client, admin)
     guidance = [c for c in before["clauses"] if c.get("guidance_only")]
     assert len(guidance) == 6 and {c["verdict"] for c in guidance} == {"GUIDANCE"}
-    assert before["total_requirements"] == 66   # 72 clauses less 6 guidance-only
+    assert before["total_requirements"] == 69   # 75 clauses less 6 guidance-only
     assert all(c["verdict"] != "PASS" for c in before["clauses"])
 
     ok = client.post("/attestations", headers=_as(admin), json={
