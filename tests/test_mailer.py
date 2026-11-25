@@ -4,6 +4,7 @@ password or a full address; and the invite link is emailed so the admin never ha
 from __future__ import annotations
 
 import json
+import re
 
 import pytest
 from sqlalchemy.orm import Session
@@ -179,7 +180,9 @@ def test_without_a_login_service_the_welcome_email_still_goes_but_has_no_link(cl
     r = _invite(client, _org(client))
     assert r.status_code == 200 and r.json()["emailed"] is True and "password_link" not in r.json()
     body = smtp.instances[0].sent[0].get_content()
-    assert "https://grc.example.test" in body and "one-time link" not in body
+    from urllib.parse import urlparse
+    assert any(urlparse(u).hostname == "grc.example.test" for u in re.findall(r"https?://[^\s)>\"']+", body))
+    assert "one-time link" not in body
 
 
 # --- the welcome email: personalised, once, and a way to reach a person ---------------------------------------------
@@ -216,3 +219,23 @@ def test_one_welcome_per_sign_up_and_no_email_for_a_refused_invite(client, auth0
     assert _invite(client, org).status_code == 200 and len(smtp.instances) == 1
     assert _invite(client, org).status_code == 409                    # already invited: refused, nothing sent again
     assert len(smtp.instances) == 1
+
+
+# --- the address pattern must stay fast on hostile input (CodeQL py/polynomial-redos, 25 Nov 2026) ---------------------
+def test_a_long_run_of_dots_cannot_make_the_address_check_slow():
+    import time
+    from app import mailer
+    for hostile in ("a@" + "." * 60_000 + "x", "a@" + "a." * 30_000 + "!", "a@b" + ".c" * 30_000 + " "):
+        started = time.perf_counter()
+        mailer.valid_address(hostile)
+        assert time.perf_counter() - started < 0.5
+
+
+@pytest.mark.parametrize("address,ok", [
+    ("person@example.com", True), ("first.last+tag@sub.example.co.in", True), ("a@b.c", True),
+    ("a@b..c", False), ("a@.b.c", False), ("a@b.c.", False), ("a@b", False), ("a b@c.d", False), ("a@b.c\n", False),
+    ("<a@b.c>", False), ("a@b@c.d", False),
+])
+def test_the_address_check_still_accepts_normal_addresses_and_refuses_odd_ones(address, ok):
+    from app import mailer
+    assert mailer.valid_address(address) is ok
