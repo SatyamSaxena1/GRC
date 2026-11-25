@@ -215,6 +215,24 @@ def _app_jwt(now: float | None = None) -> str:
         raise ValueError("the GitHub App private key on this server cannot be read; paste the whole .pem file again") from None
 
 
+def app_check(timeout: float = 10.0) -> tuple[bool, str]:
+    """Do the App settings on this server work? Signs in to GitHub as the App (GET /app) and says what happened, in words that
+    never include the key. This is how a wrong or mangled private key, or a wrong App ID, is told apart from a problem with
+    one install, without installing anything."""
+    try:
+        token = _app_jwt()
+    except ValueError as exc:
+        return False, str(exc)
+    try:
+        r = github_session(token).get(f"{GITHUB_API}/app", timeout=timeout, allow_redirects=False)
+    except requests.RequestException as exc:
+        return False, f"could not reach GitHub ({type(exc).__name__})"
+    if r.status_code == 200:
+        return True, f"GitHub accepts this server as the App \"{r.json().get('slug', '')}\""
+    hint = " (the private key or App ID does not match the App)" if r.status_code == 401 else ""
+    return False, f"GitHub answered HTTP {r.status_code}{hint}"
+
+
 def new_state(org_id: str) -> str:
     """A tamper-proof, 15-minute value that ties an install to the organisation that started it."""
     return encrypt(json.dumps({"org": org_id}))
