@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 
 from app import audit_log, collection, connections
 from app.auth import Actor, current_actor, deny_read_only
-from app.collectors import github_change_control, weak_keys
+from app.collectors import github_change_control, own_records, weak_keys
 from app.content.load import load as load_content
 from app.db import get_session, session_scope, set_tenant
 from app.models import CollectionRun, Connection, Evidence, Organization
@@ -50,6 +50,8 @@ SOURCES = {
                set(github_change_control.ATTRIBUTES)),
     "bitbucket": ("Bitbucket change control", "CHANGE_CONTROL_SNAPSHOT",
                   set(github_change_control.ATTRIBUTES)),
+    # The organisation's own records in this product (ADR-071): counted by fixed rules, no outside system.
+    "platform": ("Our own records in this product", "PLATFORM_RECORDS_SNAPSHOT", set(own_records.ATTRIBUTES)),
     # Weak public keys in the client's certificates (app/collectors/weak_keys.py, ADR-033).
     "keys": ("Certificate key health", "KEY_HEALTH_SNAPSHOT", set(weak_keys.ATTRIBUTES)),
 }
@@ -93,8 +95,8 @@ def connector_status(actor: Actor = Depends(current_actor), db: Session = Depend
         {
             "source": source,
             "label": label,
-            "configured": bool(os.environ.get(_env_key(source, "URL"))) or (source == "github" and _has_own_github(db, actor.org_id))
-            or _has_push(db, actor.org_id, source),
+            "configured": source == "platform" or bool(os.environ.get(_env_key(source, "URL")))
+            or (source == "github" and _has_own_github(db, actor.org_id)) or _has_push(db, actor.org_id, source),
             "evidence_id": latest.id if (latest := _latest(db, actor.org_id, source)) else None,
             "last_synced_at": latest.created_at.isoformat() if latest else None,
             "status": latest.status if latest else "NEVER_SYNCED",
@@ -171,7 +173,11 @@ def _collect_github(token: str, repos: list[str], days: int = 90) -> dict:
 
 
 def _pull(source: str, db: Session | None = None, org_id: str | None = None) -> dict:
-    own = org_github_config(db, org_id) if (source == "github" and db is not None and org_id) else None
+    if source == "platform":
+        if db is None or not org_id:
+            raise HTTPException(409, "own records can only be read for an organisation")
+        return _snapshot(source, own_records.collect(db, org_id))
+    own =org_github_config(db, org_id) if (source == "github" and db is not None and org_id) else None
     url = os.environ.get(_env_key(source, "URL"))
     if not url and own is None:
         raise HTTPException(409, f"{source} collector is not configured")

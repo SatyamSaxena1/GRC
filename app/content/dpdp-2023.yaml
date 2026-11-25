@@ -4,7 +4,8 @@
 # verified against the official Act (2023) and the Rules (G.S.R. 846(E)) and reviewed by counsel before it is relied on.
 # This is readiness, not legal advice. Clauses with no rule are attestation-only (ADR-060): a named person states they are
 # met and the product shows ATTESTED, never PASS. Guidance-only clauses (guidance_only) are shown but not scored.
-# The AI-assessed document duties (ADR-069) are marked assessable; the five fixed-rule duties are Phase 3 and are not here yet.
+# The AI-assessed document duties (ADR-069) are marked assessable. Duties our own product records can prove are fixed rules over
+# the organisation's own records (ADR-071): a value of None (nothing logged yet) is missing evidence, never a pass.
 
 framework:
   code: DPDP
@@ -222,6 +223,22 @@ requirements:
         confidence: 1.0
         source: EXPERT
         delta_conditions: []
+
+  - clause: "Rule 7 - in practice"
+    title: "Breaches in our log were reported to the Board and to affected people on time"
+    text: >
+      Every breach we logged was reported to the Board within its due time, and to affected people within the time we set ourselves. Read from the breach log: none is late or still waiting past its due date.
+    evidence_requirements:
+      - artefact_type: PLATFORM_RECORDS_SNAPSHOT
+        required_attributes: [breaches_reported_late]
+        evidence_validity: {issued_attribute: collected_at, max_age_days: 14}
+    mappings:
+      - uco: UCO-PRIV-003
+        coverage: FULL
+        confidence: 1.0
+        source: EXPERT
+        delta_conditions:
+          - {attribute: breaches_reported_late, operator: "==", value: 0}
 
   # ---- Attestation-only duties (24): behaviour no document shows; a named person attests, with an expiry.
 
@@ -506,58 +523,137 @@ requirements:
     text: >
       Notifications on Significant Data Fiduciaries, restricted countries and exemptions can change what applies to us. Someone should watch the Gazette.
 
-  # ---- Our own records (10): attestation-only for now. Each names the product record that will later prove it with
-  # a rule (Phase 3): the rights-request log, vendor register, training module, policy library, breach log, or audit log.
+  # ---- Our own records (10). Seven are fixed rules over the organisation's own records (ADR-071) and sit among the rules
+  # above in their own order. Three stay attestation-only because no record we keep can prove them yet: the readiness
+  # record would judge itself, the breach log holds no field for how an incident was fixed, and a record cannot show
+  # that a person is able to answer the Board.
 
   - clause: "Act s.11-12 - requests on time"
     title: "Access, correction and erasure requests are answered on time"
     text: >
-      Each rights request is logged and answered within our published time. To be proved from the rights-request log.
+      Each rights request is logged and answered within our published time. Read from the rights-request log: no request is late.
+    evidence_requirements:
+      - artefact_type: PLATFORM_RECORDS_SNAPSHOT
+        required_attributes: [rights_requests_late]
+        evidence_validity: {issued_attribute: collected_at, max_age_days: 14}
+    mappings:
+      - uco: UCO-PRIV-003
+        coverage: FULL
+        confidence: 1.0
+        source: EXPERT
+        delta_conditions:
+          - {attribute: rights_requests_late, operator: "==", value: 0}
 
   - clause: "Act s.12(3)"
     title: "Erasure requests are carried out, except what a law makes us keep"
     text: >
-      Requested deletions are done in full, and anything kept is kept only because a law requires it. To be proved from the rights-request log.
+      Requested deletions are done in full, and anything kept is kept only because a law requires it. Read from the rights-request log: no erasure request is overdue or closed without a written outcome.
+    evidence_requirements:
+      - artefact_type: PLATFORM_RECORDS_SNAPSHOT
+        required_attributes: [erasure_requests_unfinished]
+        evidence_validity: {issued_attribute: collected_at, max_age_days: 14}
+    mappings:
+      - uco: UCO-PRIV-002
+        coverage: FULL
+        confidence: 1.0
+        source: EXPERT
+        delta_conditions:
+          - {attribute: erasure_requests_unfinished, operator: "==", value: 0}
 
   - clause: "Act s.12(2)"
     title: "Wrong or incomplete details are corrected"
     text: >
-      Correction requests are acted on and the person's details are made accurate and complete. To be proved from the rights-request log.
+      Correction requests are acted on and the person's details are made accurate and complete. Read from the rights-request log: no correction request is overdue or closed without a written outcome.
+    evidence_requirements:
+      - artefact_type: PLATFORM_RECORDS_SNAPSHOT
+        required_attributes: [correction_requests_unfinished]
+        evidence_validity: {issued_attribute: collected_at, max_age_days: 14}
+    mappings:
+      - uco: UCO-PRIV-003
+        coverage: FULL
+        confidence: 1.0
+        source: EXPERT
+        delta_conditions:
+          - {attribute: correction_requests_unfinished, operator: "==", value: 0}
 
   - clause: "Act s.8(1) & s.8(5)"
     title: "We have checked each vendor's security"
     text: >
-      Every vendor that handles personal data has had a security review we can show. To be proved from the vendor register.
+      Every vendor that handles personal data has had a security review we can show. Read from the vendor register: none is unreviewed or overdue.
+    evidence_requirements:
+      - artefact_type: PLATFORM_RECORDS_SNAPSHOT
+        required_attributes: [personal_data_vendors_not_current]
+        evidence_validity: {issued_attribute: collected_at, max_age_days: 14}
+    mappings:
+      - uco: UCO-PRIV-002
+        coverage: FULL
+        confidence: 1.0
+        source: EXPERT
+        delta_conditions:
+          - {attribute: personal_data_vendors_not_current, operator: "==", value: 0}
 
   - clause: "Act s.8(4) - training"
     title: "Staff are trained on the basics"
     text: >
-      Everyone who handles personal data has completed training on how to do it properly. To be proved from the training module.
+      Everyone who handles personal data has completed training on how to do it properly. Read from the training module: no active member is behind on a course.
+    evidence_requirements:
+      - artefact_type: PLATFORM_RECORDS_SNAPSHOT
+        required_attributes: [members_without_current_training]
+        evidence_validity: {issued_attribute: collected_at, max_age_days: 14}
+    mappings:
+      - uco: UCO-PRIV-001
+        coverage: FULL
+        confidence: 1.0
+        source: EXPERT
+        delta_conditions:
+          - {attribute: members_without_current_training, operator: "==", value: 0}
 
   - clause: "Act s.8(4) - policies"
     title: "Policies are published and acknowledged"
     text: >
-      The policies that govern personal data are approved, published and acknowledged by staff. To be proved from the policy library.
+      The policies that govern personal data are approved, published and acknowledged by staff. Read from the policy library: every active member has accepted every approved policy.
+    evidence_requirements:
+      - artefact_type: PLATFORM_RECORDS_SNAPSHOT
+        required_attributes: [approved_policies_unacknowledged]
+        evidence_validity: {issued_attribute: collected_at, max_age_days: 14}
+    mappings:
+      - uco: UCO-IAM-001
+        coverage: FULL
+        confidence: 1.0
+        source: EXPERT
+        delta_conditions:
+          - {attribute: approved_policies_unacknowledged, operator: "==", value: 0}
 
   - clause: "Act s.6(10) & s.33(2)"
     title: "Every duty that applies has live evidence behind it"
     text: >
-      For each duty that applies to us we can show current evidence, not a past statement. To be proved from this platform's own readiness record.
+      For each duty that applies to us we can show current evidence, not a past statement. No record of ours can prove this without judging itself, so a person states it.
 
   - clause: "Act s.33(2)(e)"
     title: "Every incident has a time-stamped record of how it was fixed"
     text: >
-      Each personal-data breach has a dated record of what happened and how it was put right. To be proved from the breach log.
+      Each personal-data breach has a dated record of what happened and how it was put right. The breach log does not yet record how an incident was fixed, so a person states it.
 
   - clause: "Act s.27(2) & s.28(7) / Rule 19(9)"
     title: "Someone can answer the Board and carry out its directions"
     text: >
-      A named person is able to respond to the Board and to act on what it directs. To be proved from the tasks and audit log.
+      A named person is able to respond to the Board and to act on what it directs. A record cannot show that a person is able to act, so a person states it.
 
   - clause: "Act s.8(1) & s.33(2) - audit trail"
     title: "Every action and decision by a person is on record"
     text: >
-      Actions that touch personal data, and the decisions people make about it, are recorded with who and when. To be proved from the audit log.
+      Actions that touch personal data, and the decisions people make about it, are recorded with who and when. Read from the audit log: its hash chain verifies end to end.
+    evidence_requirements:
+      - artefact_type: PLATFORM_RECORDS_SNAPSHOT
+        required_attributes: [audit_log_verifies]
+        evidence_validity: {issued_attribute: collected_at, max_age_days: 14}
+    mappings:
+      - uco: UCO-LOG-001
+        coverage: FULL
+        confidence: 1.0
+        source: EXPERT
+        delta_conditions:
+          - {attribute: audit_log_verifies, operator: "==", value: true}
 
   # ---- Connector or attestation (4): technical safeguards. Attestation-only for now; where the organisation uses AWS,
   # Microsoft 365 or Google Workspace, the Rule 6 baseline checks above already hold the snapshot evidence, and a rule

@@ -515,7 +515,9 @@ def sync_all_connectors(db: Session, org_id: str, sources: set[str] | None = Non
     for source in connectors.SOURCES:
         if sources is not None and source not in sources:
             continue
-        if not os.environ.get(connectors._env_key(source, "URL")) and not (
+        if source == "platform" and "DPDP" not in (org.frameworks or []):
+            continue          # own-record facts exist to judge DPDP clauses
+        if source != "platform" and not os.environ.get(connectors._env_key(source, "URL")) and not (
                 source == "github" and connectors._has_own_github(db, org_id)):
             continue
         if source in na_sources:

@@ -28,6 +28,12 @@ step is in a tamper-evident log; the DPDP Act pack for India.
 
 ## Entries
 
+### 26 Nov 2026: Seven DPDP duties are now proved by our own records (Phase 3b, ADR-071)
+**In plain words:** the product now counts its own rights-request log, vendor register, training, policies, breach log and audit log, and judges seven DPDP duties from those counts. No upload, no statement needed.
+**New:** a "Our own records in this product" source on the Connections page (collect it like the others), and one new line, "breaches reported on time".
+**Honest detail:** nothing logged yet reads as missing, never as passed. Three duties stay "attested" because no record of ours can prove them.
+**Proof:** tests/test_own_records.py.
+
 ### 26 Nov 2026: Request logs kept for a year (ADR-070)
 - **Say:** "Every request to the app is now recorded in our own database (when, which page, the result, how the caller signed
   in, the address, how long it took) and kept for 365 days. Never the contents, passwords, or email addresses."
