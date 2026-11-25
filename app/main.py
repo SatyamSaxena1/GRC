@@ -223,6 +223,19 @@ def ready():
 # frontend/dist). In dev the frontend runs on :5173 and this directory does
 # not exist, so the whole block is a no-op.
 _SPA_DIR = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+
+
+def _spa_file(requested: str) -> Path | None:
+    """The built web-app file a request names, or None. An address such as /%2e%2e/%2e%2e/pyproject.toml decodes to dots that
+    climb out of the folder, so the name is resolved to its real location first (this also follows any symbolic link) and
+    refused unless that location is still inside the folder (found by CodeQL's path-injection check, 25 Nov 2026)."""
+    base = os.path.realpath(_SPA_DIR)
+    full = os.path.realpath(os.path.join(base, requested.lstrip("/")))
+    if full.startswith(base + os.sep) and os.path.isfile(full):
+        return Path(full)
+    return None
+
+
 # index.html names the hashed asset bundle, so it must be revalidated on every load
 # or a browser keeps serving the previous deploy's UI (the assets themselves are hashed).
 _NO_CACHE = {"Cache-Control": "no-cache"}
@@ -249,8 +262,8 @@ if (_SPA_DIR / "index.html").is_file():
             and "text/html" in request.headers.get("accept", "")
             and not path.startswith(("/assets", "/health", "/docs", "/redoc", "/openapi.json"))
         ):
-            candidate = _SPA_DIR / path.lstrip("/")
-            if path != "/" and candidate.is_file():
+            candidate = _spa_file(path)
+            if path != "/" and candidate is not None:
                 return FileResponse(candidate)
             return FileResponse(_SPA_DIR / "index.html", headers=_NO_CACHE)
         return await call_next(request)
@@ -260,7 +273,7 @@ if (_SPA_DIR / "index.html").is_file():
 
     @app.get("/{full_path:path}", include_in_schema=False)
     def spa(full_path: str):
-        candidate = _SPA_DIR / full_path
-        if full_path and candidate.is_file():
+        candidate = _spa_file(full_path)
+        if full_path and candidate is not None:
             return FileResponse(candidate)
         return FileResponse(_SPA_DIR / "index.html", headers=_NO_CACHE)
