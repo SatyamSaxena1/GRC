@@ -188,11 +188,31 @@ def app_available() -> bool:
     return available() and all(os.environ.get(k) for k in APP_ENV) and bool(_SLUG.match(os.environ["GITHUB_APP_SLUG"]))
 
 
+_PEM = re.compile(r"-----BEGIN ([A-Z ]+)-----(.*?)-----END \1-----", re.S)
+
+
+def normalise_pem(raw: str) -> str:
+    """A private key as a settings box often leaves it: line breaks turned into spaces, written as a literal backslash-n
+    on one line, wrapped in quotes, or with stray blank lines. The base64 body is the same in every case, so it is cut out
+    and laid back in the standard 64-character lines between the BEGIN and END markers."""
+    s = raw.strip().strip("\"'").replace("\\n", "\n")
+    m = _PEM.search(s)
+    if m is None:
+        return s
+    body = re.sub(r"\s+", "", m.group(2))
+    lines = [body[i:i + 64] for i in range(0, len(body), 64)]
+    return f"-----BEGIN {m.group(1)}-----\n" + "\n".join(lines) + f"\n-----END {m.group(1)}-----\n"
+
+
 def _app_jwt(now: float | None = None) -> str:
-    """A signed, nine-minute proof that this server is the App (RS256 over the App's private key)."""
+    """A signed, nine-minute proof that this server is the App (RS256 over the App's private key). An unreadable key is
+    reported as a ValueError with a plain reason, never as a crash and never with any part of the key."""
     t = int(now if now is not None else time.time())
-    key = os.environ["GITHUB_APP_PRIVATE_KEY"].replace("\\n", "\n")  # Render may store the PEM on one line
-    return jwt.encode({"iat": t - 60, "exp": t + 540, "iss": os.environ["GITHUB_APP_ID"]}, key, algorithm="RS256")
+    try:
+        return jwt.encode({"iat": t - 60, "exp": t + 540, "iss": os.environ["GITHUB_APP_ID"]},
+                          normalise_pem(os.environ["GITHUB_APP_PRIVATE_KEY"]), algorithm="RS256")
+    except (jwt.PyJWTError, ValueError, TypeError):
+        raise ValueError("the GitHub App private key on this server cannot be read; paste the whole .pem file again") from None
 
 
 def new_state(org_id: str) -> str:

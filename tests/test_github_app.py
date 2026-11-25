@@ -198,3 +198,36 @@ def test_the_proof_of_identity_is_a_short_rs256_token_naming_the_app(app_env, pe
 def test_the_private_key_may_be_stored_on_one_line(monkeypatch, app_env, pem):
     monkeypatch.setenv("GITHUB_APP_PRIVATE_KEY", pem[0].replace("\n", "\\n"))
     assert jwt.decode(connections._app_jwt(now=int(time.time())), pem[1], algorithms=["RS256"])["iss"] == "123456"
+
+
+# --- a private key as a settings box really leaves it (the first live install failed on exactly this) ----------------
+def _pkcs1(pem):
+    from cryptography.hazmat.primitives.serialization import load_pem_private_key
+    key = load_pem_private_key(pem[0].encode(), password=None)
+    return key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.TraditionalOpenSSL,
+                             serialization.NoEncryption()).decode()   # "BEGIN RSA PRIVATE KEY", what GitHub gives out
+
+
+@pytest.mark.parametrize("mangle", [
+    lambda p: p,                                              # as downloaded
+    lambda p: p.replace("\n", " ").strip(),                   # line breaks became spaces
+    lambda p: p.replace("\n", "\n"),                         # one line, literal backslash-n
+    lambda p: '"' + p.replace("\n", "\n") + '"',             # wrapped in quotes
+    lambda p: p.replace("\n", "\r\n"),                        # Windows line endings
+    lambda p: "\n\n" + p + "\n\n",                            # stray blank lines
+])
+def test_a_mangled_private_key_is_still_read(monkeypatch, app_env, pem, mangle):
+    for source in (pem[0], _pkcs1(pem)):
+        monkeypatch.setenv("GITHUB_APP_PRIVATE_KEY", mangle(source))
+        token = connections._app_jwt(now=int(time.time()))
+        assert jwt.decode(token, pem[1], algorithms=["RS256"])["iss"] == "123456"
+
+
+def test_an_unreadable_private_key_is_a_clear_refusal_not_a_crash_and_never_echoed(client, bootstrap, gh, monkeypatch):
+    monkeypatch.setenv("GITHUB_APP_PRIVATE_KEY", "-----BEGIN PRIVATE KEY-----\nnot a real key at all\n-----END PRIVATE KEY-----")
+    with pytest.raises(ValueError) as e:
+        connections.installation_token(INSTALL)
+    assert "not a real key" not in str(e.value)
+    org = _org(client, bootstrap)
+    r = _complete(client, org, _state(client, org))
+    assert r.status_code == 502 and "not a real key" not in r.text
