@@ -35,3 +35,22 @@ Applied to this repository on 25 Nov 2026 (ruleset id 28054386), beside `main-hi
 
 Why: the platform's own GitHub collection (25 Nov 2026) found 75 direct pushes and 17 merges with failing or missing checks
 in 90 days. The counts fall as old months age out of the window.
+
+## `main-classic-protection.json` (classic branch protection, applied 25 Nov 2026)
+
+Applied with `gh api -X PUT repos/SatyamSaxena1/GRC/branches/main/protection --input main-classic-protection.json`.
+
+It repeats what `main-pull-requests.json` enforces (pull requests, the four required checks, stale approvals dismissed, no
+force-push or deletion) and adds **"include administrators"**. The duplication is deliberate and is about *evidence*, not
+safety:
+
+- GitHub shows a ruleset's bypass list only to callers who can edit it. A read-only connection (a fine-grained token, or the
+  GitHub App with read permissions) therefore cannot see that our ruleset has no bypass list, and the change-control
+  collector, which never lets a hidden value pass, reports `admins_can_bypass: yes`.
+- Classic protection shows `enforce_admins` to a read-only caller, so the collector can read it and close that gap.
+
+For a customer using rulesets with a read-only connection, the same applies: to prove administrators cannot bypass,
+use classic protection with "Include administrators", or the check will read as a gap.
+
+Still zero required approving reviews, for the one-person reason above. Raise both settings together when a second reviewer
+exists.
