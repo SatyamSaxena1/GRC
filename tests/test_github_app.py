@@ -231,3 +231,41 @@ def test_an_unreadable_private_key_is_a_clear_refusal_not_a_crash_and_never_echo
     org = _org(client, bootstrap)
     r = _complete(client, org, _state(client, org))
     assert r.status_code == 502 and "not a real key" not in r.text
+
+
+# --- telling a bad key from a bad install (added after the first live install failed) -------------------------------
+def test_the_check_says_when_the_app_settings_work(client, bootstrap, gh, monkeypatch):
+    org = _org(client, bootstrap)
+
+    class S:
+        def get(self, url, **kw):
+            return Resp(200, {"slug": "grc-evidence"}) if url.endswith("/app") else Resp(404, {})
+    monkeypatch.setattr(connections, "github_session", lambda token: S())
+    r = client.get("/connections/github-app?check=true", headers=H(org)).json()
+    assert r["check"]["ok"] is True and "grc-evidence" in r["check"]["reason"]
+    assert "check" not in client.get("/connections/github-app", headers=H(org)).json()    # no GitHub call unless asked
+
+
+def test_the_check_names_an_unreadable_key_and_a_key_github_rejects_without_echoing_either(client, bootstrap, gh, monkeypatch, app_env):
+    org = _org(client, bootstrap)
+    monkeypatch.setenv("GITHUB_APP_PRIVATE_KEY", "-----BEGIN PRIVATE KEY-----\nnot a real key\n-----END PRIVATE KEY-----")
+    bad = client.get("/connections/github-app?check=true", headers=H(org)).json()["check"]
+    assert bad["ok"] is False and "cannot be read" in bad["reason"] and "not a real key" not in bad["reason"]
+
+
+def test_a_401_from_github_points_at_the_key_or_app_id(client, bootstrap, gh, monkeypatch):
+    org = _org(client, bootstrap)
+
+    class S:
+        def get(self, url, **kw):
+            return Resp(401, {})
+    monkeypatch.setattr(connections, "github_session", lambda token: S())
+    check = client.get("/connections/github-app?check=true", headers=H(org)).json()["check"]
+    assert check["ok"] is False and "HTTP 401" in check["reason"] and "App ID" in check["reason"]
+
+
+def test_a_failed_install_says_why_in_words(client, bootstrap, gh, monkeypatch):
+    org = _org(client, bootstrap)
+    monkeypatch.setenv("GITHUB_APP_PRIVATE_KEY", "-----BEGIN PRIVATE KEY-----\nnot a real key\n-----END PRIVATE KEY-----")
+    r = _complete(client, org, _state(client, org))
+    assert r.status_code == 502 and "private key" in r.text and "not a real key" not in r.text

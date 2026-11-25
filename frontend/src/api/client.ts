@@ -153,7 +153,9 @@ export const saveGithub = (token: string, repos: string[]) => request<Connection
 export const testGithub = () => request<ConnectionsState>("POST", "/connections/github/test");
 export const removeGithub = () => request<ConnectionsState>("DELETE", "/connections/github");
 /** The one-click GitHub App install (ADR-068). `install_url` carries a signed value tied to this organisation. */
-export const getGithubApp = () => request<{ available: false } | { available: true; install_url: string }>("GET", "/connections/github-app");
+export const getGithubApp = (check = false) =>
+  request<{ available: false } | { available: true; install_url: string; check?: { ok: boolean; reason: string } }>(
+    "GET", `/connections/github-app${check ? "?check=true" : ""}`);
 export const completeGithubApp = (installation_id: number, code: string, state: string) =>
   request<ConnectionsState>("POST", "/connections/github-app/complete", { json: { installation_id, code, state } });
 export const makeUploadToken = (source: "aws" | "m365" | "hrms" | "google-workspace") =>

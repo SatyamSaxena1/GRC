@@ -107,6 +107,7 @@ export function ConnectionsPage() {
   const [url, setUrl] = useState("");
   const [ghToken, setGhToken] = useState("");
   const [ghRepos, setGhRepos] = useState("");
+  const [appCheck, setAppCheck] = useState<{ ok: boolean; reason: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -220,6 +221,13 @@ export function ConnectionsPage() {
               <p className="muted" style={{ fontSize: 12, marginTop: 6 }}>
                 One click. GitHub asks which repositories to share, read-only. There is no token to create or paste.
                 To stop sharing, remove the App in your GitHub settings as well as here.
+              </p>
+              <p style={{ fontSize: 12 }}>
+                <button className="btn" disabled={busy} onClick={() => run(async () => {
+                  const r = await getGithubApp(true);
+                  setAppCheck(r.available && r.check ? r.check : { ok: false, reason: "the App is not set up on this server" });
+                })}>Check the App settings</button>
+                {appCheck && <span className={appCheck.ok ? "muted" : "error"}> {appCheck.ok ? "Working: " : "Problem: "}{appCheck.reason}</span>}
               </p>
               <p className="muted" style={{ fontSize: 12 }}>Or use a token instead:</p>
             </div>

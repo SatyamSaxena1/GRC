@@ -176,12 +176,17 @@ def set_github(body: GithubIn, actor: Actor = Depends(current_actor), db: Sessio
 
 
 @router.get("/github-app")
-def github_app_info(actor: Actor = Depends(current_actor)):
-    """Where the Install button sends the person. The link carries a signed value tied to this organisation."""
+def github_app_info(check: bool = False, actor: Actor = Depends(current_actor)):
+    """Where the Install button sends the person. The link carries a signed value tied to this organisation. `?check=true`
+    also tests the server's App settings against GitHub and says, in words, whether they work (never showing the key)."""
     _admin(actor)
     if not connections.app_available():
         return {"available": False}
-    return {"available": True, "install_url": connections.install_url(actor.org_id)}
+    out = {"available": True, "install_url": connections.install_url(actor.org_id)}
+    if check:
+        ok, reason = connections.app_check()
+        out["check"] = {"ok": ok, "reason": reason}
+    return out
 
 
 class GithubAppIn(BaseModel):
@@ -210,7 +215,9 @@ def complete_github_app(body: GithubAppIn, actor: Actor = Depends(current_actor)
         repos = connections.installation_repos(connections.installation_token(body.installation_id))[:connections.MAX_REPOS]
     except HTTPException:
         raise
-    except (ValueError, requests.RequestException) as exc:
+    except ValueError as exc:   # every message raised in app/connections.py is written to be safe to show
+        raise HTTPException(502, f"GitHub could not confirm the installation: {exc}") from None
+    except requests.RequestException as exc:
         raise HTTPException(502, f"GitHub could not confirm the installation ({type(exc).__name__})") from None
     if not repos:
         raise HTTPException(422, "no repository was shared with the App; install it again and choose at least one")
