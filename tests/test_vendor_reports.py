@@ -4,7 +4,7 @@ document is kept but never counts. Files are validated, immutable, tenant-scoped
 from __future__ import annotations
 
 import json
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 import pytest
 
@@ -12,8 +12,9 @@ from app import vendors
 from app.models import AuditEvent
 
 H = lambda org: {"authorization": f"org:{org}"}  # noqa: E731
-FUTURE = (date.today() + timedelta(days=200)).isoformat()
-PAST = (date.today() - timedelta(days=1)).isoformat()
+TODAY = datetime.now(timezone.utc).date()        # the app's clock (vendors.attests), not the laptop's: they differ for
+FUTURE = (TODAY + timedelta(days=200)).isoformat()   # some hours of every day east or west of UTC
+PAST = (TODAY - timedelta(days=1)).isoformat()
 
 
 def _vendor(client, org):
